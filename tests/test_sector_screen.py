@@ -1,0 +1,129 @@
+"""
+Unit tests for the technical-first sector screen and the fundamentals parsers it relies on.
+"""
+
+from unittest.mock import patch
+
+import pandas as pd
+import pytest
+from bs4 import BeautifulSoup
+
+from config import CAPITAL_GOODS_SCREEN_CRITERIA, CEMENT_SCREEN_CRITERIA, POWER_SCREEN_CRITERIA, SECTOR_SCREENS
+from fundamentals import _statements_are_stale, parse_interest_coverage, parse_opm
+from sector_screen import load_constituents, screen_sector, technical_screen_result
+
+PL_HTML = """
+<section id="profit-loss"><table>
+  <tr><th></th><th>Mar 2025</th><th>Mar 2026</th><th>TTM</th></tr>
+  <tr><td>Sales +</td><td>20,000</td><td>22,902</td><td>24,389</td></tr>
+  <tr><td>Operating Profit</td><td>1,700</td><td>1,922</td><td>2,171</td></tr>
+  <tr><td>OPM %</td><td>9%</td><td>8%</td><td>9%</td></tr>
+  <tr><td>Interest</td><td>400</td><td>500</td><td>520</td></tr>
+  <tr><td>Profit before tax</td><td>900</td><td>1,000</td><td>1,100</td></tr>
+</table></section>
+"""
+
+
+class TestTechnicalScreenRule:
+    """Passes only when RS vs Nifty 500 > 0 AND trend is Bullish; ADX is not a cutoff."""
+
+    @pytest.mark.parametrize("rs, trend, passed, reason", [
+        (5.0, "Bullish (Uptrend)", True, ""),
+        (0.01, "Bullish (Uptrend)", True, ""),
+        (0.0, "Bullish (Uptrend)", False, "RS <= 0"),
+        (-3.0, "Bullish (Uptrend)", False, "RS <= 0"),
+        (5.0, "Bearish (Downtrend)", False, "trend Bearish"),
+        (-3.0, "Bearish (Downtrend)", False, "RS <= 0; trend Bearish"),
+        (float("nan"), "N/A (Insufficient Data)", False, "RS unavailable; trend N/A"),
+    ])
+    def test_rule(self, rs, trend, passed, reason):
+        assert technical_screen_result(rs, trend) == (passed, reason)
+
+
+class TestScreenSector:
+    TECH = {
+        "AAA": {"rs_score_vs_nifty500": 10.0, "trend_direction": "Bullish (Uptrend)", "latest_adx": 30.0},
+        "BBB": {"rs_score_vs_nifty500": 8.0, "trend_direction": "Bullish (Uptrend)", "latest_adx": 12.0},
+        "CCC": {"rs_score_vs_nifty500": -4.0, "trend_direction": "Bullish (Uptrend)", "latest_adx": 25.0},
+    }
+    CRITERIA = [("market_cap", ">", 1000, "Market Cap > 1000 (Rs Cr)"), ("opm", ">", 9, "OPM > 9%")]
+
+    def _run(self, fundamentals_records):
+        def fake_tech(symbol, stock_df, benchmark_df, rs_lookback):
+            base = {"current_price": 100.0, "latest_rsi": 55.0, "plus_di": 25.0, "minus_di": 20.0}
+            return {**base, **self.TECH[symbol]}
+
+        members = pd.DataFrame({"Symbol": ["AAA", "BBB", "CCC"], "Company Name": ["A Ltd", "B Ltd", "C Ltd"]})
+        with patch("sector_screen.evaluate_stock_technicals", side_effect=fake_tech), \
+                patch("sector_screen.get_fundamentals_summary",
+                      return_value=pd.DataFrame(fundamentals_records)) as fundamentals:
+            screen = screen_sector("Test", members, pd.DataFrame(), pd.DataFrame(), self.CRITERIA)
+        return screen.set_index("symbol"), fundamentals
+
+    def test_fundamentals_fetched_live_only_for_technical_passers(self):
+        _, fundamentals = self._run([])
+        fundamentals.assert_called_once_with(["AAA", "BBB"], use_cache=False)
+
+    def test_both_screens_and_blank_fundamentals_for_technical_failures(self):
+        screen, _ = self._run([
+            {"symbol": "AAA", "status": "OK", "market_cap": 5000.0, "opm": 12.0},
+            {"symbol": "BBB", "status": "OK", "market_cap": 5000.0, "opm": 9.0},
+        ])
+        assert bool(screen.loc["AAA", "passes_both_screens"]) is True
+        assert bool(screen.loc["BBB", "passed_technical_screen"]) is True  # low ADX is not a cutoff
+        assert bool(screen.loc["BBB", "passed_fundamental_screen"]) is False
+        assert screen.loc["BBB", "failed_criteria"] == "OPM > 9%"
+        assert bool(screen.loc["CCC", "passed_technical_screen"]) is False
+        assert pd.isna(screen.loc["CCC", "passed_fundamental_screen"])  # never screened
+        assert pd.isna(screen.loc["CCC", "opm"])
+        assert bool(screen.loc["CCC", "passes_both_screens"]) is False
+
+    def test_missing_fundamentals_record_fails(self):
+        screen, _ = self._run([{"symbol": "AAA", "status": "OK", "market_cap": 5000.0, "opm": 12.0}])
+        assert bool(screen.loc["BBB", "passed_fundamental_screen"]) is False
+        assert "(missing)" in screen.loc["BBB", "failed_criteria"]
+
+
+class TestSectorScreenConfig:
+    def test_criteria_match_the_specified_thresholds(self):
+        as_tuples = lambda crit: [(f, op, t) for f, op, t, _ in crit]  # noqa: E731
+        assert as_tuples(CEMENT_SCREEN_CRITERIA) == [
+            ("market_cap", ">", 1000), ("roce", ">", 11), ("roce_3yr_avg", ">", 10), ("opm", ">", 13),
+            ("debt_to_equity", "<", 1), ("operating_cash_flow", ">", 0),
+            ("sales_growth_3yr", ">", 6), ("profit_growth_3yr", ">", 5)]
+        assert as_tuples(CAPITAL_GOODS_SCREEN_CRITERIA) == [
+            ("market_cap", ">", 1000), ("sales_growth_3yr", ">", 8), ("profit_growth_3yr", ">", 8),
+            ("roce_3yr_avg", ">", 13), ("opm", ">", 9), ("operating_cash_flow_3yr", ">", 0),
+            ("debt_to_equity", "<", 1.2)]
+        assert as_tuples(POWER_SCREEN_CRITERIA) == [
+            ("market_cap", ">", 2000), ("roce", ">", 7), ("roce_3yr_avg", ">", 7),
+            ("interest_coverage", ">", 2), ("operating_cash_flow", ">", 0)]
+
+    @pytest.mark.parametrize("sector, count", [("Cement", 16), ("Capital Goods", 50), ("Power", 21)])
+    def test_official_constituent_files(self, sector, count):
+        members = load_constituents(SECTOR_SCREENS[sector]["constituents_csv"])
+        assert len(members) == count
+        assert not members["Symbol"].duplicated().any()
+
+
+class TestFundamentalsParsers:
+    @pytest.fixture
+    def soup(self):
+        return BeautifulSoup(PL_HTML, "html.parser")
+
+    def test_interest_coverage_uses_latest_full_year_not_ttm(self, soup):
+        # Mar 2026: (PBT 1,000 + interest 500) / 500 = 3.0
+        assert parse_interest_coverage(soup) == pytest.approx(3.0)
+
+    def test_interest_coverage_zero_interest_is_infinite(self):
+        html = PL_HTML.replace("<td>500</td>", "<td>0</td>")
+        assert parse_interest_coverage(BeautifulSoup(html, "html.parser")) == float("inf")
+
+    def test_opm_is_exact_not_screener_rounded(self, soup):
+        # TTM: 2,171 / 24,389 = 8.90%, displayed by Screener as "9%"
+        assert parse_opm(soup) == pytest.approx(8.90, abs=0.01)
+
+    def test_stale_consolidated_statements_detected(self):
+        stale = '<section id="profit-loss"><table><tr><th></th><th>Dec 2010</th></tr></table></section>'
+        assert _statements_are_stale(BeautifulSoup(stale, "html.parser"))
+        assert not _statements_are_stale(BeautifulSoup(PL_HTML, "html.parser"))

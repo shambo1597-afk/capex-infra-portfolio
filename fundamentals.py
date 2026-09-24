@@ -72,6 +72,22 @@ def _clean_numeric(value_str: Any) -> Optional[float]:
 # DIRECT HTML INGESTION & CACHING ENGINE
 # -----------------------------------------------------------------------------
 
+def _latest_statement_year(soup: BeautifulSoup) -> Optional[int]:
+    """Latest financial year shown in the Profit & Loss table header (TTM ignored)."""
+    sec = soup.find("section", id="profit-loss")
+    table = sec.find("table") if sec else None
+    if not table:
+        return None
+    years = [int(y) for th in table.find_all("th") for y in re.findall(r"\b(19\d{2}|20\d{2})\b", th.text)]
+    return max(years) if years else None
+
+
+def _statements_are_stale(soup: BeautifulSoup, max_age_years: int = 2) -> bool:
+    """True when a page's financial statements end more than max_age_years ago (or are absent)."""
+    latest = _latest_statement_year(soup)
+    return latest is None or latest < date.today().year - max_age_years
+
+
 def fetch_screener_page(
     symbol: str,
     cache_dir: Path = FUNDAMENTALS_CACHE_DIR,
@@ -138,6 +154,12 @@ def fetch_screener_page(
             numbers = [li.find("span", class_="number") for li in top_el.find_all("li")]
             has_valid_nums = any(n and n.text.strip() != "" for n in numbers)
             if not has_valid_nums:
+                needs_fallback = True
+            elif _statements_are_stale(soup):
+                # Headline ratios are live, but the consolidated statements stopped years ago
+                # (e.g. GVT&D: consolidated P&L ends Dec 2010); growth and ROCE history would be
+                # missing or wrong, so use the standalone page
+                logger.info("Consolidated statements for %s are stale; using standalone page.", symbol)
                 needs_fallback = True
 
     # Step 3: Fallback to standalone endpoint if consolidated is unavailable or blank
@@ -331,6 +353,36 @@ def parse_operating_cash_flow_3yr(soup: BeautifulSoup) -> Optional[float]:
     return None
 
 
+def parse_interest_coverage(soup: BeautifulSoup) -> Optional[float]:
+    """
+    Interest coverage for the latest full financial year: (Profit before tax + Interest) / Interest,
+    i.e. EBIT / Interest, from the 'Profit & Loss' table (a trailing TTM column is skipped).
+
+    Returns:
+        Optional[float]: Coverage rounded to 2 decimals; inf when interest is zero; None if the
+        rows are not reported.
+    """
+    sec = soup.find("section", id="profit-loss")
+    table = sec.find("table") if sec else None
+    if not table:
+        return None
+    headers = [th.text.strip() for th in table.find_all("th")][1:]
+    rows = {}
+    for tr in table.find_all("tr"):
+        tds = [td.text.strip() for td in tr.find_all("td")]
+        if tds:
+            rows[tds[0].rstrip(" +").strip().lower()] = [_clean_numeric(v) for v in tds[1:]]
+    interest, pbt = rows.get("interest"), rows.get("profit before tax")
+    if not interest or not pbt or not headers:
+        return None
+    idx = len(headers) - 2 if headers[-1].upper() == "TTM" else len(headers) - 1
+    if idx < 0 or idx >= min(len(interest), len(pbt)) or interest[idx] is None or pbt[idx] is None:
+        return None
+    if interest[idx] == 0:
+        return float("inf")
+    return round((pbt[idx] + interest[idx]) / interest[idx], 2)
+
+
 def parse_debt_to_equity(soup: BeautifulSoup) -> Optional[float]:
     """
     Extract Total Borrowings and Shareholders' Net Worth from the 'Balance Sheet' table
@@ -411,10 +463,23 @@ def parse_opm(soup: BeautifulSoup) -> Optional[float]:
     if not table:
         return None
 
+    rows = {}
     for tr in table.find_all("tr"):
         tds = [td.text.strip() for td in tr.find_all("td")]
-        if tds and "opm" in tds[0].lower():
-            vals = [_clean_numeric(v) for v in tds[1:] if _clean_numeric(v) is not None]
+        if tds:
+            rows.setdefault(tds[0].rstrip(" +").strip().lower(), tds[1:])
+
+    # Screener displays OPM % rounded to a whole number, which can flip a strict threshold
+    # (e.g. "9%" vs OPM > 9); compute it exactly from the same (latest) column when possible
+    sales, op_profit = rows.get("sales"), rows.get("operating profit")
+    if sales and op_profit:
+        s_last, o_last = _clean_numeric(sales[-1]), _clean_numeric(op_profit[-1])
+        if s_last and o_last is not None:
+            return round(o_last / s_last * 100, 2)
+
+    for title, cells in rows.items():
+        if "opm" in title:
+            vals = [_clean_numeric(v) for v in cells if _clean_numeric(v) is not None]
             if vals:
                 return vals[-1]
 
@@ -492,6 +557,7 @@ def extract_stock_fundamentals(symbol: str, use_cache: bool = True) -> Dict[str,
         "debt_to_equity": None,
         "operating_cash_flow": None,
         "operating_cash_flow_3yr": None,
+        "interest_coverage": None,
         "sales_growth_3yr": None,
         "profit_growth_3yr": None,
         "status": "Data Unavailable",
@@ -507,6 +573,7 @@ def extract_stock_fundamentals(symbol: str, use_cache: bool = True) -> Dict[str,
         roce_3yr = parse_roce_3yr_average(soup)
         cfo = parse_operating_cash_flow(soup)
         cfo_3yr = parse_operating_cash_flow_3yr(soup)
+        interest_cov = parse_interest_coverage(soup)
         debt_eq = parse_debt_to_equity(soup)
         opm = parse_opm(soup)
         sales_3y, profit_3y = parse_sales_and_profit_growth(soup)
@@ -524,6 +591,7 @@ def extract_stock_fundamentals(symbol: str, use_cache: bool = True) -> Dict[str,
             "debt_to_equity": debt_eq,
             "operating_cash_flow": cfo,
             "operating_cash_flow_3yr": cfo_3yr,
+            "interest_coverage": interest_cov,
             "sales_growth_3yr": sales_3y,
             "profit_growth_3yr": profit_3y,
             "status": "OK",
@@ -577,6 +645,28 @@ def _universe_sector(symbol: str) -> str:
     return "Other"
 
 
+def evaluate_fundamental_screen(record: Dict[str, Any], criteria: List[Tuple[str, str, float, str]]) -> Dict[str, Any]:
+    """
+    Score one stock's fundamentals record against screen criteria.
+
+    Returns a dict with each criterion's metric value, a pass_<field> flag per criterion, and
+    'failed_criteria' (list of labels). A metric that could not be read fails as
+    "<label> (missing)"; it never passes by default.
+    """
+    result: Dict[str, Any] = {}
+    failed: List[str] = []
+    for field, comparison, threshold, label in criteria:
+        value = record.get(field)
+        result[field] = value
+        present = value is not None and not pd.isna(value)
+        passed = present and _SCREEN_COMPARISONS[comparison](value, threshold)
+        result[f"pass_{field}"] = bool(passed)
+        if not passed:
+            failed.append(label if present else f"{label} (missing)")
+    result["failed_criteria"] = failed
+    return result
+
+
 def generate_fundamentals_screen_check(
     symbols: List[str],
     criteria: Optional[List[Tuple[str, str, float, str]]] = None,
@@ -608,14 +698,9 @@ def generate_fundamentals_screen_check(
         record = extract_stock_fundamentals(symbol, use_cache=use_cache)
         row = {"symbol": symbol, "sector": _universe_sector(symbol),
                "as_of": date.today().isoformat(), "status": record["status"]}
-        failed = []
-        for field, comparison, threshold, label in criteria:
-            value = record.get(field)
-            row[field] = value
-            passed = value is not None and not pd.isna(value) and _SCREEN_COMPARISONS[comparison](value, threshold)
-            row[f"pass_{field}"] = bool(passed)
-            if not passed:
-                failed.append(label if value is not None and not pd.isna(value) else f"{label} (missing)")
+        result = evaluate_fundamental_screen(record, criteria)
+        failed = result.pop("failed_criteria")
+        row.update(result)
         row["passes_screen"] = not failed
         row["failed_criteria"] = "; ".join(failed)
         rows.append(row)

@@ -1,0 +1,51 @@
+symbol,company_name,index,price_sessions,current_price,passed_technical_screen,technical_fail_reason,rs_score,adx,plus_di,minus_di,trend_direction,rsi,fundamentals_as_of,fundamentals_status,market_cap,pass_market_cap,sales_growth_3yr,pass_sales_growth_3yr,profit_growth_3yr,pass_profit_growth_3yr,roce_3yr_avg,pass_roce_3yr_avg,opm,pass_opm,operating_cash_flow_3yr,pass_operating_cash_flow_3yr,debt_to_equity,pass_debt_to_equity,passed_fundamental_screen,failed_criteria,passes_both_screens
+ABB,ABB India Ltd.,Nifty Capital Goods,248,7129.0,False,RS <= 0; trend Bearish,-0.21,22.59,15.95,26.44,Bearish (Downtrend),40.95,,,,,,,,,,,,,,,,,,,False
+AIAENG,AIA Engineering Ltd.,Nifty Capital Goods,248,3953.4,False,RS <= 0; trend Bearish,-18.42,23.97,16.17,24.42,Bearish (Downtrend),36.49,,,,,,,,,,,,,,,,,,,False
+APLAPOLLO,APL Apollo Tubes Ltd.,Nifty Capital Goods,248,2184.8,True,,19.49,29.75,23.26,19.15,Bullish (Uptrend),54.16,2026-09-24,OK,60682.0,True,13.0,True,23.0,True,26.33,True,7.98,False,4434.0,True,0.09,True,False,OPM > 9%,False
+APARINDS,Apar Industries Ltd.,Nifty Capital Goods,248,17804.0,True,,7.67,29.83,22.54,18.0,Bullish (Uptrend),54.01,2026-09-24,OK,74563.0,True,17.0,True,16.0,True,36.33,True,8.9,False,1976.0,True,0.18,True,False,OPM > 9%,False
+ASHOKLEY,Ashok Leyland Ltd.,Nifty Capital Goods,248,157.3,False,trend Bearish,7.88,19.7,16.4,30.74,Bearish (Downtrend),37.12,,,,,,,,,,,,,,,,,,,False
+ASTRAMICRO,Astra Microwave Products Ltd.,Nifty Capital Goods,248,1596.2,False,RS <= 0; trend Bearish,-4.8,16.91,13.23,22.88,Bearish (Downtrend),41.11,,,,,,,,,,,,,,,,,,,False
+ASTRAL,Astral Ltd.,Nifty Capital Goods,248,1392.0,False,RS <= 0; trend Bearish,-8.11,21.94,17.36,26.48,Bearish (Downtrend),37.74,,,,,,,,,,,,,,,,,,,False
+BEML,BEML Ltd.,Nifty Capital Goods,248,2044.4,True,,20.71,27.27,25.09,21.78,Bullish (Uptrend),53.93,2026-09-24,OK,17048.0,True,4.0,False,-3.0,False,13.0,False,7.72,False,675.0,True,0.11,True,False,Sales growth 3Years > 8%; Profit growth 3Years > 8%; Average ROCE 3Years > 13%; OPM > 9%,False
+BDL,Bharat Dynamics Ltd.,Nifty Capital Goods,248,1155.0,False,RS <= 0; trend Bearish,-16.18,26.4,18.4,30.73,Bearish (Downtrend),34.27,,,,,,,,,,,,,,,,,,,False
+BEL,Bharat Electronics Ltd.,Nifty Capital Goods,248,392.0,False,RS <= 0; trend Bearish,-5.37,13.08,17.56,24.53,Bearish (Downtrend),41.56,,,,,,,,,,,,,,,,,,,False
+BHEL,Bharat Heavy Electricals Ltd.,Nifty Capital Goods,248,415.35,True,,6.14,20.61,22.54,21.84,Bullish (Uptrend),45.66,2026-09-24,OK,144662.0,True,13.0,True,36.0,True,5.67,False,9.4,True,4316.0,True,0.31,True,False,Average ROCE 3Years > 13%,False
+CGPOWER,CG Power and Industrial Solutions Ltd.,Nifty Capital Goods,248,886.7,False,RS <= 0; trend Bearish,-5.51,14.36,23.41,24.55,Bearish (Downtrend),49.04,,,,,,,,,,,,,,,,,,,False
+CARBORUNIV,Carborundum Universal Ltd.,Nifty Capital Goods,248,1296.5,True,,4.64,26.75,43.87,10.28,Bullish (Uptrend),72.89,2026-09-24,OK,24715.0,True,4.0,False,-14.0,False,15.67,True,10.95,True,1273.0,True,0.11,True,False,Sales growth 3Years > 8%; Profit growth 3Years > 8%,False
+COCHINSHIP,Cochin Shipyard Ltd.,Nifty Capital Goods,248,1370.0,False,RS <= 0; trend Bearish,-7.33,17.32,24.03,32.51,Bearish (Downtrend),40.07,,,,,,,,,,,,,,,,,,,False
+CUMMINSIND,Cummins India Ltd.,Nifty Capital Goods,248,4973.0,False,RS <= 0; trend Bearish,-12.32,24.83,16.32,25.25,Bearish (Downtrend),40.98,,,,,,,,,,,,,,,,,,,False
+DATAPATTNS,Data Patterns (India) Ltd.,Nifty Capital Goods,248,4395.5,False,RS <= 0; trend Bearish,-8.13,12.64,21.59,26.77,Bearish (Downtrend),43.68,,,,,,,,,,,,,,,,,,,False
+ELGIEQUIP,Elgi Equipments Ltd.,Nifty Capital Goods,248,608.8,False,RS <= 0,-0.5,13.28,20.05,18.6,Bullish (Uptrend),48.43,,,,,,,,,,,,,,,,,,,False
+ESCORTS,Escorts Kubota Ltd.,Nifty Capital Goods,248,2822.9,False,RS <= 0; trend Bearish,-4.92,24.18,16.02,25.09,Bearish (Downtrend),36.15,,,,,,,,,,,,,,,,,,,False
+FINCABLES,Finolex Cables Ltd.,Nifty Capital Goods,248,1480.0,True,,27.38,44.09,31.59,8.47,Bullish (Uptrend),68.01,2026-09-24,OK,22639.0,True,12.0,True,12.0,True,17.67,True,10.48,True,833.0,True,0.0,True,True,,True
+FINPIPE,Finolex Industries Ltd.,Nifty Capital Goods,248,154.04,False,RS <= 0; trend Bearish,-13.91,26.96,13.9,21.46,Bearish (Downtrend),42.77,,,,,,,,,,,,,,,,,,,False
+GVT&D,GE Vernova T&D India Ltd.,Nifty Capital Goods,248,4286.3,False,RS <= 0,-17.93,11.34,25.14,24.58,Bullish (Uptrend),46.21,,,,,,,,,,,,,,,,,,,False
+GRSE,Garden Reach Shipbuilders & Engineers Ltd.,Nifty Capital Goods,248,2344.0,False,RS <= 0; trend Bearish,-14.72,21.54,16.92,28.8,Bearish (Downtrend),35.53,,,,,,,,,,,,,,,,,,,False
+HBLENGINE,HBL Engineering Ltd.,Nifty Capital Goods,248,775.3,False,RS <= 0,-6.52,29.51,33.28,16.79,Bullish (Uptrend),66.24,,,,,,,,,,,,,,,,,,,False
+HAL,Hindustan Aeronautics Ltd.,Nifty Capital Goods,248,4774.2,False,trend Bearish,7.79,14.73,23.8,27.75,Bearish (Downtrend),46.08,,,,,,,,,,,,,,,,,,,False
+POWERINDIA,Hitachi Energy India Ltd.,Nifty Capital Goods,248,30715.0,False,RS <= 0; trend Bearish,-13.36,17.91,19.41,27.23,Bearish (Downtrend),41.32,,,,,,,,,,,,,,,,,,,False
+HONAUT,Honeywell Automation India Ltd.,Nifty Capital Goods,248,33625.0,False,RS <= 0; trend Bearish,-9.96,20.51,19.81,24.23,Bearish (Downtrend),37.34,,,,,,,,,,,,,,,,,,,False
+INOXWIND,Inox Wind Ltd.,Nifty Capital Goods,248,73.09,False,RS <= 0; trend Bearish,-16.92,15.06,23.01,28.2,Bearish (Downtrend),43.38,,,,,,,,,,,,,,,,,,,False
+JYOTICNC,Jyoti CNC Automation Ltd.,Nifty Capital Goods,248,1072.55,True,,49.16,33.05,32.96,14.61,Bullish (Uptrend),61.18,2026-09-24,OK,24402.0,True,31.0,True,157.0,True,22.0,True,24.42,True,-99.0,False,0.43,True,False,Operating cash flow 3years > 0 (Rs Cr),False
+KEI,KEI Industries Ltd.,Nifty Capital Goods,248,4636.5,False,RS <= 0; trend Bearish,-14.98,29.97,16.83,24.83,Bearish (Downtrend),38.13,,,,,,,,,,,,,,,,,,,False
+KAYNES,Kaynes Technology India Ltd.,Nifty Capital Goods,248,3509.5,False,trend Bearish,7.82,18.38,22.2,23.72,Bearish (Downtrend),46.24,,,,,,,,,,,,,,,,,,,False
+KIRLOSENG,Kirloskar Oil Eng Ltd.,Nifty Capital Goods,248,2164.5,False,RS <= 0,-11.05,14.6,20.84,17.07,Bullish (Uptrend),50.89,,,,,,,,,,,,,,,,,,,False
+MAZDOCK,Mazagoan Dock Shipbuilders Ltd.,Nifty Capital Goods,248,2202.0,False,RS <= 0; trend Bearish,-11.45,31.36,10.65,30.95,Bearish (Downtrend),29.75,,,,,,,,,,,,,,,,,,,False
+PTCIL,PTC Industries Ltd.,Nifty Capital Goods,248,21820.0,True,,27.8,44.03,27.17,19.48,Bullish (Uptrend),49.61,2026-09-24,OK,32755.0,True,40.0,True,59.0,True,9.33,False,24.68,True,-151.0,False,0.17,True,False,Average ROCE 3Years > 13%; Operating cash flow 3years > 0 (Rs Cr),False
+POLYCAB,Polycab India Ltd.,Nifty Capital Goods,248,8366.5,False,RS <= 0; trend Bearish,-14.83,24.99,15.53,25.48,Bearish (Downtrend),41.14,,,,,,,,,,,,,,,,,,,False
+PRAJIND,Praj Industries Ltd.,Nifty Capital Goods,248,316.1,False,RS <= 0; trend Bearish,-6.32,22.65,15.71,22.01,Bearish (Downtrend),40.34,,,,,,,,,,,,,,,,,,,False
+PREMIERENE,Premier Energies Ltd.,Nifty Capital Goods,248,898.0,False,RS <= 0; trend Bearish,-12.19,40.55,8.22,31.42,Bearish (Downtrend),33.99,,,,,,,,,,,,,,,,,,,False
+ENRIN,Siemens Energy India Ltd.,Nifty Capital Goods,248,3215.4,False,RS <= 0,-14.94,15.41,22.76,22.17,Bullish (Uptrend),48.54,,,,,,,,,,,,,,,,,,,False
+SIEMENS,Siemens Ltd.,Nifty Capital Goods,248,3841.8,False,trend Bearish,5.76,17.03,18.78,19.75,Bearish (Downtrend),44.96,,,,,,,,,,,,,,,,,,,False
+SUPREMEIND,Supreme Industries Ltd.,Nifty Capital Goods,248,3434.0,False,RS <= 0; trend Bearish,-0.89,16.41,22.5,23.17,Bearish (Downtrend),46.78,,,,,,,,,,,,,,,,,,,False
+SUZLON,Suzlon Energy Ltd.,Nifty Capital Goods,248,40.74,False,RS <= 0; trend Bearish,-26.95,38.36,12.59,35.21,Bearish (Downtrend),23.85,,,,,,,,,,,,,,,,,,,False
+TDPOWERSYS,TD Power Systems Ltd.,Nifty Capital Goods,248,742.0,False,RS <= 0; trend Bearish,-43.14,29.32,22.83,31.79,Bearish (Downtrend),38.43,,,,,,,,,,,,,,,,,,,False
+TMCV,Tata Motors Ltd.,Nifty Capital Goods,216,437.15,True,,12.87,18.54,21.0,19.9,Bullish (Uptrend),44.36,2026-09-24,OK,161029.0,True,,False,,False,36.0,True,12.87,True,,False,0.44,True,False,Sales growth 3Years > 8% (missing); Profit growth 3Years > 8% (missing); Operating cash flow 3years > 0 (Rs Cr) (missing),False
+THERMAX,Thermax Ltd.,Nifty Capital Goods,248,3406.1,False,RS <= 0; trend Bearish,-27.48,52.26,6.51,29.12,Bearish (Downtrend),23.28,,,,,,,,,,,,,,,,,,,False
+TIMKEN,Timken India Ltd.,Nifty Capital Goods,248,3256.9,False,RS <= 0,-12.39,14.69,21.49,15.17,Bullish (Uptrend),54.54,,,,,,,,,,,,,,,,,,,False
+TITAGARH,Titagarh Rail Systems Ltd.,Nifty Capital Goods,248,819.25,False,RS <= 0; trend Bearish,-6.93,12.65,17.07,22.31,Bearish (Downtrend),43.79,,,,,,,,,,,,,,,,,,,False
+TRITURBINE,Triveni Turbine Ltd.,Nifty Capital Goods,248,551.8,False,RS <= 0; trend Bearish,-21.35,15.78,14.09,19.22,Bearish (Downtrend),42.53,,,,,,,,,,,,,,,,,,,False
+USHAMART,Usha Martin Ltd.,Nifty Capital Goods,248,523.2,True,,14.02,16.64,30.2,19.14,Bullish (Uptrend),58.54,2026-09-24,OK,15949.0,True,4.0,False,9.0,True,20.0,True,20.02,True,1521.0,True,0.07,True,False,Sales growth 3Years > 8%,False
+VOLTAMP,Voltamp Transformers Ltd,Nifty Capital Goods,248,10587.0,True,,2.48,24.58,21.66,20.1,Bullish (Uptrend),47.56,2026-09-24,OK,10710.0,True,16.0,True,14.0,True,28.33,True,15.96,True,575.0,True,0.0,True,True,,True
+WAAREEENER,Waaree Energies Ltd.,Nifty Capital Goods,248,2482.0,False,RS <= 0; trend Bearish,-16.87,29.22,11.57,21.43,Bearish (Downtrend),38.24,,,,,,,,,,,,,,,,,,,False
+WELCORP,Welspun Corp Ltd.,Nifty Capital Goods,248,2692.2,True,,97.79,43.68,33.02,20.18,Bullish (Uptrend),61.63,2026-09-24,OK,71037.0,True,20.0,True,119.0,True,21.33,True,13.89,True,6014.0,True,0.26,True,True,,True

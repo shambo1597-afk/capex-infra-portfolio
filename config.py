@@ -169,6 +169,62 @@ CAPITAL_GOODS_SCREEN_CRITERIA = [
     ("debt_to_equity", "<", 1.2, "Debt to equity < 1.2"),
 ]
 
+# Cement fundamental safety screen. No price/DMA condition: that is a technical filter and
+# belongs to the technical screen, which runs first.
+CEMENT_SCREEN_CRITERIA = [
+    ("market_cap", ">", 1000, "Market Cap > 1000 (Rs Cr)"),
+    ("roce", ">", 11, "ROCE > 11%"),
+    ("roce_3yr_avg", ">", 10, "Average ROCE 3Years > 10%"),
+    ("opm", ">", 13, "OPM > 13%"),
+    ("debt_to_equity", "<", 1, "Debt to equity < 1"),
+    ("operating_cash_flow", ">", 0, "Cash from operations last year > 0 (Rs Cr)"),
+    ("sales_growth_3yr", ">", 6, "Sales growth 3Years > 6%"),
+    ("profit_growth_3yr", ">", 5, "Profit growth 3Years > 5%"),
+]
+
+# Power fundamental safety screen. No sales/profit growth filters: under regulated cost-plus
+# tariffs, revenue can fall when pass-through input costs fall while profitability holds, so
+# growth is a misleading signal for this sector. ROCE floors are lowered for the regulated,
+# debt-heavy (normative 70:30) capital structure. Interest coverage is EBIT / interest for the
+# latest full financial year (fundamentals.parse_interest_coverage).
+POWER_SCREEN_CRITERIA = [
+    ("market_cap", ">", 2000, "Market Cap > 2000 (Rs Cr)"),
+    ("roce", ">", 7, "ROCE > 7%"),
+    ("roce_3yr_avg", ">", 7, "Average ROCE 3Years > 7%"),
+    ("interest_coverage", ">", 2, "Interest coverage > 2"),
+    ("operating_cash_flow", ">", 0, "Cash from operations last year > 0 (Rs Cr)"),
+]
+
+# -----------------------------------------------------------------------------
+# SECTOR SCREEN (technical screen FIRST, then fundamental safety screen; see sector_screen.py)
+# -----------------------------------------------------------------------------
+
+# Official Nifty sector index constituent files, downloaded from niftyindices.com
+# (https://www.niftyindices.com/IndexConstituent/ind_nifty<Name>_list.csv) on 24-Sep-2026.
+INDEX_CONSTITUENTS_DIR = DATA_DIR / "index_constituents"
+
+SECTOR_SCREENS = {
+    "Cement": {
+        "constituents_csv": INDEX_CONSTITUENTS_DIR / "ind_niftyCement_list.csv",
+        "criteria": CEMENT_SCREEN_CRITERIA,
+        "output_csv": OUTPUT_DIR / "cement_full_screen.csv",
+    },
+    "Capital Goods": {
+        "constituents_csv": INDEX_CONSTITUENTS_DIR / "ind_niftyCapitalGoods_list.csv",
+        "criteria": CAPITAL_GOODS_SCREEN_CRITERIA,
+        "output_csv": OUTPUT_DIR / "capital_goods_full_screen.csv",
+    },
+    "Power": {
+        "constituents_csv": INDEX_CONSTITUENTS_DIR / "ind_niftyPower_list.csv",
+        "criteria": POWER_SCREEN_CRITERIA,
+        "output_csv": OUTPUT_DIR / "power_full_screen.csv",
+    },
+}
+
+# Technical screen: passes when RS vs Nifty 500 over TECHNICAL_RS_LOOKBACK_DAYS is > 0 AND the
+# trend direction (+DI vs -DI) is Bullish. ADX is reported (tiebreaker) but not a cutoff.
+TECHNICAL_RS_LOOKBACK_DAYS = 63
+
 # -----------------------------------------------------------------------------
 # RISK, STOP-LOSS & SIZING ASSUMPTIONS (see stoploss.py)
 # These are stated, adjustable modelling choices, not universally "correct" values.
