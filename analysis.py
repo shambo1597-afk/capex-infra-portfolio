@@ -227,7 +227,7 @@ def print_summary_table(summary_df: pd.DataFrame) -> None:
     """
     print("\n" + "=" * 115)
     print(" INDIAN EQUITY PORTFOLIO TECHNICAL ANALYSIS SUMMARY (IIM BODH GAYA - SAPM)")
-    print(" Benchmark: Nifty 500 (^CRSLDX) | Lookback: 1-Year Bhavcopy History | RS Window: 63 Days")
+    print(" Benchmark: Nifty 500 (NSE official closes) | Lookback: 1-Year Bhavcopy History | RS Window: 63 Days")
     print("=" * 115)
 
     if summary_df.empty:

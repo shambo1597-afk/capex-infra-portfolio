@@ -1,30 +1,30 @@
 symbol,sector,current_price,latest_rsi,latest_adx,trend_direction,rs_score_vs_nifty500,nearest_support,nearest_resistance
-JKCEMENT,Cement,5184.5,55.17,31.53,Bullish (Uptrend),-7.53,5165.0,5299.0
-ULTRACEMCO,Cement,11056.0,44.65,22.29,Bearish (Downtrend),-1.01,11020.0,11674.0
-STARCEMENT,Cement,187.24,41.97,25.01,Bearish (Downtrend),-9.72,186.0,196.34
-ABB,Capital Goods/EPC,7129.0,40.95,22.59,Bearish (Downtrend),-0.21,7085.0,7304.0
-CGPOWER,Capital Goods/EPC,886.7,49.04,14.36,Bearish (Downtrend),-5.51,883.05,886.8
-GVT&D,Capital Goods/EPC,4286.3,46.21,11.34,Bullish (Uptrend),-17.93,4251.8,4344.0
-POWERINDIA,Capital Goods/EPC,30715.0,41.32,17.91,Bearish (Downtrend),-13.36,30625.0,31875.0
-TRITURBINE,Capital Goods/EPC,551.8,42.53,15.78,Bearish (Downtrend),-21.35,543.5,554.0
-TDPOWERSYS,Capital Goods/EPC,742.0,38.43,29.32,Bearish (Downtrend),-43.14,719.0,743.05
-SIEMENS,Capital Goods/EPC,3841.8,44.96,17.03,Bearish (Downtrend),5.76,3770.0,3855.0
-BHEL,Capital Goods/EPC,415.35,45.66,20.61,Bullish (Uptrend),6.14,408.15,417.9
-INOXWIND,Capital Goods/EPC,73.09,43.38,15.06,Bearish (Downtrend),-16.92,72.7,77.85
-ENRIN,Capital Goods/EPC,3215.4,48.54,15.41,Bullish (Uptrend),-14.94,3211.1,3239.0
-SUZLON,Capital Goods/EPC,40.74,23.85,38.36,Bearish (Downtrend),-26.95,40.55,43.54
-THERMAX,Capital Goods/EPC,3406.1,23.28,52.26,Bearish (Downtrend),-27.48,3400.0,3586.0
-VOLTAMP,Capital Goods/EPC,10587.0,47.56,24.58,Bullish (Uptrend),2.48,10259.0,10599.0
-CEMPRO,Capital Goods/EPC,1268.5,48.4,16.01,Bullish (Uptrend),7.59,1245.9,1280.0
-SCHNEIDER,Capital Goods/EPC,1218.8,48.34,12.8,Bullish (Uptrend),-13.45,1185.0,1246.0
-ADANIENSOL,Power,1340.5,35.46,27.3,Bearish (Downtrend),-7.28,1337.0,1383.4
-ADANIPOWER,Power,199.48,40.11,12.18,Bearish (Downtrend),-11.16,198.0,200.0
-CESC,Power,139.89,29.8,18.18,Bearish (Downtrend),-16.37,139.6,154.17
-KPIGREEN,Power,333.2,57.66,51.78,Bullish (Uptrend),-12.65,332.9,340.0
-NAVA,Power,557.0,48.93,15.97,Bullish (Uptrend),-9.0,556.95,565.0
-NLCINDIA,Power,263.25,40.57,21.72,Bearish (Downtrend),-18.03,262.65,265.5
-NTPC,Power,326.6,40.62,27.13,Bearish (Downtrend),-10.26,324.7,329.95
-POWERGRID,Power,266.4,47.34,13.21,Bullish (Uptrend),-7.12,266.3,271.5
-PTC,Power,155.89,45.24,21.54,Bearish (Downtrend),-15.43,155.45,159.0
-TATAPOWER,Power,363.45,45.31,22.86,Bullish (Uptrend),-7.03,362.95,372.35
-TORNTPOWER,Power,1244.2,39.79,20.45,Bearish (Downtrend),-13.1,1243.8,1289.5
+JKCEMENT,Cement,5184.5,55.17,31.53,Bullish (Uptrend),-4.61,5165.0,5299.0
+ULTRACEMCO,Cement,11056.0,44.65,22.29,Bearish (Downtrend),-1.34,11020.0,11674.0
+STARCEMENT,Cement,187.24,41.97,25.01,Bearish (Downtrend),-8.69,186.0,196.34
+ABB,Capital Goods/EPC,7129.0,40.95,22.59,Bearish (Downtrend),4.37,7085.0,7304.0
+CGPOWER,Capital Goods/EPC,886.7,49.04,14.36,Bearish (Downtrend),-3.45,883.05,886.8
+GVT&D,Capital Goods/EPC,4286.3,46.21,11.34,Bullish (Uptrend),-12.58,4251.8,4344.0
+POWERINDIA,Capital Goods/EPC,30715.0,41.32,17.91,Bearish (Downtrend),-7.14,30625.0,31875.0
+TRITURBINE,Capital Goods/EPC,551.8,42.53,15.78,Bearish (Downtrend),-15.13,543.5,554.0
+TDPOWERSYS,Capital Goods/EPC,742.0,38.43,29.32,Bearish (Downtrend),-38.45,719.0,743.05
+SIEMENS,Capital Goods/EPC,3841.8,44.96,17.03,Bearish (Downtrend),8.32,3770.0,3855.0
+BHEL,Capital Goods/EPC,415.35,45.66,20.61,Bullish (Uptrend),5.57,408.15,417.9
+INOXWIND,Capital Goods/EPC,73.09,43.38,15.06,Bearish (Downtrend),-15.93,72.7,77.85
+ENRIN,Capital Goods/EPC,3215.4,48.54,15.41,Bullish (Uptrend),-10.33,3211.1,3239.0
+SUZLON,Capital Goods/EPC,40.74,23.85,38.36,Bearish (Downtrend),-26.27,40.55,43.54
+THERMAX,Capital Goods/EPC,3406.1,23.28,52.26,Bearish (Downtrend),-27.04,3400.0,3586.0
+VOLTAMP,Capital Goods/EPC,10587.0,47.56,24.58,Bullish (Uptrend),5.17,10259.0,10599.0
+CEMPRO,Capital Goods/EPC,1268.5,48.4,16.01,Bullish (Uptrend),6.97,1245.9,1280.0
+SCHNEIDER,Capital Goods/EPC,1218.8,48.34,12.8,Bullish (Uptrend),-6.3,1185.0,1246.0
+ADANIENSOL,Power,1340.5,35.46,27.3,Bearish (Downtrend),-8.67,1337.0,1383.4
+ADANIPOWER,Power,199.48,40.11,12.18,Bearish (Downtrend),-10.57,198.0,200.0
+CESC,Power,139.89,29.8,18.18,Bearish (Downtrend),-14.32,139.6,154.17
+KPIGREEN,Power,333.2,57.66,51.78,Bullish (Uptrend),-14.0,332.9,340.0
+NAVA,Power,557.0,48.93,15.97,Bullish (Uptrend),-5.83,556.95,565.0
+NLCINDIA,Power,263.25,40.57,21.72,Bearish (Downtrend),-15.33,262.65,265.5
+NTPC,Power,326.6,40.62,27.13,Bearish (Downtrend),-4.8,324.7,329.95
+POWERGRID,Power,266.4,47.34,13.21,Bullish (Uptrend),-3.74,266.3,271.5
+PTC,Power,155.89,45.24,21.54,Bearish (Downtrend),-11.82,155.45,159.0
+TATAPOWER,Power,363.45,45.31,22.86,Bullish (Uptrend),-4.13,362.95,372.35
+TORNTPOWER,Power,1244.2,39.79,20.45,Bearish (Downtrend),-9.56,1243.8,1289.5

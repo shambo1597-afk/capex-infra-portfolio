@@ -12,7 +12,7 @@ cumulative return minus the Nifty 500's (^CRSLDX), in percentage points. It bear
 Cement as a theme deserves capital at all, versus simply holding the index.
 **`rs_score_vs_sector_avg`** measures which Cement stock is best positioned relative to its
 Cement peers: the same 63-session return minus the equal-weighted average return of all
-16 constituents (-5.15% over this window). It is the relevant measure once the
+16 constituents (-7.20% over this window). It is the relevant measure once the
 decision to hold Cement exposure has been made, per the project's sector-rotation requirement.
 
 `sector_rank` ranks `rs_score_vs_sector_avg` from 1 (best) to 16 (worst); the spreads

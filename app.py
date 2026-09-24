@@ -18,7 +18,6 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from config import (
-    BENCHMARK_PRICE_TICKER,
     DEFAULT_TRI_CSV_PATH,
     HISTORICAL_OHLCV_CSV,
     LOCKED_PORTFOLIO,
@@ -379,11 +378,11 @@ with tab_overview:
         )
     with m_col3:
         st.markdown(
-            f"""
+            """
             <div class="metric-card">
                 <div class="metric-title">Benchmark Series</div>
                 <div class="metric-value">Nifty 500</div>
-                <div class="metric-sub">Ticker: {BENCHMARK_PRICE_TICKER} (via yfinance)</div>
+                <div class="metric-sub">Price index: NSE official daily closes</div>
             </div>
             """,
             unsafe_allow_html=True,

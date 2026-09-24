@@ -130,7 +130,7 @@ def display_project_header(tri_source: str = "manual") -> None:
     print("-" * 115)
     print(f" [*] FINAL LOCKED PORTFOLIO (8 stocks): {', '.join(LOCKED_PORTFOLIO_SYMBOLS)}")
     print("-" * 115)
-    print(f" [*] Benchmark 1 (Price Return):       Nifty 500 ({BENCHMARK_PRICE_TICKER} via yfinance)")
+    print(" [*] Benchmark 1 (Price Return):       Nifty 500 (NSE official daily index closes)")
     tri_desc = "Local Nifty 500 TRI CSV (manual)" if tri_source == "manual" else "Automated Browser Fetch (niftyindices.com)"
     print(f" [*] Benchmark 2 (Total Return Index): {tri_desc}")
     print("=" * 115 + "\n")
@@ -155,7 +155,7 @@ def run_pipeline() -> int:
     # -------------------------------------------------------------------------
     print(">>> [Step 1/4] Ingesting Benchmark Series (Nifty 500)...")
 
-    # 1A. Benchmark Price Return Index via yfinance
+    # 1A. Benchmark Price Return Index from NSE's official daily index closes (yfinance fallback)
     benchmark_price_df = fetch_benchmark_nifty500(
         start_date=args.start_date,
         end_date=args.end_date,

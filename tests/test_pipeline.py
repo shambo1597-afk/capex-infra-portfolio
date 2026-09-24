@@ -231,3 +231,57 @@ class TestBhavcopyHolidayAndBlockHandling:
 
         assert requested == [date(2026, 1, 30), date(2026, 2, 1), date(2026, 2, 2)]  # Sat 31-Jan skipped
 
+
+
+def _index_file(day_label, close):
+    return ("Index Name,Index Date,Open Index Value,High Index Value,Low Index Value,Closing Index Value,Points Change,Change(%)\n"
+            f"Nifty 50,{day_label},100,110,90,105,1,1\n"
+            f"Nifty 500,{day_label},{close - 10},{close + 10},{close - 20},{close},5,0.1\n")
+
+
+class TestOfficialIndexBenchmark:
+    """Nifty 500 benchmark from NSE's official daily index files, on the Bhavcopy session calendar."""
+
+    def test_index_closes_parsed_with_holidays_and_wrong_sessions(self, tmp_path):
+        replies = {
+            "22092026": _Resp(200, _index_file("22-09-2026", 22794.2)),
+            "23092026": _Resp(404, "<html>Not found</html>"),          # holiday
+            "24092026": _Resp(200, _index_file("23-09-2026", 22600.0)),  # previous session served
+        }
+        fetcher = NSEBhavcopyFetcher(cache_dir=tmp_path, delay_seconds=0)
+        fetcher.session.get = lambda url, timeout: replies[url.rsplit("_", 1)[1][:8]]
+        fetcher.session_initialized = True
+
+        df = fetcher.fetch_index_closes(date(2026, 9, 22), date(2026, 9, 24))
+
+        assert df["Date"].dt.date.tolist() == [date(2026, 9, 22)]
+        assert df["Close"].tolist() == [22794.2]
+        assert (tmp_path / "holiday_v2_23-Sep-2026.flag").exists()
+        assert (tmp_path / "holiday_v2_24-Sep-2026.flag").exists()
+
+    def test_blocked_index_day_is_retried(self, tmp_path):
+        replies = [AKAMAI_403, _Resp(200, _index_file("22-09-2026", 22794.2))]
+        fetcher = NSEBhavcopyFetcher(cache_dir=tmp_path, delay_seconds=0)
+        fetcher.session.get = lambda url, timeout: replies.pop(0)
+        fetcher.session_initialized = True
+        fetcher.warm_up_session = lambda: setattr(fetcher, "session_initialized", True)
+        with patch("fetch_data.time.sleep"):
+            df = fetcher.fetch_index_closes(date(2026, 9, 22), date(2026, 9, 22))
+        assert df["Close"].tolist() == [22794.2]
+
+    def test_benchmark_uses_official_series(self):
+        from fetch_data import fetch_benchmark_nifty500
+        official = pd.DataFrame({"Date": [pd.Timestamp("2026-09-24")], "Open": [1.0], "High": [1.0], "Low": [1.0], "Close": [22552.6]})
+        with patch("fetch_data.NSEBhavcopyFetcher.fetch_index_closes", return_value=official), \
+                patch("fetch_data.yf.download") as yf_download:
+            df = fetch_benchmark_nifty500("2025-09-24", "2026-09-24")
+        assert df["Close"].tolist() == [22552.6]
+        yf_download.assert_not_called()
+
+    def test_yfinance_fallback_includes_end_date(self):
+        from fetch_data import fetch_benchmark_nifty500
+        yf_df = pd.DataFrame({"Close": [1.0]}, index=pd.DatetimeIndex([pd.Timestamp("2026-09-24")], name="Date"))
+        with patch("fetch_data.NSEBhavcopyFetcher.fetch_index_closes", return_value=pd.DataFrame()), \
+                patch("fetch_data.yf.download", return_value=yf_df) as yf_download:
+            fetch_benchmark_nifty500("2025-09-24", "2026-09-24")
+        assert yf_download.call_args.kwargs["end"] == "2026-09-25"  # yfinance's end is exclusive

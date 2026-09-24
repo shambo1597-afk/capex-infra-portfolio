@@ -25,6 +25,7 @@ import requests
 import yfinance as yf
 
 from config import (
+    BENCHMARK_INDEX_NAME,
     BENCHMARK_PRICE_TICKER,
     BHAVCOPY_EXPECTED_COLUMNS,
     BHAVCOPY_FETCH_ATTEMPTS,
@@ -32,6 +33,7 @@ from config import (
     DEFAULT_TRI_CSV_PATH,
     NSE_BHAVCOPY_URL_TEMPLATE,
     NSE_HOME_URL,
+    NSE_INDEX_CLOSE_URL_TEMPLATE,
     NSE_REQUEST_HEADERS,
     NSE_SPECIAL_WEEKEND_SESSIONS,
     PORTFOLIO_SYMBOLS,
@@ -133,26 +135,30 @@ class NSEBhavcopyFetcher:
             pass
 
     def _request_bhavcopy(self, target_date: date) -> Optional[requests.Response]:
-        """
-        Request one day's bhavcopy, retrying when the response is not a usable answer.
-
-        Returns the response when NSE's origin answered (a CSV, or 404 for a holiday), or
-        None when every attempt was blocked or failed. NSE's Akamai layer intermittently
-        answers 403 'Access Denied' (an HTML page) to trading days; such responses are
-        retried with backoff and a fresh cookie warm-up, and are never cached as holidays.
-        """
+        """Request one day's Full Bhavcopy (see _request_archive for retry semantics)."""
         date_str = self._format_date(target_date)
-        url = NSE_BHAVCOPY_URL_TEMPLATE.format(date_str=date_str)
+        return self._request_archive(NSE_BHAVCOPY_URL_TEMPLATE.format(date_str=date_str), f"bhavcopy for {date_str}", "SYMBOL")
+
+    def _request_archive(self, url: str, label: str, header_token: str) -> Optional[requests.Response]:
+        """
+        Request one NSE archive CSV, retrying when the response is not a usable answer.
+
+        Returns the response when NSE's origin answered (a CSV whose first line contains
+        header_token, or 404 for a holiday), or None when every attempt was blocked or failed.
+        NSE's Akamai layer intermittently answers 403 'Access Denied' (an HTML page) to trading
+        days; such responses are retried with backoff and a fresh cookie warm-up, and are never
+        cached as holidays.
+        """
         last_problem = None
         for attempt in range(1, BHAVCOPY_FETCH_ATTEMPTS + 1):
             if not self.session_initialized:
                 self.warm_up_session()
-            logger.debug("Requesting Bhavcopy for %s from NSE (attempt %d)...", date_str, attempt)
+            logger.debug("Requesting %s from NSE (attempt %d)...", label, attempt)
             try:
                 response = self.session.get(url, timeout=15)
                 if response.status_code == 404:
                     return response
-                if response.status_code == 200 and "SYMBOL" in response.text[:500]:
+                if response.status_code == 200 and header_token in response.text[:500]:
                     return response
                 last_problem = f"HTTP {response.status_code}, non-CSV response"
                 # Blocked or unexpected reply: refresh cookies before the next attempt
@@ -161,8 +167,7 @@ class NSEBhavcopyFetcher:
                 last_problem = f"{type(exc).__name__}: {exc}"
             if attempt < BHAVCOPY_FETCH_ATTEMPTS:
                 time.sleep(BHAVCOPY_RETRY_BACKOFF_SECONDS * attempt)
-        logger.warning("Could not fetch bhavcopy for %s after %d attempts (%s).",
-                       date_str, BHAVCOPY_FETCH_ATTEMPTS, last_problem)
+        logger.warning("Could not fetch %s after %d attempts (%s).", label, BHAVCOPY_FETCH_ATTEMPTS, last_problem)
         return None
 
     def fetch_daily_bhavcopy(
@@ -278,6 +283,83 @@ class NSEBhavcopyFetcher:
 
         return self._select_symbols(day_df, target_symbols, date_str)
 
+    def _trading_calendar(self, start_date: date, end_date: date) -> List[date]:
+        """Weekdays plus listed special weekend sessions (the same calendar as fetch_date_range)."""
+        days, current = [], start_date
+        while current <= end_date:
+            if current.weekday() < 5 or current in NSE_SPECIAL_WEEKEND_SESSIONS:
+                days.append(current)
+            current += timedelta(days=1)
+        return days
+
+    def fetch_index_closes(
+        self,
+        start_date: date,
+        end_date: date,
+        index_name: str = BENCHMARK_INDEX_NAME,
+        use_cache: bool = True,
+    ) -> pd.DataFrame:
+        """
+        Daily OHLC of one NSE index from NSE's official 'ind_close_all' archive files.
+
+        Uses the same trading calendar, holiday flags (404 = holiday), block-retry logic and
+        wrong-session check as the Bhavcopy download, so benchmark sessions line up exactly
+        with the stock price history. Each day's full file (all indices) is cached.
+
+        Returns:
+            pd.DataFrame: Date, Open, High, Low, Close for index_name, oldest first
+            (empty when nothing could be retrieved).
+        """
+        rows, failed = [], []
+        for day in self._trading_calendar(start_date, end_date):
+            date_str = self._format_date(day)
+            holiday_flag_file = self.cache_dir / f"holiday_v2_{date_str}.flag"
+            cache_file = self.cache_dir / f"indices_{date_str}.csv"
+            if use_cache and holiday_flag_file.exists():
+                continue
+            day_df = None
+            if use_cache and cache_file.exists():
+                try:
+                    day_df = pd.read_csv(cache_file)
+                except Exception as exc:
+                    logger.warning("Failed to parse cached index file %s (%s). Re-fetching.", cache_file, exc)
+            if day_df is None:
+                response = self._request_archive(NSE_INDEX_CLOSE_URL_TEMPLATE.format(ddmmyyyy=day.strftime("%d%m%Y")),
+                                                 f"index closes for {date_str}", "Index Name")
+                if response is None:
+                    failed.append(day)
+                    continue
+                if response.status_code == 404:
+                    self._mark_holiday(holiday_flag_file)
+                    continue
+                day_df = pd.read_csv(io.StringIO(response.text))
+                day_df.columns = [c.strip() for c in day_df.columns]
+                file_dates = pd.to_datetime(day_df["Index Date"], format="%d-%m-%Y", errors="coerce").dropna().dt.date
+                if not file_dates.empty and (file_dates != day).all():
+                    logger.debug("Index file requested for %s contains another session; treating as holiday.", date_str)
+                    self._mark_holiday(holiday_flag_file)
+                    continue
+                try:
+                    day_df.to_csv(cache_file, index=False)
+                except OSError as exc:
+                    logger.warning("Could not write index cache for %s: %s", date_str, exc)
+                time.sleep(self.delay_seconds)
+            day_df.columns = [c.strip() for c in day_df.columns]
+            match = day_df[day_df["Index Name"].astype(str).str.strip().str.lower() == index_name.lower()]
+            if match.empty:
+                logger.warning("%s not found in NSE index file for %s.", index_name, date_str)
+                continue
+            r = match.iloc[0]
+            rows.append({"Date": pd.Timestamp(day), "Open": r["Open Index Value"], "High": r["High Index Value"],
+                         "Low": r["Low Index Value"], "Close": r["Closing Index Value"]})
+        if failed:
+            logger.warning("%d session(s) of %s closes could not be downloaded: %s", len(failed), index_name,
+                           ", ".join(self._format_date(d) for d in failed))
+        df = pd.DataFrame(rows, columns=["Date", "Open", "High", "Low", "Close"])
+        for col in ["Open", "High", "Low", "Close"]:
+            df[col] = pd.to_numeric(df[col].astype(str).str.replace(",", ""), errors="coerce")
+        return df.dropna(subset=["Close"]).sort_values("Date").reset_index(drop=True)
+
     def fetch_date_range(
         self,
         start_date: date,
@@ -363,24 +445,38 @@ def fetch_benchmark_nifty500(
     ticker: str = BENCHMARK_PRICE_TICKER
 ) -> pd.DataFrame:
     """
-    Fetch the Nifty 500 Price Return benchmark index series using yfinance.
+    Fetch the Nifty 500 price-return index series (start_date to end_date, inclusive).
 
-    Financial & Academic Rationale:
-    Index series do not undergo corporate actions (such as stock splits, bonus shares,
-    rights offerings, or spin-offs) that distort individual stock price series. Therefore,
-    yfinance is reliable, standardized, and vetted specifically for the Nifty 500 (^CRSLDX)
-    price return series.
+    Source: NSE's official daily index closing files (NSEBhavcopyFetcher.fetch_index_closes),
+    on exactly the same session calendar as the Bhavcopy stock prices. yfinance (^CRSLDX) is
+    used only as a fallback if the official files cannot be retrieved; it has been observed to
+    skip real NSE sessions (e.g. special and recent sessions), which silently shifts the RS window.
 
     Parameters:
         start_date (str): Format 'YYYY-MM-DD'
-        end_date (str): Format 'YYYY-MM-DD'
-        ticker (str): Index symbol, defaults to '^CRSLDX' (Nifty 500)
+        end_date (str): Format 'YYYY-MM-DD' (inclusive)
+        ticker (str): yfinance fallback symbol, defaults to '^CRSLDX' (Nifty 500)
 
     Returns:
-        pd.DataFrame: Cleaned DataFrame with Date as DatetimeIndex, and OHLCV columns.
+        pd.DataFrame: Date (tz-naive) plus Open, High, Low, Close columns, oldest first.
     """
+    start_d, end_d = pd.Timestamp(start_date).date(), pd.Timestamp(end_date).date()
+    # Primary source: NSE's official daily index closes, on the same session calendar as the
+    # Bhavcopy stock prices (yfinance's ^CRSLDX has skipped real NSE sessions)
+    try:
+        official = NSEBhavcopyFetcher().fetch_index_closes(start_d, end_d)
+    except Exception as exc:
+        logger.warning("Official NSE index closes unavailable (%s); falling back to yfinance.", exc)
+        official = pd.DataFrame()
+    if not official.empty:
+        logger.info("Nifty 500 benchmark from NSE official index closes: %d sessions (%s to %s).",
+                    len(official), official["Date"].min().date(), official["Date"].max().date())
+        return official
+
     logger.info("Downloading Nifty 500 benchmark (%s) from yfinance (%s to %s)...", ticker, start_date, end_date)
-    raw_df = yf.download(ticker, start=start_date, end=end_date, auto_adjust=True, progress=False)
+    # yfinance treats `end` as exclusive; add a day so end_date itself is included
+    yf_end = (end_d + timedelta(days=1)).isoformat()
+    raw_df = yf.download(ticker, start=start_date, end=yf_end, auto_adjust=True, progress=False)
 
     if raw_df.empty:
         logger.error("yfinance returned an empty dataset for benchmark ticker %s.", ticker)

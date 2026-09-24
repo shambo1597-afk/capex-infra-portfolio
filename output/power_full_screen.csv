@@ -1,22 +1,22 @@
 symbol,company_name,index,price_sessions,current_price,passed_technical_screen,technical_fail_reason,rs_score,adx,plus_di,minus_di,trend_direction,rsi,fundamentals_as_of,fundamentals_status,market_cap,pass_market_cap,roce,pass_roce,roce_3yr_avg,pass_roce_3yr_avg,interest_coverage,pass_interest_coverage,operating_cash_flow,pass_operating_cash_flow,passed_fundamental_screen,failed_criteria,passes_both_screens
-ACMESOLAR,ACME Solar Holdings Ltd.,Nifty Power,248,446.65,True,,29.08,32.84,30.68,9.31,Bullish (Uptrend),65.27,2026-09-24,OK,31636.0,True,8.91,True,8.33,True,1.6,False,1249.0,True,False,Interest coverage > 2,False
-ADANIENSOL,Adani Energy Solutions Ltd.,Nifty Power,248,1340.5,False,RS <= 0; trend Bearish,-7.28,27.3,16.04,30.3,Bearish (Downtrend),35.46,,,,,,,,,,,,,,,False
-ADANIGREEN,Adani Green Energy Ltd.,Nifty Power,248,1280.1,False,RS <= 0; trend Bearish,-13.59,14.68,19.65,20.76,Bearish (Downtrend),44.91,,,,,,,,,,,,,,,False
-ADANIPOWER,Adani Power Ltd.,Nifty Power,248,199.48,False,RS <= 0; trend Bearish,-11.16,12.18,18.42,28.79,Bearish (Downtrend),40.11,,,,,,,,,,,,,,,False
-CESC,CESC Ltd.,Nifty Power,248,139.89,False,RS <= 0; trend Bearish,-16.37,18.18,17.97,28.96,Bearish (Downtrend),29.8,,,,,,,,,,,,,,,False
-GMRP&UI,GMR Power and Urban Infra Ltd.,Nifty Power,248,101.41,False,RS <= 0,-2.16,13.98,25.02,14.64,Bullish (Uptrend),63.85,,,,,,,,,,,,,,,False
-JSWENERGY,JSW Energy Ltd.,Nifty Power,248,510.0,False,RS <= 0; trend Bearish,-8.09,13.94,20.69,26.82,Bearish (Downtrend),39.16,,,,,,,,,,,,,,,False
-JPPOWER,Jaiprakash Power Ventures Ltd.,Nifty Power,248,15.84,False,RS <= 0,-10.66,18.39,30.13,21.44,Bullish (Uptrend),41.77,,,,,,,,,,,,,,,False
-KPIGREEN,KPI Green Energy Ltd.,Nifty Power,248,333.2,False,RS <= 0,-12.65,51.78,34.54,19.97,Bullish (Uptrend),57.66,,,,,,,,,,,,,,,False
-NHPC,NHPC Ltd.,Nifty Power,248,76.25,False,RS <= 0,-1.16,12.13,18.71,13.85,Bullish (Uptrend),48.82,,,,,,,,,,,,,,,False
-NLCINDIA,NLC India Ltd.,Nifty Power,248,263.25,False,RS <= 0; trend Bearish,-18.03,21.72,17.68,24.38,Bearish (Downtrend),40.57,,,,,,,,,,,,,,,False
-NTPCGREEN,NTPC Green Energy Ltd.,Nifty Power,248,95.43,True,,0.01,23.77,32.49,14.69,Bullish (Uptrend),70.09,2026-09-24,OK,80421.0,True,3.56,False,5.67,False,1.76,False,2386.0,True,False,ROCE > 7%; Average ROCE 3Years > 7%; Interest coverage > 2,False
-NTPC,NTPC Ltd.,Nifty Power,248,326.6,False,RS <= 0; trend Bearish,-10.26,27.13,10.36,22.26,Bearish (Downtrend),40.62,,,,,,,,,,,,,,,False
-NAVA,Nava Ltd.,Nifty Power,248,557.0,False,RS <= 0,-9.0,15.97,22.5,15.04,Bullish (Uptrend),48.93,,,,,,,,,,,,,,,False
-PTC,PTC India Ltd.,Nifty Power,248,155.89,False,RS <= 0; trend Bearish,-15.43,21.54,19.6,22.92,Bearish (Downtrend),45.24,,,,,,,,,,,,,,,False
-POWERGRID,Power Grid Corporation of India Ltd.,Nifty Power,248,266.4,False,RS <= 0,-7.12,13.21,23.17,14.73,Bullish (Uptrend),47.34,,,,,,,,,,,,,,,False
-RTNPOWER,RattanIndia Power Ltd.,Nifty Power,248,7.02,False,RS <= 0; trend Bearish,-22.81,25.75,15.96,21.82,Bearish (Downtrend),29.21,,,,,,,,,,,,,,,False
-RPOWER,Reliance Power Ltd.,Nifty Power,248,20.67,False,RS <= 0; trend Bearish,-18.32,12.26,18.97,24.84,Bearish (Downtrend),31.44,,,,,,,,,,,,,,,False
-SJVN,SJVN Ltd.,Nifty Power,248,62.24,False,RS <= 0; trend Bearish,-12.98,24.46,14.59,27.78,Bearish (Downtrend),30.07,,,,,,,,,,,,,,,False
-TATAPOWER,Tata Power Co. Ltd.,Nifty Power,248,363.45,False,RS <= 0,-7.03,22.86,24.54,15.67,Bullish (Uptrend),45.31,,,,,,,,,,,,,,,False
-TORNTPOWER,Torrent Power Ltd.,Nifty Power,248,1244.2,False,RS <= 0; trend Bearish,-13.1,20.45,19.17,26.14,Bearish (Downtrend),39.79,,,,,,,,,,,,,,,False
+ACMESOLAR,ACME Solar Holdings Ltd.,Nifty Power,248,446.65,True,,27.47,32.84,30.68,9.31,Bullish (Uptrend),65.27,2026-09-24,OK,31636.0,True,8.91,True,8.33,True,1.6,False,1249.0,True,False,Interest coverage > 2,False
+ADANIENSOL,Adani Energy Solutions Ltd.,Nifty Power,248,1340.5,False,RS <= 0; trend Bearish,-8.67,27.3,16.04,30.3,Bearish (Downtrend),35.46,,,,,,,,,,,,,,,False
+ADANIGREEN,Adani Green Energy Ltd.,Nifty Power,248,1280.1,False,RS <= 0; trend Bearish,-13.69,14.68,19.65,20.76,Bearish (Downtrend),44.91,,,,,,,,,,,,,,,False
+ADANIPOWER,Adani Power Ltd.,Nifty Power,248,199.48,False,RS <= 0; trend Bearish,-10.57,12.18,18.42,28.79,Bearish (Downtrend),40.11,,,,,,,,,,,,,,,False
+CESC,CESC Ltd.,Nifty Power,248,139.89,False,RS <= 0; trend Bearish,-14.32,18.18,17.97,28.96,Bearish (Downtrend),29.8,,,,,,,,,,,,,,,False
+GMRP&UI,GMR Power and Urban Infra Ltd.,Nifty Power,248,101.41,True,,4.24,13.98,25.02,14.64,Bullish (Uptrend),63.85,2026-09-24,OK,7918.0,True,12.0,True,12.33,True,1.49,False,1260.0,True,False,Interest coverage > 2,False
+JSWENERGY,JSW Energy Ltd.,Nifty Power,248,510.0,False,RS <= 0; trend Bearish,-8.64,13.94,20.69,26.82,Bearish (Downtrend),39.16,,,,,,,,,,,,,,,False
+JPPOWER,Jaiprakash Power Ventures Ltd.,Nifty Power,248,15.84,False,RS <= 0,-9.28,18.39,30.13,21.44,Bullish (Uptrend),41.77,,,,,,,,,,,,,,,False
+KPIGREEN,KPI Green Energy Ltd.,Nifty Power,248,333.2,False,RS <= 0,-14.0,51.78,34.54,19.97,Bullish (Uptrend),57.66,,,,,,,,,,,,,,,False
+NHPC,NHPC Ltd.,Nifty Power,248,76.25,False,RS <= 0,-1.54,12.13,18.71,13.85,Bullish (Uptrend),48.82,,,,,,,,,,,,,,,False
+NLCINDIA,NLC India Ltd.,Nifty Power,248,263.25,False,RS <= 0; trend Bearish,-15.33,21.72,17.68,24.38,Bearish (Downtrend),40.57,,,,,,,,,,,,,,,False
+NTPCGREEN,NTPC Green Energy Ltd.,Nifty Power,248,95.43,True,,2.12,23.77,32.49,14.69,Bullish (Uptrend),70.09,2026-09-24,OK,80421.0,True,3.56,False,5.67,False,1.76,False,2386.0,True,False,ROCE > 7%; Average ROCE 3Years > 7%; Interest coverage > 2,False
+NTPC,NTPC Ltd.,Nifty Power,248,326.6,False,RS <= 0; trend Bearish,-4.8,27.13,10.36,22.26,Bearish (Downtrend),40.62,,,,,,,,,,,,,,,False
+NAVA,Nava Ltd.,Nifty Power,248,557.0,False,RS <= 0,-5.83,15.97,22.5,15.04,Bullish (Uptrend),48.93,,,,,,,,,,,,,,,False
+PTC,PTC India Ltd.,Nifty Power,248,155.89,False,RS <= 0; trend Bearish,-11.82,21.54,19.6,22.92,Bearish (Downtrend),45.24,,,,,,,,,,,,,,,False
+POWERGRID,Power Grid Corporation of India Ltd.,Nifty Power,248,266.4,False,RS <= 0,-3.74,13.21,23.17,14.73,Bullish (Uptrend),47.34,,,,,,,,,,,,,,,False
+RTNPOWER,RattanIndia Power Ltd.,Nifty Power,248,7.02,False,RS <= 0; trend Bearish,-20.6,25.75,15.96,21.82,Bearish (Downtrend),29.21,,,,,,,,,,,,,,,False
+RPOWER,Reliance Power Ltd.,Nifty Power,248,20.67,False,RS <= 0; trend Bearish,-14.49,12.26,18.97,24.84,Bearish (Downtrend),31.44,,,,,,,,,,,,,,,False
+SJVN,SJVN Ltd.,Nifty Power,248,62.24,False,RS <= 0; trend Bearish,-11.24,24.46,14.59,27.78,Bearish (Downtrend),30.07,,,,,,,,,,,,,,,False
+TATAPOWER,Tata Power Co. Ltd.,Nifty Power,248,363.45,False,RS <= 0,-4.13,22.86,24.54,15.67,Bullish (Uptrend),45.31,,,,,,,,,,,,,,,False
+TORNTPOWER,Torrent Power Ltd.,Nifty Power,248,1244.2,False,RS <= 0; trend Bearish,-9.56,20.45,19.17,26.14,Bearish (Downtrend),39.79,,,,,,,,,,,,,,,False

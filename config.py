@@ -118,6 +118,10 @@ NSE_BHAVCOPY_URL_TEMPLATE = (
     "&date={date_str}&type=equities&mode=single"
 )
 
+# Official daily closing values of all NSE indices (source for the Nifty 500 benchmark series)
+NSE_INDEX_CLOSE_URL_TEMPLATE = "https://nsearchives.nseindia.com/content/indices/ind_close_all_{ddmmyyyy}.csv"
+BENCHMARK_INDEX_NAME = "Nifty 500"
+
 # Mandatory real browser headers to bypass NSE Cloudflare / Akamai bot detection
 NSE_REQUEST_HEADERS = {
     "User-Agent": (

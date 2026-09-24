@@ -31,7 +31,7 @@ A production-grade, mathematically transparent data pipeline and quantitative sc
 - **Zero Black-Box Libraries:** Every single formula (RSI, ADX, TR, +DM/-DM, DX, Wilder's smoothing, rolling swing pivots) is implemented in clean, vectorized Python/NumPy/Pandas with inline mathematical explanations.
 - **Direct NSE Ingestion:** Fetches official daily "Full Bhavcopy and Security Deliverable data" CSVs from NSE's clearing servers, eliminating corporate action distortion from third-party wrappers.
 - **Dual Benchmark Support:**
-  - **Price Return Index (PRI):** Nifty 500 (`^CRSLDX`) via `yfinance`.
+  - **Price Return Index (PRI):** Nifty 500 from NSE's official daily index closes (`yfinance` `^CRSLDX` as fallback).
   - **Total Return Index (TRI):** Ingestion from local official CSV downloaded from `niftyindices.com`.
 - **Intelligent Caching:** Daily bhavcopies and consolidated histories are preserved locally under `data/raw_bhavcopy/` and `data/processed/`, enabling instant offline re-analysis.
 - **Academic Rigor:** Full docstrings detailing financial theory (momentum, directional volatility, alpha spread, support/resistance barriers) for coursework defense.
@@ -55,9 +55,9 @@ A production-grade, mathematically transparent data pipeline and quantitative sc
   - Polite 0.5s rate-limit sleep between queries.
   - Graceful holiday detection (404 / empty report handling without crashing).
 
-### 2. Benchmark (Price Return) — Nifty 500 via yfinance
-- **Ticker:** `^CRSLDX` (the verified Yahoo Finance ticker for Nifty 500).
-- **Rationale:** Index series do not suffer from individual corporate action adjustment errors; yfinance provides an accurate, adjusted historical index series.
+### 2. Benchmark (Price Return) — Nifty 500 from NSE official index closes
+- **Source:** NSE's daily `ind_close_all_DDMMYYYY.csv` archive files, fetched and cached on exactly the same session calendar as the Bhavcopy stock prices (same holiday detection, block retries and special weekend sessions).
+- **Rationale:** yfinance's `^CRSLDX` matched the official values on every common session but skipped real NSE sessions (1-Jan-2026, the 1-Feb-2026 Budget session, 22-Sep-2026 and the latest day, whose end date yfinance treats as exclusive). That silently shifted the 63-session RS window by a session, which moved RS by up to ±11 pp. yfinance is kept only as a fallback.
 
 ### 3. Benchmark (Total Return Index) — Local CSV
 - **Rationale:** `niftyindices.com` serves TRI data only to real browser sessions behind Akamai bot protection, so the default path reads the official CSV downloaded from the portal (automated retrieval is available opt-in, see below). Schema:

@@ -12,7 +12,7 @@ cumulative return minus the Nifty 500's (^CRSLDX), in percentage points. It bear
 Capital Goods as a theme deserves capital at all, versus simply holding the index.
 **`rs_score_vs_sector_avg`** measures which Capital Goods stock is best positioned relative to its
 Capital Goods peers: the same 63-session return minus the equal-weighted average return of all
-50 constituents (-2.48% over this window). It is the relevant measure once the
+50 constituents (-2.43% over this window). It is the relevant measure once the
 decision to hold Capital Goods exposure has been made, per the project's sector-rotation requirement.
 
 `sector_rank` ranks `rs_score_vs_sector_avg` from 1 (best) to 50 (worst); the spreads
