@@ -1,14 +1,8 @@
-# Screener.in Fundamentals Data Directory
+# Screener.in Fundamentals Data Directory (not currently used)
 
-Place Screener.in export CSV files here (e.g., `cement-cement-products__1_.csv` and other sector export files).
+The pipeline and dashboard do **not** read files from this directory. Fundamentals
+(ROCE, 3-Yr Avg ROCE, ROE, OPM, Debt/Equity, Operating Cash Flow, 3-Yr Sales and Profit
+Growth) are scraped directly from Screener.in company pages by `fundamentals.py` and
+cached as HTML under `data/fundamentals_cache/`.
 
-The Streamlit dashboard reads fundamental screen criteria from these files:
-- ROCE (%)
-- Average ROCE 3Years (%)
-- OPM (%)
-- Debt to Equity
-- Operating Cash Flow (₹ Cr)
-- Sales growth 3Years (%)
-- Profit growth 3Years (%)
-
-If files are not yet present, the dashboard surfaces a clear notification without erroring.
+Screener.in CSV exports placed here are kept only for manual reference.

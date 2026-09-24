@@ -27,6 +27,8 @@ import yfinance as yf
 from config import (
     BENCHMARK_PRICE_TICKER,
     BHAVCOPY_EXPECTED_COLUMNS,
+    BHAVCOPY_FETCH_ATTEMPTS,
+    BHAVCOPY_RETRY_BACKOFF_SECONDS,
     DEFAULT_TRI_CSV_PATH,
     NSE_BHAVCOPY_URL_TEMPLATE,
     NSE_HOME_URL,
@@ -73,6 +75,8 @@ class NSEBhavcopyFetcher:
         self.session = requests.Session()
         self.session.headers.update(NSE_REQUEST_HEADERS)
         self.session_initialized = False
+        # Trading dates that could not be downloaded (bot-protection blocks, network errors)
+        self.failed_dates: List[date] = []
 
     def warm_up_session(self) -> None:
         """
@@ -99,6 +103,52 @@ class NSEBhavcopyFetcher:
         Format a date object into NSE's required URL format: 'DD-Mon-YYYY' (e.g. '24-Sep-2025').
         """
         return target_date.strftime("%d-%b-%Y")
+
+    @staticmethod
+    def _is_other_session(df: pd.DataFrame, target_date: date) -> bool:
+        """True when a bhavcopy's DATE1 values belong to a session other than target_date."""
+        dates = pd.to_datetime(df["DATE1"], format="mixed", errors="coerce").dropna().dt.date
+        return not dates.empty and (dates != target_date).all()
+
+    @staticmethod
+    def _mark_holiday(holiday_flag_file: Path) -> None:
+        try:
+            holiday_flag_file.touch()
+        except OSError:
+            pass
+
+    def _request_bhavcopy(self, target_date: date) -> Optional[requests.Response]:
+        """
+        Request one day's bhavcopy, retrying when the response is not a usable answer.
+
+        Returns the response when NSE's origin answered (a CSV, or 404 for a holiday), or
+        None when every attempt was blocked or failed. NSE's Akamai layer intermittently
+        answers 403 'Access Denied' (an HTML page) to trading days; such responses are
+        retried with backoff and a fresh cookie warm-up, and are never cached as holidays.
+        """
+        date_str = self._format_date(target_date)
+        url = NSE_BHAVCOPY_URL_TEMPLATE.format(date_str=date_str)
+        last_problem = None
+        for attempt in range(1, BHAVCOPY_FETCH_ATTEMPTS + 1):
+            if not self.session_initialized:
+                self.warm_up_session()
+            logger.debug("Requesting Bhavcopy for %s from NSE (attempt %d)...", date_str, attempt)
+            try:
+                response = self.session.get(url, timeout=15)
+                if response.status_code == 404:
+                    return response
+                if response.status_code == 200 and "SYMBOL" in response.text[:500]:
+                    return response
+                last_problem = f"HTTP {response.status_code}, non-CSV response"
+                # Blocked or unexpected reply: refresh cookies before the next attempt
+                self.session_initialized = False
+            except Exception as exc:
+                last_problem = f"{type(exc).__name__}: {exc}"
+            if attempt < BHAVCOPY_FETCH_ATTEMPTS:
+                time.sleep(BHAVCOPY_RETRY_BACKOFF_SECONDS * attempt)
+        logger.warning("Could not fetch bhavcopy for %s after %d attempts (%s).",
+                       date_str, BHAVCOPY_FETCH_ATTEMPTS, last_problem)
+        return None
 
     def fetch_daily_bhavcopy(
         self,
@@ -129,7 +179,9 @@ class NSEBhavcopyFetcher:
 
         date_str = self._format_date(target_date)
         cache_file = self.cache_dir / f"bhav_{date_str}.csv"
-        holiday_flag_file = self.cache_dir / f"holiday_{date_str}.flag"
+        # v2: flags written before holiday detection was fixed may mark blocked trading days
+        # as holidays; the new name ignores them so those dates are re-checked.
+        holiday_flag_file = self.cache_dir / f"holiday_v2_{date_str}.flag"
 
         # Check local cache first
         if use_cache:
@@ -141,36 +193,23 @@ class NSEBhavcopyFetcher:
                 try:
                     df = pd.read_csv(cache_file)
                     df["DATE1"] = pd.to_datetime(df["DATE1"], format="mixed", errors="coerce")
+                    if self._is_other_session(df, target_date):
+                        # Cached before date validation existed: a holiday served the previous session
+                        self._mark_holiday(holiday_flag_file)
+                        cache_file.unlink(missing_ok=True)
+                        return None
                     return df
                 except Exception as exc:
                     logger.warning("Failed to parse cached file %s (%s). Re-fetching.", cache_file, exc)
 
-        if not self.session_initialized:
-            self.warm_up_session()
-
-        url = NSE_BHAVCOPY_URL_TEMPLATE.format(date_str=date_str)
-        logger.debug("Requesting Bhavcopy for %s from NSE...", date_str)
-
-        try:
-            response = self.session.get(url, timeout=15)
-        except Exception as exc:
-            logger.error("Network error fetching bhavcopy for %s: %s", date_str, exc)
+        response = self._request_bhavcopy(target_date)
+        if response is None:
+            self.failed_dates.append(target_date)
             return None
-
-        # Handle Market Holidays or Missing Reports
-        # NSE returns 404 or an HTML error page on holidays / non-trading days
-        if response.status_code == 404 or "Full Bhavcopy" not in response.text and "SYMBOL" not in response.text:
-            if response.status_code == 404 or "<html" in response.text.lower():
-                logger.debug("No bhavcopy data for %s (Status %d - likely market holiday/weekend).", date_str, response.status_code)
-                # Mark as holiday so we don't query again
-                try:
-                    holiday_flag_file.touch()
-                except OSError:
-                    pass
-                return None
-
-        if response.status_code != 200:
-            logger.warning("Unexpected status code %d for %s. Skipping.", response.status_code, date_str)
+        if response.status_code == 404:
+            # NSE's origin answers 404 for weekends and exchange holidays
+            logger.debug("No bhavcopy for %s (404: market holiday/weekend).", date_str)
+            self._mark_holiday(holiday_flag_file)
             return None
 
         # Parse CSV content from response text
@@ -224,6 +263,13 @@ class NSEBhavcopyFetcher:
 
         # Standardize date column
         target_df["DATE1"] = pd.to_datetime(target_df["DATE1"], format="mixed", errors="coerce")
+
+        # On some holidays NSE serves the previous session's file (e.g. 25-Dec returns 24-Dec);
+        # accepting it would duplicate that session under a second request date
+        if self._is_other_session(target_df, target_date):
+            logger.debug("Bhavcopy requested for %s contains another session; treating as holiday.", date_str)
+            self._mark_holiday(holiday_flag_file)
+            return None
 
         # Cache the filtered daily slice locally for fast re-runs
         try:
@@ -290,13 +336,24 @@ class NSEBhavcopyFetcher:
             return pd.DataFrame(columns=BHAVCOPY_EXPECTED_COLUMNS)
 
         consolidated = pd.concat(daily_dfs, ignore_index=True)
-        # Drop duplicates if any and sort by Symbol and Date
-        consolidated = consolidated.sort_values(by=["SYMBOL", "DATE1"]).reset_index(drop=True)
+        # Drop duplicate sessions if any and sort by Symbol and Date
+        consolidated = (
+            consolidated.drop_duplicates(subset=["SYMBOL", "DATE1"], keep="last")
+            .sort_values(by=["SYMBOL", "DATE1"])
+            .reset_index(drop=True)
+        )
         logger.info(
             "Bhavcopy ingestion complete: %d trading records retrieved across %d active trading sessions.",
             len(consolidated),
             fetched_days
         )
+        if self.failed_dates:
+            logger.warning(
+                "%d trading day(s) could not be downloaded and are missing from the history "
+                "(re-run to retry; they are not cached as holidays): %s",
+                len(self.failed_dates),
+                ", ".join(self._format_date(d) for d in self.failed_dates),
+            )
         return consolidated
 
 

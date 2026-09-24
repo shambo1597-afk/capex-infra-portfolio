@@ -128,6 +128,11 @@ NSE_REQUEST_HEADERS = {
 # Rate limiting delay between successive daily bhavcopy requests (seconds)
 REQUEST_DELAY_SECONDS = 0.5
 
+# NSE's bot protection intermittently answers 403 to valid trading days; such requests are
+# retried (with backoff and a fresh cookie warm-up) rather than treated as holidays
+BHAVCOPY_FETCH_ATTEMPTS = 4
+BHAVCOPY_RETRY_BACKOFF_SECONDS = 3
+
 # Standard expected columns in official NSE Full Bhavcopy CSV
 BHAVCOPY_EXPECTED_COLUMNS = [
     "SYMBOL", "SERIES", "DATE1", "PREV_CLOSE", "OPEN_PRICE", "HIGH_PRICE",

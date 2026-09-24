@@ -200,11 +200,18 @@ st.markdown(
 # DATA LOADING UTILITIES (CACHED)
 # -----------------------------------------------------------------------------
 
+def _file_mtime(path: Path) -> float:
+    """Modification time used as a cache key, so rewritten outputs are reloaded without a restart."""
+    path = Path(path)
+    return path.stat().st_mtime if path.exists() else 0.0
+
+
 @st.cache_data(show_spinner=False)
-def load_summary_data() -> pd.DataFrame:
+def load_summary_data(file_mtime: float) -> pd.DataFrame:
     """
     Load the technical summary table, filter strictly for the 8 locked portfolio
     symbols, and enrich with official company display names and sectors.
+    file_mtime is only a cache key (see _file_mtime).
     """
     summary_path = Path(SUMMARY_OUTPUT_CSV)
     if not summary_path.exists():
@@ -226,9 +233,10 @@ def load_summary_data() -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
-def load_historical_ohlcv() -> pd.DataFrame:
+def load_historical_ohlcv(file_mtime: float) -> pd.DataFrame:
     """
     Load historical daily OHLCV dataset for the locked portfolio stocks.
+    file_mtime is only a cache key (see _file_mtime).
     """
     ohlcv_path = Path(HISTORICAL_OHLCV_CSV)
     if not ohlcv_path.exists():
@@ -246,7 +254,7 @@ def load_historical_ohlcv() -> pd.DataFrame:
 def load_risk_summary(file_mtime: float) -> pd.DataFrame:
     """
     Load the locked portfolio's risk, sizing and stop-loss table written by main.py.
-    file_mtime is only a cache key, so a fresh pipeline run is picked up without a restart.
+    file_mtime is only a cache key (see _file_mtime).
     """
     risk_path = Path(RISK_SUMMARY_OUTPUT_CSV)
     if not risk_path.exists():
@@ -319,10 +327,10 @@ st.markdown(
 )
 
 # Load data assets
-summary_df = load_summary_data()
-ohlcv_df = load_historical_ohlcv()
-tri_df = load_tri_benchmark(DEFAULT_TRI_CSV_PATH.stat().st_mtime if DEFAULT_TRI_CSV_PATH.exists() else 0.0)
-risk_df = load_risk_summary(RISK_SUMMARY_OUTPUT_CSV.stat().st_mtime if RISK_SUMMARY_OUTPUT_CSV.exists() else 0.0)
+summary_df = load_summary_data(_file_mtime(SUMMARY_OUTPUT_CSV))
+ohlcv_df = load_historical_ohlcv(_file_mtime(HISTORICAL_OHLCV_CSV))
+tri_df = load_tri_benchmark(_file_mtime(DEFAULT_TRI_CSV_PATH))
+risk_df = load_risk_summary(_file_mtime(RISK_SUMMARY_OUTPUT_CSV))
 
 # TRI must cover the period the last pipeline run analysed (its latest price date)
 _last_price_date = ohlcv_df["DATE1"].max() if not ohlcv_df.empty else pd.NaT
@@ -450,7 +458,7 @@ with tab_overview:
         st.dataframe(
             display_sec_df,
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
         )
 
 
@@ -522,7 +530,7 @@ with tab_fundamentals:
                 })
 
         display_fund_df = pd.DataFrame(formatted_rows)
-        st.dataframe(display_fund_df, hide_index=True, use_container_width=True)
+        st.dataframe(display_fund_df, hide_index=True, width="stretch")
 
     st.write("")
     st.markdown("#### Academic Fundamental Screen Framework & Methodology")
@@ -596,7 +604,7 @@ with tab_technicals:
         styled_table = tech_table_df.style.map(color_trend, subset=["Trend Direction"])
     else:
         styled_table = getattr(tech_table_df.style, "applymap")(color_trend, subset=["Trend Direction"])
-    st.dataframe(styled_table, hide_index=True, use_container_width=True)
+    st.dataframe(styled_table, hide_index=True, width="stretch")
 
     st.write("")
     st.markdown("---")
@@ -640,7 +648,7 @@ with tab_technicals:
                     lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
                 "Stop Method": risk_df["stop_loss_method"].map(lambda m: method_labels.get(m, "Unavailable")),
             })
-            st.dataframe(risk_table_df, hide_index=True, use_container_width=True)
+            st.dataframe(risk_table_df, hide_index=True, width="stretch")
 
     st.write("")
     st.markdown("---")
@@ -762,7 +770,7 @@ with tab_technicals:
             template="plotly_white",
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
     else:
         st.warning(f"No historical price series found for symbol '{selected_symbol}'.")

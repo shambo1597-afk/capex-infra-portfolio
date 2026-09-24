@@ -155,9 +155,11 @@ IAPFDOF/
 │   └── nifty500_tri.csv          # Official Nifty 500 Total Returns Index CSV
 ├── output/
 │   ├── portfolio_technical_summary.csv # Single-row summary table for portfolio review
-│   └── portfolio_historical_ohlcv.csv  # Clean historical OHLCV data across universe
+│   ├── portfolio_historical_ohlcv.csv  # Clean historical OHLCV data across universe
+│   └── portfolio_risk_summary.csv      # Locked portfolio volatility, placeholder return/weight, stop-loss
 ├── tests/
 │   ├── __init__.py
+│   ├── test_automated_tri.py     # Unit tests for automated TRI retrieval, retries, and fallback
 │   ├── test_fundamentals.py      # Unit tests for Screener.in extraction and parsing
 │   ├── test_indicators.py        # Unit tests for Wilder's smoothing, RSI, ADX, RS, S/R
 │   ├── test_pipeline.py          # Integration tests for Bhavcopy parsing, aliases, benchmarks
@@ -215,7 +217,7 @@ The web dashboard loads instantly from the existing CSV outputs already in the r
 
 ### Dashboard Architecture (5 Tabs)
 1. **Portfolio Overview:** Dense, institutional summary metrics and sector-grouped constituent tables for the 8 locked stocks (`Cement`, `Capital Goods/EPC`, `Power`) with visible investment committee notes (including the NTPC fundamental inclusion caveat).
-2. **Fundamentals:** Screener criteria view (ROCE, 3Yr Avg ROCE, OPM, Debt/Equity, Operating Cash Flow, 3Yr Sales Growth, 3Yr Profit Growth) dynamically loading Screener.in CSV exports from `data/fundamentals/`.
+2. **Fundamentals:** Screener criteria view (Market Cap, Price, ROCE, 3-Yr Avg ROCE, ROE, Debt/Equity, Operating Cash Flow, OPM, 3-Yr Sales Growth, 3-Yr Profit Growth) scraped directly from Screener.in company pages by `fundamentals.py` and cached under `data/fundamentals_cache/`.
 3. **Technicals:** Full technical summary table with subtle green/red trend direction tinting, a separate **Risk, Sizing & Stop-Loss** section (volatility, placeholder expected return and weight, hybrid stop-loss and the winning method), and an interactive 1-year OHLCV line chart with horizontal Support and Resistance reference levels.
 4. **Risk & Hedging:** *(Module in Progress)* Beta regression, explained/unexplained risk decomposition, and hedge ratio analysis.
 5. **Performance:** *(Module in Progress)* Sharpe ratio, Treynor ratio, XIRR, and Capital Market Line (scheduled for 28th September snapshot).
@@ -295,7 +297,7 @@ The pipeline prints a formatted table and saves `output/portfolio_technical_summ
 | Column | Data Type | Description & Financial Interpretation |
 | :--- | :--- | :--- |
 | `symbol` | String | Official NSE equity ticker. |
-| `sector` | String | Sector classification (`Cement (Locked)` vs `Capital Goods / EPC`). |
+| `sector` | String | Sector classification: `Cement`, `Capital Goods/EPC`, or `Power`. |
 | `current_price` | Float (INR) | Latest official NSE closing price. |
 | `latest_rsi` | Float [0-100] | 14-period Wilder's RSI. Above 70 = Overbought; Below 30 = Oversold. |
 | `latest_adx` | Float | 14-period Wilder's ADX trend strength. > 25 = Strong Trend; < 20 = Weak / Choppy. |
