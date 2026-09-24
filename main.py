@@ -165,7 +165,7 @@ def run_pipeline() -> int:
             end_date=args.end_date
         )
     else:
-        benchmark_tri_df = load_benchmark_tri(Path(args.tri_csv))
+        benchmark_tri_df = load_benchmark_tri(Path(args.tri_csv), as_of=end_date)
 
     if not benchmark_tri_df.empty:
         print(f"     [+] Benchmark TRI verified: {len(benchmark_tri_df)} daily sessions loaded.")

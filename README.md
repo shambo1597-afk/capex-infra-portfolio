@@ -62,6 +62,7 @@ A production-grade, mathematically transparent data pipeline and quantitative sc
 ### 3. Benchmark (Total Return Index) — Local CSV
 - **Rationale:** `niftyindices.com` serves TRI data only to real browser sessions behind Akamai bot protection, so the default path reads the official CSV downloaded from the portal (automated retrieval is available opt-in, see below). Schema:
   `IndexName, Date, Total Returns Index, Net Total Return Index`
+- **Staleness check:** the CSV is re-downloaded by hand, so after loading, its last date is compared with the run's `--end-date` (default: today). If it trails by more than 3 trading days (weekdays; holidays not modelled, see `TRI_STALE_THRESHOLD_TRADING_DAYS` in `config.py`), the pipeline prints a warning banner with re-download steps and **continues** with the data it has. The dashboard shows the same warning on the Performance tab, measured against the latest price date from the last pipeline run.
 
 ### 4. Fundamental Quality Data — Direct Screener.in Extraction
 - **Endpoint Pattern:**

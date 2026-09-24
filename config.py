@@ -94,8 +94,12 @@ SYMBOL_ALIASES = {
 BENCHMARK_PRICE_TICKER = "^CRSLDX"
 
 # Benchmark 2: Total Return Index (TRI) via local manual CSV
-# niftyindices.com automated scraping is blocked/fragile; local CSV ingestion is required
+# niftyindices.com automated retrieval is unreliable (Akamai bot protection); the local CSV is the default
 DEFAULT_TRI_CSV_PATH = DATA_DIR / "nifty500_tri.csv"
+
+# The manual TRI CSV is flagged stale when its last date trails the analysis end date
+# by more than this many trading days (weekdays; exchange holidays are not modelled)
+TRI_STALE_THRESHOLD_TRADING_DAYS = 3
 
 # -----------------------------------------------------------------------------
 # NSE BHAVCOPY ENDPOINTS & NETWORK CONFIGURATION

@@ -9,7 +9,9 @@ It imports and reuses the existing pipeline outputs, focusing on the 8 locked po
 stocks across Cement, Capital Goods/EPC, and Power sectors.
 """
 
+from datetime import date
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -17,12 +19,14 @@ import streamlit as st
 
 from config import (
     BENCHMARK_PRICE_TICKER,
+    DEFAULT_TRI_CSV_PATH,
     HISTORICAL_OHLCV_CSV,
     LOCKED_PORTFOLIO,
     LOCKED_PORTFOLIO_SYMBOLS,
     NTPC_CAVEAT,
     SUMMARY_OUTPUT_CSV,
 )
+from fetch_data import TRI_REDOWNLOAD_INSTRUCTIONS, TriStaleness, assess_tri_staleness, load_benchmark_tri
 from fundamentals import get_fundamentals_summary
 
 # -----------------------------------------------------------------------------
@@ -236,6 +240,43 @@ def load_historical_ohlcv() -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
+def load_tri_benchmark(file_mtime: float) -> pd.DataFrame:
+    """
+    Load the manually maintained Nifty 500 TRI CSV. Staleness is shown as a dashboard
+    banner (render_tri_staleness_banner), so the loader's console warning is disabled.
+
+    file_mtime is only a cache key: replacing the CSV invalidates the cached copy, so a
+    re-downloaded file clears the stale banner without restarting the dashboard.
+    """
+    return load_benchmark_tri(warn_if_stale=False)
+
+
+def render_tri_staleness_banner(tri: pd.DataFrame, staleness: Optional[TriStaleness]) -> None:
+    """Show a warning banner when the TRI benchmark is missing or trails the analysis end date."""
+    if tri.empty:
+        st.markdown(
+            f"""
+            <div class="caveat-box">
+                <strong>TRI benchmark data unavailable.</strong> No Nifty 500 TRI CSV could be loaded.
+                {TRI_REDOWNLOAD_INSTRUCTIONS}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    elif staleness is not None and staleness.is_stale:
+        st.markdown(
+            f"""
+            <div class="caveat-box">
+                <strong>TRI benchmark data is stale.</strong> Last available date:
+                {staleness.last_date:%d-%b-%Y}. This is {staleness.trading_days_behind} trading days behind
+                the analysis end date ({staleness.reference_date:%d-%b-%Y}). {TRI_REDOWNLOAD_INSTRUCTIONS}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+@st.cache_data(show_spinner=False)
 def load_fundamentals_summary(force_refresh: bool = False) -> pd.DataFrame:
     """
     Fetch and parse fundamental quality, return, leverage, and cash flow metrics
@@ -265,6 +306,12 @@ st.markdown(
 # Load data assets
 summary_df = load_summary_data()
 ohlcv_df = load_historical_ohlcv()
+tri_df = load_tri_benchmark(DEFAULT_TRI_CSV_PATH.stat().st_mtime if DEFAULT_TRI_CSV_PATH.exists() else 0.0)
+
+# TRI must cover the period the last pipeline run analysed (its latest price date)
+_last_price_date = ohlcv_df["DATE1"].max() if not ohlcv_df.empty else pd.NaT
+analysis_end_date = _last_price_date.date() if pd.notna(_last_price_date) else date.today()
+tri_staleness = assess_tri_staleness(tri_df, analysis_end_date)
 
 # -----------------------------------------------------------------------------
 # 5 TABS NAVIGATION
@@ -683,6 +730,8 @@ with tab_risk:
 # TAB 5: PERFORMANCE (PLACEHOLDER ONLY)
 # =============================================================================
 with tab_performance:
+    render_tri_staleness_banner(tri_df, tri_staleness)
+
     st.markdown(
         """
         <div class="placeholder-container">

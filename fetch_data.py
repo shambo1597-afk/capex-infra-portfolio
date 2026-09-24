@@ -12,11 +12,14 @@ This module handles:
 
 import io
 import logging
+import textwrap
 import time
+from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+import numpy as np
 import pandas as pd
 import requests
 import yfinance as yf
@@ -32,6 +35,7 @@ from config import (
     RAW_BHAVCOPY_DIR,
     REQUEST_DELAY_SECONDS,
     SYMBOL_ALIASES,
+    TRI_STALE_THRESHOLD_TRADING_DAYS,
 )
 
 # Set up logging for transparent pipeline execution
@@ -345,7 +349,72 @@ def fetch_benchmark_nifty500(
     return df
 
 
-def load_benchmark_tri(csv_path: Optional[Path] = None) -> pd.DataFrame:
+TRI_REDOWNLOAD_INSTRUCTIONS = (
+    "Re-download the CSV from niftyindices.com (Historical Index Data -> Total returns Index Values "
+    "-> Equity -> Broad Market Indices -> NIFTY 500) and replace data/nifty500_tri.csv before trusting "
+    "any benchmark-relative performance figures (Sharpe, Treynor, XIRR vs benchmark)."
+)
+CONSOLE_BANNER_WIDTH = 115  # Matches main.py's console banners
+
+
+@dataclass(frozen=True)
+class TriStaleness:
+    """How far the TRI series trails the date an analysis needs it to cover."""
+    last_date: date
+    reference_date: date
+    trading_days_behind: int
+    threshold: int = TRI_STALE_THRESHOLD_TRADING_DAYS
+
+    @property
+    def is_stale(self) -> bool:
+        return self.trading_days_behind > self.threshold
+
+
+def assess_tri_staleness(tri_df: pd.DataFrame, reference_date: Optional[date] = None) -> Optional[TriStaleness]:
+    """
+    Measure how many trading days the TRI data trails the analysis end date.
+
+    The gap counts weekdays after the last available TRI date up to and including the
+    reference date (numpy busday_count); exchange holidays are not modelled, so the
+    figure can overstate the true gap by the number of holidays in between.
+
+    Parameters:
+        tri_df (pd.DataFrame): TRI data with a datetime 'Date' column.
+        reference_date (date, optional): The date the analysis needs data through
+            (e.g. the pipeline's end date). Defaults to today.
+
+    Returns:
+        TriStaleness, or None when there is no TRI data to assess.
+    """
+    if tri_df is None or tri_df.empty or "Date" not in tri_df.columns:
+        return None
+    last_date = pd.Timestamp(tri_df["Date"].max()).date()
+    reference_date = pd.Timestamp(reference_date).date() if reference_date is not None else date.today()
+    gap = 0
+    if reference_date > last_date:
+        gap = int(np.busday_count(last_date + timedelta(days=1), reference_date + timedelta(days=1)))
+    return TriStaleness(last_date=last_date, reference_date=reference_date, trading_days_behind=gap)
+
+
+def format_tri_staleness_warning(staleness: TriStaleness) -> str:
+    """Build the console banner shown when the TRI benchmark data is stale."""
+    body = (
+        f"Last available date: {staleness.last_date:%d-%b-%Y}. This is {staleness.trading_days_behind} "
+        f"trading days behind the requested analysis end date ({staleness.reference_date:%d-%b-%Y}). "
+        + TRI_REDOWNLOAD_INSTRUCTIONS
+    )
+    lines = [" [!] WARNING: TRI benchmark data is stale."]
+    lines += textwrap.wrap(body, width=CONSOLE_BANNER_WIDTH - 6,
+                           initial_indent=" [!] ", subsequent_indent=" [!] ")
+    border = "!" * CONSOLE_BANNER_WIDTH
+    return "\n".join([border, *lines, border])
+
+
+def load_benchmark_tri(
+    csv_path: Optional[Path] = None,
+    as_of: Optional[date] = None,
+    warn_if_stale: bool = True,
+) -> pd.DataFrame:
     """
     Load the benchmark Nifty 500 Total Returns Index (TRI) from a local CSV file.
 
@@ -359,8 +428,16 @@ def load_benchmark_tri(csv_path: Optional[Path] = None) -> pd.DataFrame:
     Expected CSV columns:
         IndexName, Date, Total Returns Index, Net Total Return Index
 
+    The file is maintained by hand, so after loading it is checked for staleness against
+    the analysis end date; a stale file triggers a console warning banner but is still
+    returned, since older benchmark data remains usable for historical regression work.
+
     Parameters:
         csv_path (Path, optional): Path to the TRI CSV. Defaults to DEFAULT_TRI_CSV_PATH.
+        as_of (date, optional): The date this run needs TRI data through (the pipeline's
+            end date). Defaults to today.
+        warn_if_stale (bool): Print the staleness banner when the data trails as_of by more
+            than TRI_STALE_THRESHOLD_TRADING_DAYS trading days.
 
     Returns:
         pd.DataFrame: Cleaned TRI DataFrame with standardized Date and Total Returns Index.
@@ -395,6 +472,17 @@ def load_benchmark_tri(csv_path: Optional[Path] = None) -> pd.DataFrame:
 
     df = df.dropna(subset=["Date", "Total Returns Index"]).sort_values("Date").reset_index(drop=True)
     logger.info("Loaded %d TRI trading sessions from CSV.", len(df))
+
+    if warn_if_stale:
+        try:
+            staleness = assess_tri_staleness(df, as_of)
+        except Exception as exc:  # The check is advisory; never let it fail the load
+            logger.warning("Could not assess TRI staleness against %r: %s", as_of, exc)
+            staleness = None
+        if staleness is not None and staleness.is_stale:
+            logger.warning("TRI data is stale: last date %s, %d trading days behind %s.",
+                           staleness.last_date, staleness.trading_days_behind, staleness.reference_date)
+            print(format_tri_staleness_warning(staleness))
     return df
 
 
@@ -609,7 +697,7 @@ def fetch_benchmark_tri_automated(start_date: str, end_date: str) -> pd.DataFram
             # Parse through the same routine as the manual CSV so both paths share one contract
             combined_path = Path(tmp_dir) / "tri_combined.csv"
             pd.concat(frames, ignore_index=True).to_csv(combined_path, index=False)
-            df = load_benchmark_tri(combined_path)
+            df = load_benchmark_tri(combined_path, warn_if_stale=False)
 
         if df.empty:
             raise ValueError("Automated TRI CSV could not be parsed into the expected schema.")
@@ -624,7 +712,7 @@ def fetch_benchmark_tri_automated(start_date: str, end_date: str) -> pd.DataFram
             DEFAULT_TRI_CSV_PATH,
             exc_info=True
         )
-        return load_benchmark_tri(DEFAULT_TRI_CSV_PATH)
+        return load_benchmark_tri(DEFAULT_TRI_CSV_PATH, as_of=end_date)
 
 
 def get_one_year_date_range() -> Tuple[date, date]:
