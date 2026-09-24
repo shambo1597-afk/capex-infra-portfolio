@@ -127,3 +127,37 @@ class TestFundamentalsParsers:
         stale = '<section id="profit-loss"><table><tr><th></th><th>Dec 2010</th></tr></table></section>'
         assert _statements_are_stale(BeautifulSoup(stale, "html.parser"))
         assert not _statements_are_stale(BeautifulSoup(PL_HTML, "html.parser"))
+
+
+class TestReviewTable:
+    """Unfiltered review: every constituent appears exactly once, however many criteria it fails."""
+
+    def test_no_row_is_excluded_and_sorting(self):
+        from sector_screen import build_review_table
+        tech = {
+            "AAA": (5.0, "Bullish (Uptrend)"), "BBB": (-2.0, "Bearish (Downtrend)"),
+            "CCC": (9.0, "Bearish (Downtrend)"), "DDD": (float("nan"), "N/A (Insufficient Data)"),
+        }
+
+        def fake_tech(symbol, stock_df, benchmark_df, rs_lookback):
+            rs, trend = tech[symbol]
+            return {"current_price": 100.0, "latest_rsi": 50.0, "latest_adx": 20.0, "plus_di": 1.0, "minus_di": 1.0,
+                    "trend_direction": trend, "rs_score_vs_nifty500": rs,
+                    "nearest_support": 95.0, "nearest_resistance": 105.0}
+
+        criteria = [("market_cap", ">", 1000, "Market Cap > 1000 (Rs Cr)"), ("opm", ">", 13, "OPM > 13%")]
+        fundamentals = pd.DataFrame([
+            {"symbol": "AAA", "status": "OK", "market_cap": 5000.0, "opm": 10.0},
+            {"symbol": "BBB", "status": "OK", "market_cap": 5000.0, "opm": 20.0},
+            {"symbol": "CCC", "status": "OK", "market_cap": 5000.0, "opm": 20.0},
+            # DDD: no fundamentals record at all -> still gets a row, with 0 criteria passed
+        ])
+        members = pd.DataFrame({"Symbol": ["AAA", "BBB", "CCC", "DDD"], "Company Name": list("ABCD")})
+        with patch("sector_screen.evaluate_stock_technicals", side_effect=fake_tech), \
+                patch("sector_screen.get_fundamentals_summary", return_value=fundamentals) as live:
+            table = build_review_table(members, pd.DataFrame(), pd.DataFrame(), criteria)
+
+        live.assert_called_once_with(["AAA", "BBB", "CCC", "DDD"], use_cache=False)
+        assert table["symbol"].tolist() == ["CCC", "BBB", "AAA", "DDD"]  # count desc, then RS desc
+        assert table.set_index("symbol")["fundamentals_passed_count"].to_dict() == {"CCC": 2, "BBB": 2, "AAA": 1, "DDD": 0}
+        assert table.set_index("symbol")["technically_attractive"].to_dict() == {"CCC": False, "BBB": False, "AAA": True, "DDD": False}

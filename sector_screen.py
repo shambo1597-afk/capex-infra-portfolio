@@ -17,7 +17,8 @@ Writes one CSV per sector (output/cement_full_screen.csv, output/capital_goods_f
 output/power_full_screen.csv) listing every constituent.
 
 Usage:
-    python sector_screen.py
+    python sector_screen.py                  # technical-first screens for all three sectors
+    python sector_screen.py --review-cement  # unfiltered Cement review table (no screening)
 """
 
 import logging
@@ -147,6 +148,76 @@ def run_sector_screens(sectors: Optional[List[str]] = None, use_price_cache: boo
     return results
 
 
+def build_review_table(
+    constituents: pd.DataFrame,
+    prices: pd.DataFrame,
+    benchmark: pd.DataFrame,
+    criteria: List[Tuple[str, str, float, str]],
+) -> pd.DataFrame:
+    """
+    Unfiltered review table: one row per constituent with live fundamentals (each with a
+    pass/fail flag against the reference criteria) and technicals side by side.
+
+    Nothing is screened out; the flags, fundamentals_passed_count and technically_attractive
+    are informational. Sorted by fundamentals_passed_count, then RS vs Nifty 500, descending.
+    """
+    symbols = constituents["Symbol"].tolist()
+    fundamentals = get_fundamentals_summary(symbols, use_cache=False)
+    records = {r["symbol"]: r for r in fundamentals.to_dict("records")} if not fundamentals.empty else {}
+
+    rows = []
+    for _, member in constituents.iterrows():
+        symbol = member["Symbol"]
+        record = records.get(symbol, {"status": "Data Unavailable"})
+        result = evaluate_fundamental_screen(record, criteria)
+        failed = result.pop("failed_criteria")
+        sym_prices = prices[prices["SYMBOL"] == symbol] if not prices.empty else pd.DataFrame()
+        tech = evaluate_stock_technicals(symbol, sym_prices, benchmark, rs_lookback=TECHNICAL_RS_LOOKBACK_DAYS)
+        attractive, _ = technical_screen_result(tech["rs_score_vs_nifty500"], tech["trend_direction"])
+        rows.append({
+            "symbol": symbol,
+            "company_name": member.get("Company Name"),
+            **result,
+            "fundamentals_passed_count": len(criteria) - len(failed),
+            "fundamentals_failed": "; ".join(failed),
+            "fundamentals_status": record.get("status"),
+            "fundamentals_as_of": date.today().isoformat(),
+            "current_price": tech["current_price"],
+            "latest_rsi": tech["latest_rsi"],
+            "latest_adx": tech["latest_adx"],
+            "plus_di": tech.get("plus_di"),
+            "minus_di": tech.get("minus_di"),
+            "trend_direction": tech["trend_direction"],
+            "rs_score_vs_nifty500": tech["rs_score_vs_nifty500"],
+            "nearest_support": tech["nearest_support"],
+            "nearest_resistance": tech["nearest_resistance"],
+            "technically_attractive": attractive,
+            "price_sessions": int(sym_prices["DATE1"].nunique()) if not sym_prices.empty else 0,
+        })
+    table = pd.DataFrame(rows)
+    return table.sort_values(["fundamentals_passed_count", "rs_score_vs_nifty500"],
+                             ascending=[False, False], na_position="last").reset_index(drop=True)
+
+
+def run_review_table(sector: str, output_csv: Path) -> pd.DataFrame:
+    """Build and save the unfiltered review table for one sector's official index."""
+    cfg = SECTOR_SCREENS[sector]
+    constituents = load_constituents(cfg["constituents_csv"])
+    start, end = get_one_year_date_range()
+    prices = NSEBhavcopyFetcher().fetch_date_range(start, end, constituents["Symbol"].tolist(), use_cache=True)
+    benchmark = fetch_benchmark_nifty500(start_date=start.isoformat(), end_date=end.isoformat())
+    if benchmark.empty:
+        raise RuntimeError("Nifty 500 benchmark unavailable; RS cannot be computed.")
+    table = build_review_table(constituents, prices, benchmark, cfg["criteria"])
+    if len(table) != len(constituents) or set(table["symbol"]) != set(constituents["Symbol"]):
+        raise RuntimeError("Review table does not contain exactly one row per constituent.")
+    output_csv = Path(output_csv)
+    output_csv.parent.mkdir(parents=True, exist_ok=True)
+    table.to_csv(output_csv, index=False)
+    logger.info("Saved %s review table (%d rows) to %s", sector, len(table), output_csv.resolve())
+    return table
+
+
 def print_screen_summary(results: Dict[str, pd.DataFrame]) -> None:
     print("\n" + "=" * 115)
     print(" SECTOR SCREEN: technical screen first (RS > 0 AND Bullish), then live fundamental safety screen")
@@ -160,5 +231,10 @@ def print_screen_summary(results: Dict[str, pd.DataFrame]) -> None:
 
 
 if __name__ == "__main__":
-    print_screen_summary(run_sector_screens())
+    if len(sys.argv) > 1 and sys.argv[1] == "--review-cement":
+        # Unfiltered Cement review table (no screening): output/cement_full_review_table.csv
+        from config import OUTPUT_DIR
+        run_review_table("Cement", OUTPUT_DIR / "cement_full_review_table.csv")
+    else:
+        print_screen_summary(run_sector_screens())
     sys.exit(0)
