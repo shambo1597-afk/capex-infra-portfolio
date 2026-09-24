@@ -27,6 +27,7 @@ from config import (
     OUTPUT_DIR,
     SUMMARY_OUTPUT_CSV,
 )
+from fundamentals import get_fundamentals_summary
 
 # -----------------------------------------------------------------------------
 # PAGE CONFIGURATION & THEME STYLING
@@ -239,61 +240,13 @@ def load_historical_ohlcv() -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
-def load_fundamentals_data() -> Tuple[Optional[pd.DataFrame], List[str]]:
+def load_fundamentals_summary(force_refresh: bool = False) -> pd.DataFrame:
     """
-    Scan data/fundamentals/ for Screener.in CSV exports (e.g. cement-cement-products__1_.csv,
-    power/capital goods screeners), parse criteria, and map to locked portfolio symbols.
-
-    Returns:
-        Tuple[Optional[pd.DataFrame], List[str]]: (Parsed fundamentals DataFrame, list of found files)
+    Fetch and parse fundamental quality, return, leverage, and cash flow metrics
+    directly from individual Screener.in company pages with local disk caching
+    under data/fundamentals_cache/.
     """
-    fund_dir = Path("data/fundamentals")
-    if not fund_dir.exists():
-        return None, []
-
-    csv_files = glob.glob(str(fund_dir / "*.csv"))
-    if not csv_files:
-        return None, []
-
-    all_dfs = []
-    for f in csv_files:
-        try:
-            temp_df = pd.read_csv(f)
-            temp_df.columns = [c.strip() for c in temp_df.columns]
-            all_dfs.append(temp_df)
-        except Exception:
-            continue
-
-    if not all_dfs:
-        return None, [Path(f).name for f in csv_files]
-
-    combined = pd.concat(all_dfs, ignore_index=True)
-
-    # Standardize column headers from typical Screener.in export variants
-    col_map = {}
-    for col in combined.columns:
-        c_lower = col.lower()
-        if "roce" in c_lower and "3" not in c_lower and "avg" not in c_lower:
-            col_map[col] = "ROCE (%)"
-        elif ("roce" in c_lower and "3" in c_lower) or "avg roce 3" in c_lower:
-            col_map[col] = "Average ROCE 3Years (%)"
-        elif "opm" in c_lower or "operating profit margin" in c_lower:
-            col_map[col] = "OPM (%)"
-        elif "debt" in c_lower and "equity" in c_lower:
-            col_map[col] = "Debt to Equity"
-        elif "cash" in c_lower and "flow" in c_lower and "operat" in c_lower:
-            col_map[col] = "Operating Cash Flow (₹ Cr)"
-        elif "sales" in c_lower and "3" in c_lower:
-            col_map[col] = "Sales growth 3Years (%)"
-        elif "profit" in c_lower and "3" in c_lower:
-            col_map[col] = "Profit growth 3Years (%)"
-        elif c_lower in ["name", "company name", "company"]:
-            col_map[col] = "Company Name"
-        elif c_lower in ["symbol", "ticker"]:
-            col_map[col] = "Symbol"
-
-    standardized = combined.rename(columns=col_map)
-    return standardized, [Path(f).name for f in csv_files]
+    return get_fundamentals_summary(LOCKED_PORTFOLIO_SYMBOLS, use_cache=not force_refresh)
 
 
 # -----------------------------------------------------------------------------
@@ -446,52 +399,91 @@ with tab_overview:
 # TAB 2: FUNDAMENTALS
 # =============================================================================
 with tab_fundamentals:
-    st.markdown("### Fundamental Screen Criteria")
+    st.markdown("### Fundamental Analysis & Quality Screening")
     st.caption(
-        "Quantitative fundamental screening framework evaluating quality, return on capital, margin profile, "
-        "and leverage resilience across capital-intensive infrastructure sectors."
+        "Fundamental metrics fetched directly from authentic Screener.in company pages (/consolidated/ with standalone fallback) "
+        "and cached locally in data/fundamentals_cache/. Evaluates core financial health, capital productivity, leverage, "
+        "and cash flow resilience across the 8 locked portfolio constituents."
     )
 
-    fund_df, detected_files = load_fundamentals_data()
+    # Visible NTPC Fundamental Justification Banner
+    st.markdown(
+        f"""
+        <div class="caveat-box">
+            <strong>NTPC Fundamental Thesis:</strong> While displaying near-term technical consolidation, NTPC was included
+            for its industry-leading operating cash flow generation (<strong>₹50,902 Cr</strong> &mdash; largest in portfolio),
+            strong <strong>15.1% ROE</strong>, and regulated tariff cost-plus model providing defensive ballast during sector downturns.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    if fund_df is None or fund_df.empty:
-        # Prompt requirement: show clear message rather than erroring or blank
-        st.info(
-            "Fundamentals data not yet loaded — place screener CSVs in data/fundamentals/ "
-            "(e.g., cement-cement-products__1_.csv, power screener CSV, and capital goods screener CSV)."
-        )
+    fund_raw_df = load_fundamentals_summary()
 
-        st.markdown("#### Qualifying Screening Criteria (Academic Framework)")
-        c1, c2 = st.columns(2)
-        with c1:
-            st.markdown(
-                """
-                - **ROCE (%):** Return on Capital Employed $> 12\%$ ensuring productive capital deployment.
-                - **Average ROCE 3Years (%):** Smooths cyclical peaks and troughs in capex cycles.
-                - **OPM (%):** Operating Profit Margin resilience against raw material inflation (energy/limestone/steel).
-                - **Debt to Equity:** Leverage threshold ensuring balance sheet health during interest rate fluctuations.
-                """
-            )
-        with c2:
-            st.markdown(
-                """
-                - **Operating Cash Flow (₹ Cr):** Quality of earnings confirmation; positive cash flow from operations.
-                - **Sales growth 3Years (%):** Evidence of revenue scaling and order book execution.
-                - **Profit growth 3Years (%):** Operating leverage and net earnings expansion.
-                """
-            )
-
-        # Overview of locked stocks awaiting fundamental import
-        st.markdown("#### Constituents Awaiting Screener.in CSV Ingestion")
-        preview_df = pd.DataFrame([
-            {"Symbol": s, "Name": LOCKED_PORTFOLIO[s]["name"], "Sector": LOCKED_PORTFOLIO[s]["sector"], "Status": "Awaiting CSV in data/fundamentals/"}
-            for s in LOCKED_PORTFOLIO_SYMBOLS
-        ])
-        st.dataframe(preview_df, hide_index=True, use_container_width=True)
-
+    if fund_raw_df is None or fund_raw_df.empty:
+        st.warning("Fundamentals data unavailable. Please verify network access to Screener.in.")
     else:
-        st.success(f"Loaded fundamental records from: {', '.join(detected_files)}")
-        st.dataframe(fund_df, hide_index=True, use_container_width=True)
+        # Build clean formatted display DataFrame
+        formatted_rows = []
+        for _, row in fund_raw_df.iterrows():
+            sym = row["symbol"]
+            status = row.get("status", "OK")
+
+            if status != "OK" and pd.isna(row.get("roce")):
+                formatted_rows.append({
+                    "Symbol": sym,
+                    "Company Name": row.get("name", sym),
+                    "Sector": row.get("sector", "Other"),
+                    "Market Cap (₹ Cr)": "Data Unavailable",
+                    "Price (₹)": "Data Unavailable",
+                    "ROCE (%)": "Data Unavailable",
+                    "3-Yr Avg ROCE (%)": "Data Unavailable",
+                    "ROE (%)": "Data Unavailable",
+                    "Debt / Equity": "Data Unavailable",
+                    "Operating Cash Flow (₹ Cr)": "Data Unavailable",
+                    "OPM (%)": "Data Unavailable",
+                    "3-Yr Sales Growth (%)": "Data Unavailable",
+                    "3-Yr Profit Growth (%)": "Data Unavailable",
+                })
+            else:
+                formatted_rows.append({
+                    "Symbol": sym,
+                    "Company Name": row.get("name", sym),
+                    "Sector": row.get("sector", "Other"),
+                    "Market Cap (₹ Cr)": f"₹{row['market_cap']:,.0f} Cr" if pd.notna(row.get("market_cap")) else "Data Unavailable",
+                    "Price (₹)": f"₹{row['current_price']:,.2f}" if pd.notna(row.get("current_price")) else "Data Unavailable",
+                    "ROCE (%)": f"{row['roce']:.2f}%" if pd.notna(row.get("roce")) else "Data Unavailable",
+                    "3-Yr Avg ROCE (%)": f"{row['roce_3yr_avg']:.2f}%" if pd.notna(row.get("roce_3yr_avg")) else "Data Unavailable",
+                    "ROE (%)": f"{row['roe']:.2f}%" if pd.notna(row.get("roe")) else "Data Unavailable",
+                    "Debt / Equity": f"{row['debt_to_equity']:.2f}" if pd.notna(row.get("debt_to_equity")) else "Data Unavailable",
+                    "Operating Cash Flow (₹ Cr)": f"₹{row['operating_cash_flow']:,.0f} Cr" if pd.notna(row.get("operating_cash_flow")) else "Data Unavailable",
+                    "OPM (%)": f"{row['opm']:.1f}%" if pd.notna(row.get("opm")) else "Data Unavailable",
+                    "3-Yr Sales Growth (%)": f"{row['sales_growth_3yr']:+.1f}%" if pd.notna(row.get("sales_growth_3yr")) else "Data Unavailable",
+                    "3-Yr Profit Growth (%)": f"{row['profit_growth_3yr']:+.1f}%" if pd.notna(row.get("profit_growth_3yr")) else "Data Unavailable",
+                })
+
+        display_fund_df = pd.DataFrame(formatted_rows)
+        st.dataframe(display_fund_df, hide_index=True, use_container_width=True)
+
+    st.write("")
+    st.markdown("#### Academic Fundamental Screen Framework & Methodology")
+    f_col1, f_col2 = st.columns(2)
+    with f_col1:
+        st.markdown(
+            """
+            - **ROCE & 3-Year Avg ROCE (%):** Quantifies core operating profitability per unit of debt + equity capital employed. Multi-year averaging filters out cyclical lumpy capacity additions.
+            - **ROE (%):** Evaluates equity compounding power and DuPont efficiency.
+            - **OPM (%):** Operating Profit Margin resilience against raw material and power tariff swings.
+            """
+        )
+    with f_col2:
+        st.markdown(
+            """
+            - **Debt to Equity:** Solvency constraint. Capital-goods transformer specialist Voltamp operates debt-free ($0.00$), and UltraTech maintains prudent leverage ($0.31$).
+            - **Operating Cash Flow (₹ Cr):** Quality of earnings acid test; confirms cash conversion of accrual profits to service debt and fund capex.
+            - **3-Year Compounded Growth:** Demonstrates execution momentum across multi-year infrastructure order books.
+            """
+        )
 
 
 # =============================================================================

@@ -14,11 +14,13 @@ BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 RAW_BHAVCOPY_DIR = DATA_DIR / "raw_bhavcopy"
 PROCESSED_DATA_DIR = DATA_DIR / "processed"
+FUNDAMENTALS_CACHE_DIR = DATA_DIR / "fundamentals_cache"
 OUTPUT_DIR = BASE_DIR / "output"
 
 # Ensure runtime directories exist
 RAW_BHAVCOPY_DIR.mkdir(parents=True, exist_ok=True)
 PROCESSED_DATA_DIR.mkdir(parents=True, exist_ok=True)
+FUNDAMENTALS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # -----------------------------------------------------------------------------

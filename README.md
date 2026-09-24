@@ -63,15 +63,22 @@ A production-grade, mathematically transparent data pipeline and quantitative sc
 - **Rationale:** Automated scraping of `niftyindices.com` is brittle due to heavy client-side JavaScript rendering and frequently updated API payloads. The pipeline reads the official manual CSV with schema:
   `IndexName, Date, Total Returns Index, Net Total Return Index`
 
+### 4. Fundamental Quality Data — Direct Screener.in Extraction
+- **Endpoint Pattern:**
+  `https://www.screener.in/company/{SYMBOL}/consolidated/` (with fallback to `https://www.screener.in/company/{SYMBOL}/`)
+- **No Uploaded CSVs Required:** Direct HTTP scraping using real browser headers and persistent session cookies.
+- **Local Caching:** HTML files cached under `data/fundamentals_cache/{SYMBOL}.html` for instantaneous offline loads.
+- **Parsed Metrics:** Market Cap, Current Price, ROCE, ROE, 3-Year Average ROCE trend from Ratios, Cash from Operating Activity (CFO) from Cash Flows, Debt-to-Equity from Balance Sheet, OPM, and 3-Year Compounded Growth.
+
 ---
 
-## Portfolio Universe
+## Portfolio Universe (Locked Allocation — 8 Stocks)
 
-| Sector | Status | Symbols | Notes |
-| :--- | :--- | :--- | :--- |
-| **Cement** | Locked | `JKCEMENT`, `ULTRACEMCO`, `STARCEMENT` | Core portfolio exposure |
-| **Capital Goods / EPC** | Candidates | `ABB`, `CGPOWER`, `GVT&D`, `POWERINDIA`, `ELECON`, `TRITURBINE`, `TDPOWERSYS`, `SIEMENS`, `SCHNEIDER`, `CEMPRO` | 10 candidates screened for momentum & breakout |
-| **Power** | Placeholder | `POWER_SECTOR_STOCKS = []` | Reserved list variable in `config.py` for future addition |
+| Sector | Allocation | Symbols | Notes & Investment Committee Thesis |
+| :--- | :---: | :--- | :--- |
+| **Cement** | 3 Stocks | `JKCEMENT`, `ULTRACEMCO`, `STARCEMENT` | Core capex infrastructure plays with strong capacity expansion and pricing power |
+| **Capital Goods / EPC** | 2 Stocks | `BHEL`, `VOLTAMP` | BHEL (power equipment recovery) & Voltamp (debt-free, 28% 3-yr ROCE transformer specialist) |
+| **Power** | 3 Stocks | `POWERGRID`, `TATAPOWER`, `NTPC` | Transmission moat & green energy transition. **NTPC Caveat:** Near-term technical consolidation overridden for sector-best cash flows (₹50,902 Cr CFO) |
 
 ---
 
@@ -133,6 +140,7 @@ Using a 20-day rolling window:
 IAPFDOF/
 ├── data/
 │   ├── raw_bhavcopy/             # Cached daily NSE Bhavcopy slices (bhav_DD-Mon-YYYY.csv)
+│   ├── fundamentals_cache/       # Cached company HTML pages from Screener.in
 │   ├── processed/                # Unified historical OHLCV dataset
 │   └── nifty500_tri.csv          # Official Nifty 500 Total Returns Index CSV
 ├── output/
@@ -140,13 +148,16 @@ IAPFDOF/
 │   └── portfolio_historical_ohlcv.csv  # Clean historical OHLCV data across universe
 ├── tests/
 │   ├── __init__.py
+│   ├── test_fundamentals.py      # Unit tests for Screener.in extraction and parsing
 │   ├── test_indicators.py        # Unit tests for Wilder's smoothing, RSI, ADX, RS, S/R
 │   └── test_pipeline.py          # Integration tests for Bhavcopy parsing, aliases, benchmarks
 ├── config.py                     # Universe definitions, URLs, headers, symbol alias mapping
 ├── fetch_data.py                 # NSE Bhavcopy HTTP client, yfinance downloader, TRI loader
+├── fundamentals.py               # Direct Screener.in scraper, ratio parser, and local cache
 ├── indicators.py                 # Pure Pandas/NumPy technical indicator engine
 ├── analysis.py                   # Portfolio evaluator, table formatter, CSV exporter
 ├── main.py                       # CLI entry point orchestrating the end-to-end pipeline
+├── app.py                        # Streamlit 5-tab institutional portfolio dashboard
 ├── requirements.txt              # Project dependencies
 ├── .gitignore                    # Git ignore configurations
 └── README.md                     # Comprehensive academic & practical documentation

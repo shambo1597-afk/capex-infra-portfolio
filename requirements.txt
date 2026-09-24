@@ -17,3 +17,6 @@ pytest>=7.0.0
 # Interactive web dashboard
 streamlit>=1.30.0
 plotly>=5.15.0
+
+# HTML parsing for fundamental data extraction
+beautifulsoup4>=4.12.0
