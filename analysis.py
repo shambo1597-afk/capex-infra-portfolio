@@ -1,0 +1,259 @@
+"""
+Portfolio Analysis and Technical Summary Engine.
+Author: Antigravity / SAPM & Derivatives Coursework (IIM Bodh Gaya)
+
+This module ingests processed historical OHLCV data for the target stock universe,
+runs the technical indicators (RSI, ADX, Relative Strength vs Nifty 500, Support/Resistance),
+assembles the consolidated portfolio summary row per stock, saves the output CSV,
+and renders a readable terminal summary table.
+"""
+
+import logging
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple, Union
+
+import numpy as np
+import pandas as pd
+
+from config import (
+    CEMENT_STOCKS,
+    CAPITAL_GOODS_EPC_STOCKS,
+    POWER_SECTOR_STOCKS,
+    SUMMARY_OUTPUT_CSV,
+)
+from indicators import (
+    compute_adx,
+    compute_relative_strength,
+    compute_rsi,
+    compute_support_resistance,
+)
+
+logger = logging.getLogger("analysis")
+
+
+def evaluate_stock_technicals(
+    symbol: str,
+    stock_df: pd.DataFrame,
+    benchmark_df: pd.DataFrame,
+    rsi_period: int = 14,
+    adx_period: int = 14,
+    rs_lookback: int = 63,
+    sr_window: int = 20
+) -> Dict[str, Union[str, float, None]]:
+    """
+    Compute all required technical metrics for a single stock and construct its summary record.
+
+    Financial Concept & Logic:
+    - Current Price: The latest official close price from NSE Bhavcopy.
+    - RSI (14-period Wilder): Gauges overbought (>70) or oversold (<30) momentum velocity.
+    - ADX & Direction (14-period Wilder): Gauges trend strength (>25 indicates strong trend)
+      and direction (+DI vs -DI).
+    - Relative Strength (63-day spread): Quantifies 1-quarter alpha vs the Nifty 500 benchmark.
+    - Nearest Support: Identifies the nearest price floor beneath current price for risk management.
+    - Nearest Resistance: Identifies the overhead ceiling for target price forecasting.
+
+    Parameters:
+        symbol (str): Equity ticker.
+        stock_df (pd.DataFrame): Historical daily OHLCV series.
+        benchmark_df (pd.DataFrame): Benchmark daily index series.
+        rsi_period (int): Period for Wilder's RSI (default 14).
+        adx_period (int): Period for Wilder's ADX (default 14).
+        rs_lookback (int): Trading sessions for RS spread (default 63).
+        sr_window (int): Rolling window for support/resistance (default 20).
+
+    Returns:
+        Dict: Single summary dictionary for the stock.
+    """
+    if stock_df.empty or len(stock_df) < 5:
+        logger.warning("Insufficient historical data for symbol %s to evaluate indicators.", symbol)
+        return {
+            "symbol": symbol,
+            "current_price": np.nan,
+            "latest_rsi": np.nan,
+            "latest_adx": np.nan,
+            "trend_direction": "N/A (Insufficient Data)",
+            "plus_di": np.nan,
+            "minus_di": np.nan,
+            "rs_score_vs_nifty500": np.nan,
+            "nearest_support": None,
+            "nearest_resistance": None,
+            "sector": _classify_sector(symbol),
+        }
+
+    # Sort stock history by date
+    clean_stock = stock_df.sort_values("DATE1").reset_index(drop=True)
+    latest_close = float(clean_stock["CLOSE_PRICE"].iloc[-1])
+
+    # 1. RSI (14-period Wilder)
+    rsi_series = compute_rsi(clean_stock["CLOSE_PRICE"], period=rsi_period)
+    latest_rsi = float(rsi_series.iloc[-1]) if not rsi_series.isna().all() else np.nan
+
+    # 2. ADX, +DI, -DI (14-period Wilder)
+    adx_df = compute_adx(clean_stock, period=adx_period)
+    latest_adx = float(adx_df["ADX"].iloc[-1]) if not adx_df["ADX"].isna().all() else np.nan
+    latest_plus_di = float(adx_df["PLUS_DI"].iloc[-1]) if not adx_df["PLUS_DI"].isna().all() else np.nan
+    latest_minus_di = float(adx_df["MINUS_DI"].iloc[-1]) if not adx_df["MINUS_DI"].isna().all() else np.nan
+    latest_trend_dir = str(adx_df["TREND_DIR"].iloc[-1])
+
+    # 3. Relative Strength Spread vs Nifty 500 (63-day lookback)
+    rs_spread_pp, stock_ret, bench_ret = compute_relative_strength(
+        stock_df=clean_stock,
+        benchmark_df=benchmark_df,
+        lookback_days=rs_lookback
+    )
+
+    # 4. Support and Resistance levels (20-day rolling window)
+    support_lvl, resistance_lvl = compute_support_resistance(
+        df=clean_stock,
+        rolling_window=sr_window,
+        current_price=latest_close
+    )
+
+    return {
+        "symbol": symbol,
+        "sector": _classify_sector(symbol),
+        "current_price": round(latest_close, 2),
+        "latest_rsi": round(latest_rsi, 2) if not np.isnan(latest_rsi) else np.nan,
+        "latest_adx": round(latest_adx, 2) if not np.isnan(latest_adx) else np.nan,
+        "plus_di": round(latest_plus_di, 2) if not np.isnan(latest_plus_di) else np.nan,
+        "minus_di": round(latest_minus_di, 2) if not np.isnan(latest_minus_di) else np.nan,
+        "trend_direction": latest_trend_dir,
+        "rs_score_vs_nifty500": round(rs_spread_pp, 2) if not np.isnan(rs_spread_pp) else np.nan,
+        "nearest_support": support_lvl,
+        "nearest_resistance": resistance_lvl,
+    }
+
+
+def _classify_sector(symbol: str) -> str:
+    """Helper to classify stock into its portfolio sector."""
+    if symbol in CEMENT_STOCKS:
+        return "Cement (Locked)"
+    elif symbol in CAPITAL_GOODS_EPC_STOCKS:
+        return "Capital Goods / EPC"
+    elif symbol in POWER_SECTOR_STOCKS:
+        return "Power (Pending)"
+    return "Other"
+
+
+def generate_portfolio_summary(
+    stock_data: pd.DataFrame,
+    benchmark_df: pd.DataFrame,
+    target_symbols: Optional[List[str]] = None,
+    output_csv_path: Optional[Path] = SUMMARY_OUTPUT_CSV
+) -> pd.DataFrame:
+    """
+    Generate the complete portfolio technical summary across all target stocks,
+    save the clean CSV output, and return the summary DataFrame.
+
+    Parameters:
+        stock_data (pd.DataFrame): Consolidated historical OHLCV data.
+        benchmark_df (pd.DataFrame): Benchmark Nifty 500 DataFrame.
+        target_symbols (List[str], optional): List of symbols to evaluate.
+        output_csv_path (Path, optional): Destination file path for summary CSV.
+
+    Returns:
+        pd.DataFrame: Portfolio summary DataFrame.
+    """
+    if target_symbols is None:
+        if "SYMBOL" in stock_data.columns:
+            target_symbols = sorted(stock_data["SYMBOL"].unique().tolist())
+        else:
+            target_symbols = []
+
+    logger.info("Evaluating portfolio technical indicators for %d symbols...", len(target_symbols))
+
+    summary_records = []
+    for symbol in target_symbols:
+        sym_df = stock_data[stock_data["SYMBOL"] == symbol] if not stock_data.empty else pd.DataFrame()
+        record = evaluate_stock_technicals(
+            symbol=symbol,
+            stock_df=sym_df,
+            benchmark_df=benchmark_df
+        )
+        summary_records.append(record)
+
+    summary_df = pd.DataFrame(summary_records)
+
+    # Order columns cleanly as specified in coursework requirements:
+    # symbol, latest RSI, latest ADX (+ trend direction based on +DI vs -DI),
+    # RS score vs Nifty 500, current price, nearest support level, nearest resistance level
+    display_columns = [
+        "symbol",
+        "sector",
+        "current_price",
+        "latest_rsi",
+        "latest_adx",
+        "trend_direction",
+        "rs_score_vs_nifty500",
+        "nearest_support",
+        "nearest_resistance"
+    ]
+    # Filter to existing columns
+    ordered_cols = [c for c in display_columns if c in summary_df.columns]
+    summary_df = summary_df[ordered_cols]
+
+    # Save to clean CSV if path provided
+    if output_csv_path:
+        out_path = Path(output_csv_path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        summary_df.to_csv(out_path, index=False)
+        logger.info("Saved portfolio technical summary to: %s", out_path.resolve())
+
+    return summary_df
+
+
+def print_summary_table(summary_df: pd.DataFrame) -> None:
+    """
+    Format and print a terminal table of the portfolio technical summary.
+
+    Parameters:
+        summary_df (pd.DataFrame): Summary DataFrame to render.
+    """
+    print("\n" + "=" * 115)
+    print(" INDIAN EQUITY PORTFOLIO TECHNICAL ANALYSIS SUMMARY (IIM BODH GAYA - SAPM)")
+    print(" Benchmark: Nifty 500 (^CRSLDX) | Lookback: 1-Year Bhavcopy History | RS Window: 63 Days")
+    print("=" * 115)
+
+    if summary_df.empty:
+        print("No summary records to display.")
+        print("=" * 115 + "\n")
+        return
+
+    # Try using tabulate for beautiful formatting if available
+    try:
+        from tabulate import tabulate
+        # Format None / NaN resistance as 'ATH / Blue Sky'
+        formatted_df = summary_df.copy()
+        formatted_df["nearest_resistance"] = formatted_df["nearest_resistance"].apply(
+            lambda x: "ATH / Blue Sky" if pd.isna(x) or x is None else f"{x:,.2f}"
+        )
+        formatted_df["nearest_support"] = formatted_df["nearest_support"].apply(
+            lambda x: "N/A" if pd.isna(x) or x is None else f"{x:,.2f}"
+        )
+        formatted_df["current_price"] = formatted_df["current_price"].apply(
+            lambda x: f"{x:,.2f}" if pd.notna(x) else "N/A"
+        )
+        formatted_df["rs_score_vs_nifty500"] = formatted_df["rs_score_vs_nifty500"].apply(
+            lambda x: f"{x:+.2f} pp" if pd.notna(x) else "N/A"
+        )
+        table_str = tabulate(
+            formatted_df,
+            headers="keys",
+            tablefmt="fancy_grid",
+            showindex=False,
+            numalign="right",
+            stralign="left"
+        )
+        print(table_str)
+    except ImportError:
+        # Fallback to pandas string rendering
+        pd.set_option("display.max_columns", None)
+        pd.set_option("display.width", 120)
+        print(summary_df.to_string(index=False))
+
+    print("=" * 115)
+    print(" Key Takeaways:")
+    print(" - RSI > 70: Overbought momentum | RSI < 30: Oversold / Mean-reversion candidate")
+    print(" - ADX > 25: Strong directional trend | ADX < 20: Consolidating / Range-bound")
+    print(" - RS Score: Percentage-point excess return over Nifty 500 during the last 63 trading days")
+    print("=" * 115 + "\n")

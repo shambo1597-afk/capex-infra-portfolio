@@ -1,0 +1,15 @@
+# Core data manipulation and mathematical calculations
+pandas>=2.0.0
+numpy>=1.24.0
+
+# HTTP requests with session persistence for NSE API
+requests>=2.31.0
+
+# Benchmark index data
+yfinance>=0.2.30
+
+# Terminal table formatting and styling
+tabulate>=0.9.0
+
+# Testing framework
+pytest>=7.0.0

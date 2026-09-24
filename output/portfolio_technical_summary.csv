@@ -1,0 +1,14 @@
+symbol,sector,current_price,latest_rsi,latest_adx,trend_direction,rs_score_vs_nifty500,nearest_support,nearest_resistance
+JKCEMENT,Cement (Locked),5085.0,47.91,31.18,Bearish (Downtrend),4.46,5070.0,5310.0
+ULTRACEMCO,Cement (Locked),11155.0,45.94,22.11,Bearish (Downtrend),-0.71,11074.0,11674.0
+STARCEMENT,Cement (Locked),189.23,43.45,24.22,Bearish (Downtrend),-12.59,186.0,196.42
+ABB,Capital Goods / EPC,7120.0,40.25,19.69,Bearish (Downtrend),2.26,7085.0,7285.0
+CGPOWER,Capital Goods / EPC,895.0,50.48,15.02,Bullish (Uptrend),-4.42,887.1,900.0
+GVT&D,Capital Goods / EPC,4417.0,51.01,12.78,Bullish (Uptrend),-10.43,4414.3,4452.0
+POWERINDIA,Capital Goods / EPC,31150.0,43.44,16.51,Bearish (Downtrend),-10.03,31140.0,31875.0
+ELECON,Capital Goods / EPC,466.6,63.71,14.54,Bullish (Uptrend),-15.36,465.95,473.85
+TRITURBINE,Capital Goods / EPC,562.1,45.18,14.74,Bearish (Downtrend),-15.98,561.05,604.05
+TDPOWERSYS,Capital Goods / EPC,765.5,39.94,30.23,Bearish (Downtrend),-35.73,765.0,767.95
+SIEMENS,Capital Goods / EPC,3886.0,47.46,18.31,Bearish (Downtrend),6.62,3875.3,3901.0
+SCHNEIDER,Capital Goods / EPC,1243.4,51.38,13.74,Bullish (Uptrend),10.44,1243.0,1249.8
+CEMPRO,Capital Goods / EPC,1311.2,54.36,15.95,Bullish (Uptrend),7.85,1274.6,1315.4
