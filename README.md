@@ -185,7 +185,7 @@ IAPFDOF/
 3. **Install Dependencies:**
    ```bash
    pip install -r requirements.txt
-   # Run once to install headless Chromium for automated benchmark retrieval:
+   # Run once to install Chromium for automated benchmark retrieval:
    playwright install chromium
    ```
 
@@ -243,7 +243,11 @@ python main.py --tri-source automated
 ## Automated TRI Fetching (Experimental)
 
 ### Why Browser Automation is Needed
-The benchmark Nifty 500 Total Returns Index (TRI) series is hosted at [niftyindices.com/reports/historical-data](https://niftyindices.com/reports/historical-data). Unlike standardized price return series available on Yahoo Finance (`^CRSLDX`), TRI historical records are reachable solely through the portal's client-side JavaScript UI. Direct HTTP requests to the underlying endpoints (`Backpage.aspx/getHistoricaldatatabletoString` and `Backpage.aspx/getTotalReturnIndexString`) return raw HTML error shells rather than structured JSON/CSV data. A real headless browser (Chromium via Playwright) that navigates the DOM, interacts with dropdown menus and date pickers, submits the query, and captures the generated CSV export is required.
+The benchmark Nifty 500 Total Returns Index (TRI) series is hosted at [niftyindices.com/reports/historical-data](https://niftyindices.com/reports/historical-data). Unlike standardized price return series available on Yahoo Finance (`^CRSLDX`), TRI historical records are only served to a real browser session:
+- The site sits behind **Akamai Bot Manager**. The page's data call (`/BackPage/getTotalReturnIndexString` — the older `Backpage.aspx/...` paths are retired and return the HTML shell) is rejected with `403 Access Denied` unless the request carries the Akamai session cookies that the site's own scripts set in a browser.
+- Playwright's default headless build (`chromium_headless_shell`) is blocked outright (403, or a stalled connection that surfaces as a navigation timeout). The routine therefore launches the **full Chromium build in new-headless mode** (`channel="chromium"`) with `HeadlessChrome` stripped from the user agent. Akamai still rejects roughly 1 in 4 fresh sessions, so navigation is retried (up to 4 times, fresh browser context each time, with backoff).
+- The portal accepts at most 365 days per query, so longer ranges are requested in ≤365-day windows and stitched together.
+- The "csv format" link builds the file client-side from the results table, so the downloaded CSV has exactly the manual schema (`IndexName, Date, Total Returns Index, Net Total Return Index`) and is parsed by the same `load_benchmark_tri()` routine.
 
 ### How to Enable
 Automated fetching is strictly opt-in and disabled by default:
@@ -256,14 +260,15 @@ python main.py --skip-fetch --tri-source automated
 ```
 
 ### Requirements & Setup
-Playwright requires a headless Chromium browser binary. After installing project requirements, run:
+Requires Playwright ≥ 1.49 and the full Chromium build (installed alongside the headless shell by):
 ```bash
 playwright install chromium
 ```
+Behind a TLS-intercepting proxy (corporate network, sandboxed CI), Chromium must trust the proxy's CA via its NSS store (`certutil -A -d sql:$HOME/.pki/nssdb -n proxy-ca -t "C,," -i <ca.crt>`); otherwise navigation fails with `net::ERR_CERT_AUTHORITY_INVALID`. Datacenter IPs (e.g. Google Colab) may be scored more harshly by Akamai than residential connections.
 
 ### Reliability & Fragility Disclaimer
 > [!WARNING]
-> **Experimental Feature:** Automated browser retrieval depends directly on `niftyindices.com`'s active DOM layout, element IDs (`#ddlHistoricalreturntypee`, `#submit_totalindexhistorical`, `#exportTotalindex`), and client-side scripts. If the portal redesigns its layout or changes dropdown hierarchies, automated scraping may fail.
+> **Experimental Feature:** Automated browser retrieval depends directly on `niftyindices.com`'s active DOM layout, element IDs (`#HistoricalMenu`/`#maindd li.form5`, `#ddlHistoricalreturntypee*`, `#submit_totalindexhistorical`, `#exportTotalindex`), client-side scripts, and on Akamai continuing to admit the automated session. If the portal redesigns its layout or tightens bot detection, automated retrieval may fail.
 
 ### Fail-Safe Fallback Guarantee
 The automated fetch routine in `fetch_benchmark_tri_automated()` is completely wrapped in a defensive `try...except` block. If any step fails (network timeout, element not found, download failure, missing Playwright browser binary), the pipeline logs a detailed warning and **automatically falls back** to `load_benchmark_tri()` using the local manual CSV at `data/nifty500_tri.csv`. Running `python main.py` with no flags remains the default, proven-working, and most reliable production path.

@@ -403,203 +403,228 @@ def load_benchmark_tri(csv_path: Optional[Path] = None) -> pd.DataFrame:
     return df
 
 
+TRI_HISTORICAL_URL = "https://niftyindices.com/reports/historical-data"
+TRI_ENDPOINT_FRAGMENT = "/BackPage/getTotalReturnIndexString"
+TRI_MAX_WINDOW_DAYS = 365        # Portal rejects ranges over 365 days (alert since Aug-2025)
+TRI_SESSION_ATTEMPTS = 4         # Akamai intermittently rejects a fresh browser session
+TRI_SESSION_BACKOFF_SECONDS = 15
+TRI_UI_PAUSE_MS = 800            # Unhurried pacing between UI steps; rapid-fire input gets flagged
+
+
+class _TriSessionRejected(RuntimeError):
+    """niftyindices.com's bot protection rejected the current browser session (retryable)."""
+
+
 def fetch_benchmark_tri_automated(start_date: str, end_date: str) -> pd.DataFrame:
     """
     Fetch Nifty 500 TRI historical data via browser automation, since
     niftyindices.com's TRI data is only reachable through its
     JavaScript-rendered UI, not a stable public API.
+
+    Findings that shape this implementation (verified against the live site, Sep-2026):
+      - The site sits behind Akamai Bot Manager. Playwright's default headless build
+        (chromium_headless_shell) is blocked outright (403 'Access Denied' or a stalled
+        connection that surfaces as a navigation timeout). The full Chromium build in
+        new-headless mode (channel="chromium") with 'HeadlessChrome' stripped from the
+        user agent passes, though Akamai still rejects some sessions (at page load or
+        later on the data call), hence whole-session retries with a fresh browser context,
+        keeping any windows already captured.
+      - The data endpoint (/BackPage/getTotalReturnIndexString) also requires the Akamai
+        session cookies, so direct HTTP POSTs are rejected; driving the real page is needed.
+      - The portal rejects date ranges longer than 365 days, so requests are chunked.
+      - The 'csv format' link builds the file client-side from the rendered table, so
+        expect_download() captures exactly the manual-download CSV format.
+
+    Falls back to the local manual CSV (load_benchmark_tri) on any failure.
     """
     import tempfile
-    import urllib.parse
 
     logger.info("Attempting automated browser retrieval of Nifty 500 TRI from niftyindices.com...")
     try:
         from playwright.sync_api import sync_playwright
 
-        # Standardize dates into DD-Mon-YYYY (e.g. '24-Sep-2024') required by niftyindices portal
-        if isinstance(start_date, (datetime, date)):
-            start_dt = start_date
-        else:
-            start_dt = pd.to_datetime(start_date).date()
+        start_dt = start_date if isinstance(start_date, date) else pd.to_datetime(start_date).date()
+        end_dt = end_date if isinstance(end_date, date) else pd.to_datetime(end_date).date()
+        if isinstance(start_dt, datetime):
+            start_dt = start_dt.date()
+        if isinstance(end_dt, datetime):
+            end_dt = end_dt.date()
+        if start_dt > end_dt:
+            raise ValueError(f"start_date {start_dt} is after end_date {end_dt}")
 
-        if isinstance(end_date, (datetime, date)):
-            end_dt = end_date
-        else:
-            end_dt = pd.to_datetime(end_date).date()
+        # Split into windows the portal accepts (<= 365 days each)
+        windows = []
+        chunk_start = start_dt
+        while chunk_start <= end_dt:
+            chunk_end = min(chunk_start + timedelta(days=TRI_MAX_WINDOW_DAYS), end_dt)
+            windows.append((chunk_start, chunk_end))
+            chunk_start = chunk_end + timedelta(days=1)
 
-        start_str = start_dt.strftime("%d-%b-%Y")
-        end_str = end_dt.strftime("%d-%b-%Y")
-
-        with sync_playwright() as p:
+        with sync_playwright() as p, tempfile.TemporaryDirectory() as tmp_dir:
+            # Full Chromium build (new headless), not the headless shell Akamai blocks
             browser = p.chromium.launch(
                 headless=True,
-                args=[
-                    "--disable-blink-features=AutomationControlled",
-                    "--no-sandbox",
-                    "--disable-dev-shm-usage",
-                ]
+                channel="chromium",
+                args=["--disable-blink-features=AutomationControlled"],
             )
+            chunk_frames = {}  # (start, end) window -> DataFrame, or None when the window has no data
             try:
-                context = browser.new_context(
-                    user_agent=(
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                        "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
-                    ),
-                    viewport={"width": 1280, "height": 800},
-                    accept_downloads=True,
-                )
-                page = context.new_page()
-                page.set_default_timeout(30000)
+                probe = browser.new_page()
+                user_agent = str(probe.evaluate("navigator.userAgent")).replace("HeadlessChrome", "Chrome")
+                probe.close()
 
-                # Auto-accept dialog alerts (e.g., date range limit notices)
-                page.on("dialog", lambda dialog: dialog.accept())
-
-                # 1. Launch headless Chromium, navigate to historical data page
-                logger.info("Navigating to https://niftyindices.com/reports/historical-data...")
-                try:
-                    page.goto("https://niftyindices.com/reports/historical-data", wait_until="domcontentloaded", timeout=30000)
-                except Exception:
-                    # Retry with commit if domcontentloaded stalls on external trackers
-                    page.goto("https://niftyindices.com/reports/historical-data", wait_until="commit", timeout=20000)
-                page.wait_for_timeout(1500)
-
-                # 2. Click dropdown currently showing 'Historical Index Data' and select 'Total returns Index Values'
-                menu_btn = page.locator("#HistoricalMenu, a.btn.btn-select")
-                if menu_btn.count() > 0:
-                    menu_btn.first.click()
-                    page.wait_for_timeout(500)
-
-                tri_opt = page.locator("#maindd li.form5, #maindd li:has-text('Total returns Index Values')")
-                if tri_opt.count() > 0:
-                    tri_opt.first.click()
-                else:
-                    page.evaluate("if (typeof ReturnIndextype === 'function') ReturnIndextype();")
-                page.wait_for_timeout(1000)
-
-                # 3. Set 'Select an Index Type' to 'Equity'
-                page.wait_for_selector("#ddlHistoricalreturntypee option[value='Equity']", timeout=15000)
-                page.select_option("#ddlHistoricalreturntypee", value="Equity")
-                page.wait_for_timeout(1000)
-
-                # 4. Set 'Select a Sub-Index' to 'Broad Based Indices' / 'Broad Market Indices'
-                page.wait_for_selector("#ddlHistoricalreturntypeeSubindex option:not([value='0'])", timeout=15000)
-                subindex_select = page.locator("#ddlHistoricalreturntypeeSubindex")
-                options = subindex_select.locator("option").all_inner_texts()
-                matched_sub = None
-                for opt in options:
-                    if "broad" in opt.lower():
-                        matched_sub = opt.strip()
-                        break
-                if matched_sub:
-                    subindex_select.select_option(label=matched_sub)
-                else:
-                    subindex_select.select_option(label="Broad Market Indices")
-                page.wait_for_timeout(1000)
-
-                # 5. Set 'Select an Index' to 'NIFTY 500'
-                page.wait_for_selector("#ddlHistoricalreturntypeeindex option:not([value='0'])", timeout=15000)
-                index_select = page.locator("#ddlHistoricalreturntypeeindex")
-                idx_options = index_select.locator("option").all_inner_texts()
-                matched_idx = None
-                for opt in idx_options:
-                    if "500" in opt:
-                        matched_idx = opt.strip()
-                        break
-                if matched_idx:
-                    index_select.select_option(label=matched_idx)
-                else:
-                    index_select.select_option(label="NIFTY 500")
-                page.wait_for_timeout(500)
-
-                # 6. Set the two date pickers to start_date and end_date
-                page.evaluate(
-                    """([startVal, endVal]) => {
-                        $('#datepickerFromtotalindex').datepicker('setDate', startVal);
-                        $('#datepickerTototalindex').datepicker('setDate', endVal);
-                        $('#datepickerFromtotalindex').val(startVal);
-                        $('#datepickerTototalindex').val(endVal);
-                    }""",
-                    [start_str, end_str]
-                )
-                page.wait_for_timeout(500)
-
-                # 7. Click 'Submit'
-                submit_btn = page.locator("#submit_totalindexhistorical, a.submitBtn:has-text('Submit')")
-                submit_btn.first.click()
-
-                # 8. Wait for results table to render and export CSV button to appear
-                page.wait_for_selector("#exportTotalindex:visible", timeout=20000)
-                page.wait_for_timeout(1000)
-
-                # 9. Capture the downloaded CSV (Playwright expect_download pattern)
-                df = None
-                try:
-                    with page.expect_download(timeout=10000) as download_info:
-                        page.locator("#exportTotalindex").click()
-                    download = download_info.value
-                    with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tf:
-                        tmp_csv_path = Path(tf.name)
-                    download.save_as(str(tmp_csv_path))
+                for attempt in range(1, TRI_SESSION_ATTEMPTS + 1):
+                    context = browser.new_context(
+                        user_agent=user_agent,
+                        viewport={"width": 1366, "height": 900},
+                        locale="en-IN",
+                        timezone_id="Asia/Kolkata",
+                        accept_downloads=True,
+                    )
+                    blocked_urls = []  # Akamai 403/429s seen in this session, on any request
                     try:
-                        df = pd.read_csv(tmp_csv_path)
-                    finally:
-                        if tmp_csv_path.exists():
-                            tmp_csv_path.unlink()
-                except Exception as dl_err:
-                    logger.debug("Download capture fallback triggered: %s", dl_err)
-                    export_elem = page.locator("#exportTotalindex")
-                    href = export_elem.get_attribute("href")
-                    if href and href.startswith("data:"):
-                        csv_payload = urllib.parse.unquote(href.split(",", 1)[1])
-                        df = pd.read_csv(io.StringIO(csv_payload))
-                    else:
-                        table_elem = page.locator("#historytotalindexexport")
-                        if table_elem.count() > 0:
-                            html_content = table_elem.inner_html()
-                            dfs = pd.read_html(io.StringIO(f"<table>{html_content}</table>"))
-                            if dfs:
-                                df = dfs[0]
+                        page = context.new_page()
+                        page.set_default_timeout(30000)
+                        page.on("dialog", lambda dialog: (
+                            logger.warning("niftyindices.com alert: %s", dialog.message), dialog.accept()))
+                        page.on("response", lambda r: blocked_urls.append(r.url)
+                                if r.status in (403, 429) and "niftyindices.com" in r.url else None)
 
-                if df is None or df.empty:
-                    raise ValueError("No records extracted from niftyindices.com automated TRI response.")
+                        # 1. Navigate. Akamai rejects some sessions outright (403), stalls others,
+                        #    or passes the document but blocks its scripts; all count as rejections.
+                        try:
+                            response = page.goto(TRI_HISTORICAL_URL, wait_until="domcontentloaded", timeout=45000)
+                            status = response.status if response else None
+                            if status != 200:
+                                raise _TriSessionRejected(f"page returned HTTP {status}")
+                            page.wait_for_selector("#HistoricalMenu", state="attached", timeout=15000)
+                            page.wait_for_load_state("load", timeout=45000)
+                            page.wait_for_function(
+                                "() => !!(window.jQuery && window.jQuery.fn && window.jQuery.fn.datepicker)",
+                                timeout=20000)
+                        except _TriSessionRejected:
+                            raise
+                        except Exception as nav_err:
+                            raise _TriSessionRejected(
+                                f"{type(nav_err).__name__}: {str(nav_err).splitlines()[0]}") from nav_err
+                        page.wait_for_timeout(TRI_UI_PAUSE_MS)
 
-                # Standardize column names to match: IndexName, Date, Total Returns Index, Net Total Return Index
-                df.columns = [c.strip() for c in df.columns]
-                col_rename = {}
-                for c in df.columns:
-                    clean_c = c.replace("_", " ").title()
-                    if "Total Returns" in clean_c or "Total Return Index" in clean_c:
-                        if "Net" in clean_c:
-                            col_rename[c] = "Net Total Return Index"
+                        # 2. Open the custom report-type menu and choose 'Total returns Index Values'
+                        #    (a jQuery btn-select widget, not a <select>: the click target is the parent anchor)
+                        page.locator("a.btn-select:has(#HistoricalMenu)").click()
+                        tri_option = page.locator("#maindd li.form5")
+                        try:
+                            tri_option.wait_for(state="visible", timeout=5000)
+                            tri_option.click()
+                        except Exception:
+                            # Menu animation did not open; fire the site's own <li> click handler instead
+                            page.evaluate("$('#maindd li.form5').trigger('click')")
+                        page.locator("#TotalReturnindexvalue").wait_for(state="visible", timeout=15000)
+                        page.wait_for_timeout(TRI_UI_PAUSE_MS)
+
+                        # 3-5. Native <select> cascade: Equity -> Broad Market Indices -> NIFTY 500
+                        page.wait_for_selector("#ddlHistoricalreturntypee option[value='Equity']", state="attached", timeout=15000)
+                        page.select_option("#ddlHistoricalreturntypee", value="Equity")
+                        page.wait_for_timeout(TRI_UI_PAUSE_MS)
+
+                        subindex_select = page.locator("#ddlHistoricalreturntypeeSubindex")
+                        page.wait_for_selector("#ddlHistoricalreturntypeeSubindex option:nth-child(2)", state="attached", timeout=15000)
+                        sub_labels = [o.strip() for o in subindex_select.locator("option").all_inner_texts()]
+                        broad_label = next((o for o in sub_labels if "broad" in o.lower()), "Broad Market Indices")
+                        subindex_select.select_option(label=broad_label)
+                        page.wait_for_timeout(TRI_UI_PAUSE_MS)
+
+                        index_select = page.locator("#ddlHistoricalreturntypeeindex")
+                        page.wait_for_selector("#ddlHistoricalreturntypeeindex option:nth-child(2)", state="attached", timeout=15000)
+                        index_select.select_option(label="NIFTY 500")
+                        page.wait_for_timeout(TRI_UI_PAUSE_MS)
+
+                        for win_start, win_end in windows:
+                            if (win_start, win_end) in chunk_frames:
+                                continue  # captured by an earlier session
+
+                            # 6. Set dates as JS Date objects (the widget's own format is mm/dd/yy;
+                            #    passing 'dd-Mon-yyyy' strings is silently misparsed)
+                            page.evaluate(
+                                """([s, e]) => {
+                                    $('#datepickerFromtotalindex').datepicker('setDate', new Date(s[0], s[1] - 1, s[2]));
+                                    $('#datepickerTototalindex').datepicker('setDate', new Date(e[0], e[1] - 1, e[2]));
+                                }""",
+                                [[win_start.year, win_start.month, win_start.day],
+                                 [win_end.year, win_end.month, win_end.day]],
+                            )
+                            page.wait_for_timeout(TRI_UI_PAUSE_MS)
+
+                            # 7-8. Submit and wait for the data call to return
+                            with page.expect_response(lambda r: TRI_ENDPOINT_FRAGMENT in r.url, timeout=45000) as resp_info:
+                                page.locator("#submit_totalindexhistorical").click()
+                            api_response = resp_info.value
+                            if api_response.status in (403, 429):
+                                # Akamai flagged the session mid-flow
+                                raise _TriSessionRejected(f"data endpoint returned HTTP {api_response.status}")
+                            if api_response.status != 200:
+                                raise RuntimeError(f"TRI data endpoint returned HTTP {api_response.status}")
+                            try:
+                                records = api_response.json()
+                            except Exception:
+                                records = None
+                            if isinstance(records, list) and not records:
+                                logger.info("No TRI records for %s to %s; skipping window.", win_start, win_end)
+                                chunk_frames[(win_start, win_end)] = None
+                                continue
+
+                            page.locator("#exportTotalindex").wait_for(state="visible", timeout=15000)
+                            page.wait_for_function(
+                                "document.querySelectorAll('#historytotalindexexport tbody tr').length > 0",
+                                timeout=15000)
+
+                            # 9. Capture the client-side generated CSV via expect_download
+                            with page.expect_download(timeout=15000) as download_info:
+                                page.locator("#exportTotalindex").click()
+                            chunk_path = Path(tmp_dir) / f"tri_{win_start:%Y%m%d}_{win_end:%Y%m%d}.csv"
+                            download_info.value.save_as(str(chunk_path))
+                            chunk_frames[(win_start, win_end)] = pd.read_csv(chunk_path)
+                            logger.info("Captured TRI CSV for %s to %s (%d rows).",
+                                        win_start, win_end, len(chunk_frames[(win_start, win_end)]))
+                        break  # every window captured
+                    except Exception as err:
+                        # Akamai can block any request mid-flow (e.g. the dropdown-population
+                        # calls, surfacing only as a site 'Error Occurred' alert and a timeout).
+                        # Failures in a session that saw such blocks are retryable; anything
+                        # else is a genuine breakage and goes straight to the fallback.
+                        if isinstance(err, _TriSessionRejected):
+                            rejection = err
+                        elif blocked_urls:
+                            rejection = _TriSessionRejected(
+                                f"{type(err).__name__} after blocked request(s): {blocked_urls[0]}")
                         else:
-                            col_rename[c] = "Total Returns Index"
-                    elif "Index Name" in clean_c or "Indexname" in clean_c:
-                        col_rename[c] = "IndexName"
-                    elif "Date" in clean_c:
-                        col_rename[c] = "Date"
-                    elif "Ntr" in clean_c:
-                        col_rename[c] = "Net Total Return Index"
-                df = df.rename(columns=col_rename)
-
-                # Validate expected columns
-                required_cols = ["IndexName", "Date", "Total Returns Index"]
-                for rc in required_cols:
-                    if rc not in df.columns:
-                        raise ValueError(f"TRI DataFrame missing column '{rc}'. Available: {df.columns.tolist()}")
-
-                if "Net Total Return Index" not in df.columns:
-                    df["Net Total Return Index"] = float("nan")
-
-                # Parse dates and numeric columns
-                df["Date"] = pd.to_datetime(df["Date"], format="mixed", errors="coerce").dt.tz_localize(None)
-                df["Total Returns Index"] = pd.to_numeric(df["Total Returns Index"].astype(str).str.replace(",", ""), errors="coerce")
-                df["Net Total Return Index"] = pd.to_numeric(df["Net Total Return Index"].astype(str).str.replace(",", ""), errors="coerce")
-
-                df = df.dropna(subset=["Date", "Total Returns Index"]).sort_values("Date").reset_index(drop=True)
-                logger.info("Automated TRI retrieval successful: %d daily sessions acquired.", len(df))
-                return df
+                            raise
+                        logger.info("niftyindices.com session %d/%d rejected by bot protection (%s).",
+                                    attempt, TRI_SESSION_ATTEMPTS, rejection)
+                        if attempt == TRI_SESSION_ATTEMPTS:
+                            raise RuntimeError(
+                                f"niftyindices.com rejected {TRI_SESSION_ATTEMPTS} browser sessions "
+                                f"(Akamai bot protection); last: {rejection}") from rejection
+                        time.sleep(TRI_SESSION_BACKOFF_SECONDS * attempt)
+                    finally:
+                        context.close()
             finally:
                 browser.close()
+
+            frames = [f for f in chunk_frames.values() if f is not None]
+            if not frames:
+                raise ValueError("No records extracted from niftyindices.com automated TRI response.")
+
+            # Parse through the same routine as the manual CSV so both paths share one contract
+            combined_path = Path(tmp_dir) / "tri_combined.csv"
+            pd.concat(frames, ignore_index=True).to_csv(combined_path, index=False)
+            df = load_benchmark_tri(combined_path)
+
+        if df.empty:
+            raise ValueError("Automated TRI CSV could not be parsed into the expected schema.")
+        df = df.drop_duplicates(subset=["Date"], keep="last").reset_index(drop=True)
+        logger.info("Automated TRI retrieval successful: %d daily sessions acquired.", len(df))
+        return df
 
     except Exception as exc:
         logger.warning(
