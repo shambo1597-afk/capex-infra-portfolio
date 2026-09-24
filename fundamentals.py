@@ -25,6 +25,7 @@ accounting mechanics, and investment risk management applications.
 import logging
 import operator
 import re
+import time
 from datetime import date
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -88,6 +89,51 @@ def _statements_are_stale(soup: BeautifulSoup, max_age_years: int = 2) -> bool:
     return latest is None or latest < date.today().year - max_age_years
 
 
+def _has_3yr_growth(soup: BeautifulSoup) -> bool:
+    """True when the page reports a 3-year compounded sales growth figure."""
+    sales_3y, _ = parse_sales_and_profit_growth(soup)
+    return sales_3y is not None
+
+
+def _get_with_retry(session: requests.Session, url: str, attempts: int = 4, backoff_seconds: float = 5.0):
+    """
+    GET a Screener.in page, retrying when rate-limited (HTTP 429) or on transient 5xx errors.
+
+    Honors a numeric Retry-After header; otherwise waits backoff_seconds x attempt. Returns the
+    last response (which may still be an error status); raises the last network error if every
+    attempt failed to connect.
+    """
+    last_exc = None
+    for attempt in range(1, attempts + 1):
+        try:
+            resp = session.get(url, timeout=12)
+            if resp.status_code != 429 and resp.status_code < 500:
+                return resp
+            retry_after = resp.headers.get("Retry-After", "")
+            wait = float(retry_after) if retry_after.isdigit() else backoff_seconds * attempt
+            logger.info("Screener.in returned HTTP %d for %s; retrying in %.0fs (attempt %d/%d).",
+                        resp.status_code, url, wait, attempt, attempts)
+        except requests.RequestException as exc:
+            last_exc, resp = exc, None
+            wait = backoff_seconds * attempt
+        if attempt < attempts:
+            time.sleep(wait)
+    if resp is None and last_exc is not None:
+        raise last_exc
+    return resp
+
+
+# Screener.in pages embed pre-signed Amazon S3 links (e.g. concall recordings) whose query strings
+# carry a third party's AWS access key ID and request signature. They are irrelevant to the parsed
+# fundamentals and must not be stored in the repository.
+_PRESIGNED_PARAMS = re.compile(r"(X-Amz-(?:Credential|Signature|Security-Token)=)[^&\"'\s<>]+", re.IGNORECASE)
+
+
+def sanitize_screener_html(html: str) -> str:
+    """Redact pre-signed S3 credentials/signatures from a Screener.in page before caching it."""
+    return _PRESIGNED_PARAMS.sub(r"\1REDACTED", html)
+
+
 def fetch_screener_page(
     symbol: str,
     cache_dir: Path = FUNDAMENTALS_CACHE_DIR,
@@ -136,7 +182,7 @@ def fetch_screener_page(
     logger.info("Fetching Screener.in page for %s: %s", symbol, url_cons)
 
     try:
-        resp = session.get(url_cons, timeout=12)
+        resp = _get_with_retry(session, url_cons)
     except Exception as exc:
         logger.warning("Network error fetching consolidated page for %s: %s", symbol, exc)
         resp = None
@@ -161,13 +207,19 @@ def fetch_screener_page(
                 # missing or wrong, so use the standalone page
                 logger.info("Consolidated statements for %s are stale; using standalone page.", symbol)
                 needs_fallback = True
+            elif not _has_3yr_growth(soup):
+                # Consolidated history too short or broken for 3-year growth (e.g. TIMKEN:
+                # consolidated reporting starts FY2025; ABB: gap between 2012 and 2024), while
+                # the standalone page carries the full history
+                logger.info("Consolidated page for %s lacks 3-year history; using standalone page.", symbol)
+                needs_fallback = True
 
     # Step 3: Fallback to standalone endpoint if consolidated is unavailable or blank
     if needs_fallback:
         url_stand = SCREENER_STANDALONE_URL.format(symbol=symbol.upper())
         logger.info("Falling back to standalone Screener page for %s: %s", symbol, url_stand)
         try:
-            resp = session.get(url_stand, timeout=12)
+            resp = _get_with_retry(session, url_stand)
             if resp.status_code != 200:
                 logger.error("Standalone page for %s returned HTTP status %d.", symbol, resp.status_code)
                 return None
@@ -175,7 +227,7 @@ def fetch_screener_page(
             logger.error("Network error fetching standalone page for %s: %s", symbol, exc)
             return None
 
-    html_content = resp.text
+    html_content = sanitize_screener_html(resp.text)
 
     # Step 4: Write to local fundamentals cache
     try:

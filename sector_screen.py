@@ -19,6 +19,7 @@ output/power_full_screen.csv) listing every constituent.
 Usage:
     python sector_screen.py                  # technical-first screens for all three sectors
     python sector_screen.py --review-cement  # unfiltered Cement review table (no screening)
+    python sector_screen.py --review "Capital Goods" Power   # same review table for other sectors
 """
 
 import logging
@@ -31,7 +32,7 @@ from typing import Dict, List, Optional, Tuple
 import pandas as pd
 
 from analysis import evaluate_stock_technicals
-from config import SECTOR_SCREENS, TECHNICAL_RS_LOOKBACK_DAYS
+from config import OUTPUT_DIR, SECTOR_SCREENS, TECHNICAL_RS_LOOKBACK_DAYS
 from fetch_data import NSEBhavcopyFetcher, fetch_benchmark_nifty500, get_one_year_date_range
 from fundamentals import evaluate_fundamental_screen, get_fundamentals_summary
 from indicators import compute_relative_strength, compute_sector_relative_strength
@@ -273,11 +274,21 @@ def print_screen_summary(results: Dict[str, pd.DataFrame]) -> None:
     print("=" * 115 + "\n")
 
 
+def review_table_path(sector: str) -> Path:
+    """output/<sector>_full_review_table.csv, e.g. output/capital_goods_full_review_table.csv."""
+    return OUTPUT_DIR / f"{sector.lower().replace(' ', '_')}_full_review_table.csv"
+
+
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "--review-cement":
-        # Unfiltered Cement review table (no screening): output/cement_full_review_table.csv
-        from config import OUTPUT_DIR
-        run_review_table("Cement", OUTPUT_DIR / "cement_full_review_table.csv")
+    args = sys.argv[1:]
+    if args[:1] == ["--review-cement"]:
+        args = ["--review", "Cement"]
+    if args[:1] == ["--review"]:
+        # Unfiltered review tables (no screening), one per named sector (default: all three)
+        for sector in args[1:] or list(SECTOR_SCREENS):
+            if sector not in SECTOR_SCREENS:
+                sys.exit(f"Unknown sector {sector!r}; choose from {list(SECTOR_SCREENS)}")
+            run_review_table(sector, review_table_path(sector))
     else:
         print_screen_summary(run_sector_screens())
     sys.exit(0)

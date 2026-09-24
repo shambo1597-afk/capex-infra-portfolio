@@ -203,3 +203,60 @@ class TestSectorRelativeStrength:
         assert spreads["A"] == pytest.approx(2.0) and spreads["B"] == pytest.approx(-2.0)
         assert np.isnan(spreads["C"])
 
+
+
+def _screener_page(sales_3y="16%", years=("Mar 2024", "Mar 2025", "Mar 2026")):
+    ths = "".join(f"<th>{y}</th>" for y in years)
+    return f"""<html><body>
+      <ul id="top-ratios"><li><span class="name">Market Cap</span><span class="number">40,000</span></li></ul>
+      <section id="profit-loss"><table><tr><th></th>{ths}</tr></table>
+        <table class="ranges-table"><tr><th>Compounded Sales Growth</th></tr>
+          <tr><td>3 Years:</td><td>{sales_3y}</td></tr></table>
+      </section>{"x" * 5000}</body></html>"""
+
+
+class _Resp:
+    def __init__(self, status_code, text="", headers=None):
+        self.status_code, self.text, self.headers = status_code, text, headers or {}
+
+
+class TestScreenerFetchResilience:
+    def test_rate_limited_request_is_retried(self):
+        from fundamentals import _get_with_retry
+        session = type("S", (), {})()
+        replies = [_Resp(429, headers={"Retry-After": "1"}), _Resp(429), _Resp(200, "ok")]
+        session.get = lambda url, timeout: replies.pop(0)
+        with patch("fundamentals.time.sleep") as sleep:
+            resp = _get_with_retry(session, "https://www.screener.in/company/SJVN/")
+        assert resp.status_code == 200
+        assert [c.args[0] for c in sleep.call_args_list] == [1.0, 10.0]  # Retry-After, then backoff x2
+
+    def test_consolidated_without_3yr_history_falls_back_to_standalone(self, tmp_path):
+        from fundamentals import fetch_screener_page, parse_sales_and_profit_growth
+        pages = {
+            "https://www.screener.in/company/ABB/consolidated/": _Resp(200, _screener_page(sales_3y="%")),
+            "https://www.screener.in/company/ABB/": _Resp(200, _screener_page(sales_3y="16%")),
+        }
+        with patch("fundamentals.requests.Session") as session_cls:
+            session_cls.return_value.get.side_effect = lambda url, timeout: pages[url]
+            html = fetch_screener_page("ABB", cache_dir=tmp_path, use_cache=False)
+        assert parse_sales_and_profit_growth(BeautifulSoup(html, "html.parser"))[0] == 16.0
+
+    def test_consolidated_with_history_is_kept(self, tmp_path):
+        from fundamentals import fetch_screener_page
+        pages = {"https://www.screener.in/company/ULTRACEMCO/consolidated/": _Resp(200, _screener_page(sales_3y="12%"))}
+        with patch("fundamentals.requests.Session") as session_cls:
+            session_cls.return_value.get.side_effect = lambda url, timeout: pages[url]
+            html = fetch_screener_page("ULTRACEMCO", cache_dir=tmp_path, use_cache=False)
+        assert "12%" in html
+
+
+def test_presigned_s3_credentials_are_redacted_before_caching():
+    from fundamentals import sanitize_screener_html
+    html = ('<a href="https://x.s3.amazonaws.com/call.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&amp;'
+            'X-Amz-Credential=AKIAABCDEFGHIJKLMNOP%2F20240528%2Fap-south-1%2Fs3%2Faws4_request&amp;'
+            'X-Amz-Signature=deadbeef0123">Concall</a><td>OPM %</td>')
+    clean = sanitize_screener_html(html)
+    assert "AKIA" not in clean and "deadbeef" not in clean
+    assert "X-Amz-Credential=REDACTED" in clean and "X-Amz-Signature=REDACTED" in clean
+    assert "<td>OPM %</td>" in clean  # page content otherwise untouched
