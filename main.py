@@ -32,6 +32,7 @@ from config import (
     CAPITAL_GOODS_EPC_STOCKS,
     DEFAULT_TRI_CSV_PATH,
     HISTORICAL_OHLCV_CSV,
+    LOCKED_PORTFOLIO_SYMBOLS,
     PORTFOLIO_SYMBOLS,
     POWER_SECTOR_STOCKS,
     PROCESSED_DATA_DIR,
@@ -119,6 +120,9 @@ def display_project_header(tri_source: str = "manual") -> None:
         print(f" [*] Power Sector Candidates:          {', '.join(POWER_SECTOR_STOCKS)}")
     else:
         print(" [*] Power Sector Candidates:          [Pending / Placeholder: Not yet finalized]")
+    print("-" * 115)
+    print(f" [*] FINAL LOCKED PORTFOLIO (8 stocks): {', '.join(LOCKED_PORTFOLIO_SYMBOLS)}")
+    print("-" * 115)
     print(f" [*] Benchmark 1 (Price Return):       Nifty 500 ({BENCHMARK_PRICE_TICKER} via yfinance)")
     tri_desc = "Local Nifty 500 TRI CSV (manual)" if tri_source == "manual" else "Automated Browser Fetch (niftyindices.com)"
     print(f" [*] Benchmark 2 (Total Return Index): {tri_desc}")

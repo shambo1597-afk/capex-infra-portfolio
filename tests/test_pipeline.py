@@ -14,7 +14,10 @@ from config import (
     CEMENT_STOCKS,
     CAPITAL_GOODS_EPC_STOCKS,
     DEFAULT_TRI_CSV_PATH,
+    LOCKED_PORTFOLIO,
+    LOCKED_PORTFOLIO_SYMBOLS,
     PORTFOLIO_SYMBOLS,
+    POWER_SECTOR_STOCKS,
     SYMBOL_ALIASES,
 )
 from fetch_data import (
@@ -36,12 +39,26 @@ class TestUniverseConfiguration:
 
     def test_capital_goods_stocks(self):
         expected_cg = [
-            "ABB", "CGPOWER", "GVT&D", "POWERINDIA", "ELECON",
-            "TRITURBINE", "TDPOWERSYS", "SIEMENS", "SCHNEIDER", "CEMPRO"
+            "ABB", "CGPOWER", "GVT&D", "POWERINDIA", "TRITURBINE", "TDPOWERSYS",
+            "SIEMENS", "BHEL", "INOXWIND", "ENRIN", "SUZLON", "THERMAX", "VOLTAMP",
         ]
         for sym in expected_cg:
             assert sym in CAPITAL_GOODS_EPC_STOCKS
-        assert len(CAPITAL_GOODS_EPC_STOCKS) == 10
+        assert len(CAPITAL_GOODS_EPC_STOCKS) == 13
+
+    def test_power_sector_stocks(self):
+        expected_power = [
+            "ADANIENSOL", "ADANIPOWER", "CESC", "KPIGREEN", "NAVA", "NLCINDIA",
+            "NTPC", "POWERGRID", "PTC", "TATAPOWER", "TORNTPOWER",
+        ]
+        for sym in expected_power:
+            assert sym in POWER_SECTOR_STOCKS
+        assert len(POWER_SECTOR_STOCKS) == 11
+
+    def test_locked_portfolio(self):
+        expected_locked = ["JKCEMENT", "ULTRACEMCO", "STARCEMENT", "BHEL", "VOLTAMP", "POWERGRID", "TATAPOWER", "NTPC"]
+        assert len(LOCKED_PORTFOLIO) == 8
+        assert sorted(LOCKED_PORTFOLIO_SYMBOLS) == sorted(expected_locked)
 
     def test_symbol_aliases(self):
         # GET&D -> GVT&D (GE Vernova T&D)

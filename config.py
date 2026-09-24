@@ -34,26 +34,18 @@ CEMENT_STOCKS = [
     "STARCEMENT",  # Star Cement Ltd. (Regional Growth Play)
 ]
 
-# Capital Goods / EPC Candidates (Evaluating for portfolio selection)
-# 10 candidate symbols identified for technical and relative strength screening
+# Capital Goods / EPC Candidates (Screened candidate universe - 13 stocks)
+# Full set of official Nifty Capital Goods index candidates that passed the fundamental screen
 CAPITAL_GOODS_EPC_STOCKS = [
-    "ABB",         # ABB India Ltd. (Power & Automation)
-    "CGPOWER",     # CG Power and Industrial Solutions Ltd.
-    "GVT&D",       # GE Vernova T&D India Ltd. (Formerly GET&D)
-    "POWERINDIA",  # Hitachi Energy India Ltd.
-    "ELECON",      # Elecon Engineering Company Ltd. (Gears & Material Handling)
-    "TRITURBINE",  # Triveni Turbine Ltd. (Industrial Steam Turbines)
-    "TDPOWERSYS",  # TD Power Systems Ltd. (Generators)
-    "SIEMENS",     # Siemens Ltd. (Industrial conglomerate)
-    "SCHNEIDER",   # Schneider Electric Infrastructure Ltd.
-    "CEMPRO",      # Cemindia Projects Ltd. (Formerly ITD Cementation India Ltd. - ITDCEM)
+    "ABB", "CGPOWER", "GVT&D", "POWERINDIA", "TRITURBINE", "TDPOWERSYS",
+    "SIEMENS", "BHEL", "INOXWIND", "ENRIN", "SUZLON", "THERMAX", "VOLTAMP",
 ]
 
-# Power Sector Stocks (Placeholder: Not yet finalized, to be populated later)
-# Leave clearly marked as requested in coursework specifications.
+# Power Sector Stocks (Screened candidate universe - 11 stocks)
+# Official Nifty Power index candidates that passed the fundamental screen
 POWER_SECTOR_STOCKS = [
-    # Placeholder: Add power sector candidate symbols here once finalized
-    # e.g., "NTPC", "POWERGRID", "TATAPOWER"
+    "ADANIENSOL", "ADANIPOWER", "CESC", "KPIGREEN", "NAVA", "NLCINDIA",
+    "NTPC", "POWERGRID", "PTC", "TATAPOWER", "TORNTPOWER",
 ]
 
 # -----------------------------------------------------------------------------
