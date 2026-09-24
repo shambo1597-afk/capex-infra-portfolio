@@ -13,7 +13,7 @@ Every function is annotated with comprehensive docstrings explaining the underly
 financial intuition, market dynamics, and mathematical mechanics.
 """
 
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Optional, Tuple
 
 import numpy as np
 import pandas as pd

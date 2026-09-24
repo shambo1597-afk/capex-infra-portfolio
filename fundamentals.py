@@ -25,7 +25,7 @@ accounting mechanics, and investment risk management applications.
 import logging
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 import requests

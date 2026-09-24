@@ -11,13 +11,11 @@ This module handles:
 """
 
 import io
-import json
 import logging
-import os
 import time
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import pandas as pd
 import requests
@@ -26,14 +24,11 @@ import yfinance as yf
 from config import (
     BENCHMARK_PRICE_TICKER,
     BHAVCOPY_EXPECTED_COLUMNS,
-    CEMENT_STOCKS,
-    CAPITAL_GOODS_EPC_STOCKS,
     DEFAULT_TRI_CSV_PATH,
     NSE_BHAVCOPY_URL_TEMPLATE,
     NSE_HOME_URL,
     NSE_REQUEST_HEADERS,
     PORTFOLIO_SYMBOLS,
-    PROCESSED_DATA_DIR,
     RAW_BHAVCOPY_DIR,
     REQUEST_DELAY_SECONDS,
     SYMBOL_ALIASES,
@@ -357,9 +352,9 @@ def load_benchmark_tri(csv_path: Optional[Path] = None) -> pd.DataFrame:
     Financial & Academic Rationale:
     The Total Return Index (TRI) accounts for dividend reinvestment in addition to price
     appreciation, representing the true opportunity cost and hurdle rate for an active
-    equity portfolio manager. Automated scraping of niftyindices.com is intentionally
-    avoided because the portal relies on heavy client-side JavaScript rendering and frequently
-    changes internal endpoints. Reading the official CSV directly guarantees accuracy.
+    equity portfolio manager. This local CSV (downloaded from niftyindices.com) is the
+    default source because it needs no browser and is immune to the portal's bot protection;
+    fetch_benchmark_tri_automated() produces the same schema and parses through this function.
 
     Expected CSV columns:
         IndexName, Date, Total Returns Index, Net Total Return Index
@@ -443,12 +438,8 @@ def fetch_benchmark_tri_automated(start_date: str, end_date: str) -> pd.DataFram
     try:
         from playwright.sync_api import sync_playwright
 
-        start_dt = start_date if isinstance(start_date, date) else pd.to_datetime(start_date).date()
-        end_dt = end_date if isinstance(end_date, date) else pd.to_datetime(end_date).date()
-        if isinstance(start_dt, datetime):
-            start_dt = start_dt.date()
-        if isinstance(end_dt, datetime):
-            end_dt = end_dt.date()
+        start_dt = pd.Timestamp(start_date).date()  # accepts str, date or datetime
+        end_dt = pd.Timestamp(end_date).date()
         if start_dt > end_dt:
             raise ValueError(f"start_date {start_dt} is after end_date {end_dt}")
 

@@ -3,12 +3,7 @@ Pipeline and Integration test suite for Indian Equity Portfolio.
 Author: Antigravity / SAPM & Derivatives Coursework (IIM Bodh Gaya)
 """
 
-import io
 from datetime import date
-from pathlib import Path
-
-import pandas as pd
-import pytest
 
 from config import (
     CEMENT_STOCKS,
@@ -16,13 +11,11 @@ from config import (
     DEFAULT_TRI_CSV_PATH,
     LOCKED_PORTFOLIO,
     LOCKED_PORTFOLIO_SYMBOLS,
-    PORTFOLIO_SYMBOLS,
     POWER_SECTOR_STOCKS,
     SYMBOL_ALIASES,
 )
 from fetch_data import (
     NSEBhavcopyFetcher,
-    fetch_benchmark_nifty500,
     get_one_year_date_range,
     load_benchmark_tri,
 )

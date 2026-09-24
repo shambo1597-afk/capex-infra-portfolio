@@ -3,8 +3,6 @@ Unit tests for automated Nifty 500 TRI browser automation and fallback mechanism
 Author: Antigravity / SAPM & Derivatives Coursework (IIM Bodh Gaya)
 """
 
-import io
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 

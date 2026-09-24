@@ -6,7 +6,6 @@ This module centralizes all portfolio universe configurations, benchmark setting
 NSE endpoint specifications, header requirements, and directory paths.
 """
 
-import os
 from pathlib import Path
 
 # Base Paths

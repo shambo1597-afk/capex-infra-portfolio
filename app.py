@@ -9,11 +9,8 @@ It imports and reuses the existing pipeline outputs, focusing on the 8 locked po
 stocks across Cement, Capital Goods/EPC, and Power sectors.
 """
 
-import glob
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
-import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -24,7 +21,6 @@ from config import (
     LOCKED_PORTFOLIO,
     LOCKED_PORTFOLIO_SYMBOLS,
     NTPC_CAVEAT,
-    OUTPUT_DIR,
     SUMMARY_OUTPUT_CSV,
 )
 from fundamentals import get_fundamentals_summary
@@ -408,7 +404,7 @@ with tab_fundamentals:
 
     # Visible NTPC Fundamental Justification Banner
     st.markdown(
-        f"""
+        """
         <div class="caveat-box">
             <strong>NTPC Fundamental Thesis:</strong> While displaying near-term technical consolidation, NTPC was included
             for its industry-leading operating cash flow generation (<strong>₹50,902 Cr</strong> &mdash; largest in portfolio),

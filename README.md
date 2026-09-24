@@ -60,7 +60,7 @@ A production-grade, mathematically transparent data pipeline and quantitative sc
 - **Rationale:** Index series do not suffer from individual corporate action adjustment errors; yfinance provides an accurate, adjusted historical index series.
 
 ### 3. Benchmark (Total Return Index) — Local CSV
-- **Rationale:** Automated scraping of `niftyindices.com` is brittle due to heavy client-side JavaScript rendering and frequently updated API payloads. The pipeline reads the official manual CSV with schema:
+- **Rationale:** `niftyindices.com` serves TRI data only to real browser sessions behind Akamai bot protection, so the default path reads the official CSV downloaded from the portal (automated retrieval is available opt-in, see below). Schema:
   `IndexName, Date, Total Returns Index, Net Total Return Index`
 
 ### 4. Fundamental Quality Data — Direct Screener.in Extraction

@@ -19,14 +19,13 @@ Examples:
 import argparse
 import logging
 import sys
-from datetime import date, datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
 
 from analysis import generate_portfolio_summary, print_summary_table
 from config import (
-    ALL_TARGET_STOCKS,
     BENCHMARK_PRICE_TICKER,
     CEMENT_STOCKS,
     CAPITAL_GOODS_EPC_STOCKS,
@@ -171,8 +170,8 @@ def run_pipeline() -> int:
     if not benchmark_tri_df.empty:
         print(f"     [+] Benchmark TRI verified: {len(benchmark_tri_df)} daily sessions loaded.")
     else:
-        print(f"     [!] Notice: Benchmark TRI data not available. "
-              f"Please supply the official CSV from niftyindices.com via --tri-csv or use --tri-source automated.")
+        print("     [!] Notice: Benchmark TRI data not available. "
+              "Please supply the official CSV from niftyindices.com via --tri-csv or use --tri-source automated.")
 
     # -------------------------------------------------------------------------
     # STEP 2: Individual Stock Price History via Direct NSE Bhavcopy

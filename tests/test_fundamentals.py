@@ -3,14 +3,11 @@ Unit tests for the fundamentals extraction and Screener.in parsing module.
 Author: Antigravity / SAPM & Derivatives Coursework (IIM Bodh Gaya)
 """
 
-import pandas as pd
 import pytest
 from bs4 import BeautifulSoup
 
 from fundamentals import (
     _clean_numeric,
-    extract_stock_fundamentals,
-    get_fundamentals_summary,
     parse_debt_to_equity,
     parse_operating_cash_flow,
     parse_opm,
