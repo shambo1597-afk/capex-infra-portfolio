@@ -24,6 +24,9 @@ from config import (
     LOCKED_PORTFOLIO,
     LOCKED_PORTFOLIO_SYMBOLS,
     NTPC_CAVEAT,
+    RISK_SUMMARY_OUTPUT_CSV,
+    STOP_LOSS_HOLDING_PERIOD_DAYS,
+    STOP_LOSS_VOL_MULTIPLIER,
     SUMMARY_OUTPUT_CSV,
 )
 from fetch_data import TRI_REDOWNLOAD_INSTRUCTIONS, TriStaleness, assess_tri_staleness, load_benchmark_tri
@@ -240,6 +243,18 @@ def load_historical_ohlcv() -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
+def load_risk_summary(file_mtime: float) -> pd.DataFrame:
+    """
+    Load the locked portfolio's risk, sizing and stop-loss table written by main.py.
+    file_mtime is only a cache key, so a fresh pipeline run is picked up without a restart.
+    """
+    risk_path = Path(RISK_SUMMARY_OUTPUT_CSV)
+    if not risk_path.exists():
+        return pd.DataFrame()
+    return pd.read_csv(risk_path)
+
+
+@st.cache_data(show_spinner=False)
 def load_tri_benchmark(file_mtime: float) -> pd.DataFrame:
     """
     Load the manually maintained Nifty 500 TRI CSV. Staleness is shown as a dashboard
@@ -307,6 +322,7 @@ st.markdown(
 summary_df = load_summary_data()
 ohlcv_df = load_historical_ohlcv()
 tri_df = load_tri_benchmark(DEFAULT_TRI_CSV_PATH.stat().st_mtime if DEFAULT_TRI_CSV_PATH.exists() else 0.0)
+risk_df = load_risk_summary(RISK_SUMMARY_OUTPUT_CSV.stat().st_mtime if RISK_SUMMARY_OUTPUT_CSV.exists() else 0.0)
 
 # TRI must cover the period the last pipeline run analysed (its latest price date)
 _last_price_date = ohlcv_df["DATE1"].max() if not ohlcv_df.empty else pd.NaT
@@ -585,7 +601,51 @@ with tab_technicals:
     st.write("")
     st.markdown("---")
 
-    # 2. Interactive Single-Stock Deep Dive Price Chart with Support / Resistance
+    # 2. Risk, Sizing & Stop-Loss (risk/position-sizing data, deliberately separate from momentum)
+    with st.container(border=True):
+        st.markdown("### Risk, Sizing & Stop-Loss")
+        st.caption(
+            "Risk and position-sizing figures, not momentum signals. Volatility and historical return use "
+            "~1 year of daily returns (close vs. the exchange's previous close). Stop-loss = the tighter of "
+            f"(a) the nearest support level and (b) price x (1 - {STOP_LOSS_VOL_MULTIPLIER} x daily volatility "
+            f"x sqrt({STOP_LOSS_HOLDING_PERIOD_DAYS})); k and N are stated, adjustable assumptions "
+            f"(N = {STOP_LOSS_HOLDING_PERIOD_DAYS} trading days, about one month, for stops reviewed monthly)."
+        )
+        st.markdown(
+            """
+            <span class="placeholder-badge" style="margin-bottom: 0;">Placeholder &mdash; pending finalization</span>
+            <span style="font-size: 0.82rem;">
+                <strong>Hist. Expected Return</strong> is a simple historical average (a CAPM-implied return may
+                replace it once portfolio beta is computed). <strong>Weight</strong> is equal weighting (12.5% each)
+                until formal weight assignment within the capping constraints is completed.
+            </span>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        if risk_df.empty:
+            st.info("Risk summary not found. Run `python main.py` to generate output/portfolio_risk_summary.csv.")
+        else:
+            method_labels = {"support": "Support", "volatility_cap": "Volatility cap"}
+            risk_table_df = pd.DataFrame({
+                "Symbol": risk_df["symbol"],
+                "Sector": risk_df["sector"],
+                "Current Price (₹)": risk_df["current_price"].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) else "—"),
+                "Ann. Volatility (%)": risk_df["annualized_volatility_pct"].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
+                "Hist. Expected Return (%) · Placeholder": risk_df["historical_expected_return_pct"].apply(
+                    lambda x: f"{x:+.2f}%" if pd.notna(x) else "—"),
+                "Weight (%) · Placeholder": risk_df["weight_pct"].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
+                "Stop-Loss (₹)": risk_df["stop_loss_price"].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) else "—"),
+                "Stop Below Price (%)": risk_df["stop_loss_pct_below_current"].apply(
+                    lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
+                "Stop Method": risk_df["stop_loss_method"].map(lambda m: method_labels.get(m, "Unavailable")),
+            })
+            st.dataframe(risk_table_df, hide_index=True, use_container_width=True)
+
+    st.write("")
+    st.markdown("---")
+
+    # 3. Interactive Single-Stock Deep Dive Price Chart with Support / Resistance
     st.markdown("### Stock Technical Deep-Dive: 1-Year Historical Price & Levels")
 
     # Default to first stock alphabetically

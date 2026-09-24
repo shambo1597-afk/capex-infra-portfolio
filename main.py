@@ -24,7 +24,12 @@ from pathlib import Path
 
 import pandas as pd
 
-from analysis import generate_portfolio_summary, print_summary_table
+from analysis import (
+    generate_portfolio_risk_summary,
+    generate_portfolio_summary,
+    print_risk_summary_table,
+    print_summary_table,
+)
 from config import (
     BENCHMARK_PRICE_TICKER,
     CEMENT_STOCKS,
@@ -35,6 +40,9 @@ from config import (
     PORTFOLIO_SYMBOLS,
     POWER_SECTOR_STOCKS,
     PROCESSED_DATA_DIR,
+    RISK_SUMMARY_OUTPUT_CSV,
+    STOP_LOSS_HOLDING_PERIOD_DAYS,
+    STOP_LOSS_VOL_MULTIPLIER,
     SUMMARY_OUTPUT_CSV,
 )
 from fetch_data import (
@@ -214,6 +222,8 @@ def run_pipeline() -> int:
     print("     [+] ADX: 14-period Wilder's method with +DI and -DI directional strength")
     print("     [+] Relative Strength: 63-day cumulative return spread vs Nifty 500 (pp)")
     print("     [+] Support / Resistance: 20-day rolling swing highs & lows")
+    print(f"     [+] Stop-loss: tighter of nearest support vs. volatility cap "
+          f"(k={STOP_LOSS_VOL_MULTIPLIER}, N={STOP_LOSS_HOLDING_PERIOD_DAYS} trading days)")
 
     summary_df = generate_portfolio_summary(
         stock_data=stock_df,
@@ -222,14 +232,22 @@ def run_pipeline() -> int:
         output_csv_path=Path(args.output_csv)
     )
 
+    risk_df = generate_portfolio_risk_summary(
+        stock_data=stock_df,
+        technical_summary=summary_df,
+        output_csv_path=RISK_SUMMARY_OUTPUT_CSV
+    )
+
     # -------------------------------------------------------------------------
     # STEP 4: Render Output Table & Save Clean CSV
     # -------------------------------------------------------------------------
     print("\n>>> [Step 4/4] Output Generation Complete.")
     print_summary_table(summary_df)
+    print_risk_summary_table(risk_df)
 
     print(f" [OK] Summary CSV successfully written to: {Path(args.output_csv).resolve()}")
     print(f" [OK] Complete Historical OHLCV saved to:    {Path(args.ohlcv_csv).resolve()}")
+    print(f" [OK] Risk & Stop-Loss Summary written to:   {RISK_SUMMARY_OUTPUT_CSV.resolve()}")
     return 0
 
 

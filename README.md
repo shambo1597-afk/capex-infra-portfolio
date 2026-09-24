@@ -133,6 +133,15 @@ Using a 20-day rolling window:
 - **Nearest Resistance:** Lowest historical swing high strictly above current price:
   $$\text{Resistance} = \min(\{H \in \text{Swing Highs} \mid H > P_{\text{current}}\})$$
 
+### 6. Volatility, Historical Return & Hybrid Stop-Loss (`stoploss.py`)
+- **Daily returns:** $r_t = \text{Close}_t / \text{PrevClose}_t - 1$ over the trailing 252 sessions, using NSE's `PREV_CLOSE` so every return is a true one-session move even when sessions are missing from the local history (and corporate actions are exchange-adjusted).
+- **Volatility:** sample standard deviation $\sigma_d$ of daily returns; annualized as $\sigma_d\sqrt{252}$.
+- **Historical expected return (placeholder):** mean daily return $\times 252$. May be replaced by a CAPM-implied return once portfolio beta is computed.
+- **Weight (placeholder):** equal weighting, $100/8 = 12.5\%$ per stock, until formal weight assignment within the capping constraints is completed.
+- **Stop-loss:** the tighter (closer to price) of two candidates, recording which one won:
+  1. *Support:* the nearest support level (Section 5).
+  2. *Volatility cap:* $P \times (1 - k\,\sigma_d\sqrt{N})$ with $k = 1.75$ and $N = 21$ trading days (about one month, for a 3-month mandate whose stops are reviewed monthly). Both are stated, adjustable assumptions in `config.py`.
+
 ---
 
 ## Project Structure
@@ -151,12 +160,15 @@ IAPFDOF/
 │   ├── __init__.py
 │   ├── test_fundamentals.py      # Unit tests for Screener.in extraction and parsing
 │   ├── test_indicators.py        # Unit tests for Wilder's smoothing, RSI, ADX, RS, S/R
-│   └── test_pipeline.py          # Integration tests for Bhavcopy parsing, aliases, benchmarks
+│   ├── test_pipeline.py          # Integration tests for Bhavcopy parsing, aliases, benchmarks
+│   ├── test_stoploss.py          # Unit tests for volatility and the hybrid stop-loss selection
+│   └── test_tri_staleness.py     # Unit tests for the TRI CSV staleness check
 ├── config.py                     # Universe definitions, URLs, headers, symbol alias mapping
 ├── fetch_data.py                 # NSE Bhavcopy HTTP client, yfinance downloader, TRI loader
 ├── fundamentals.py               # Direct Screener.in scraper, ratio parser, and local cache
 ├── indicators.py                 # Pure Pandas/NumPy technical indicator engine
 ├── analysis.py                   # Portfolio evaluator, table formatter, CSV exporter
+├── stoploss.py                   # Volatility, historical return, and hybrid stop-loss calculations
 ├── main.py                       # CLI entry point orchestrating the end-to-end pipeline
 ├── app.py                        # Streamlit 5-tab institutional portfolio dashboard
 ├── requirements.txt              # Project dependencies
@@ -204,7 +216,7 @@ The web dashboard loads instantly from the existing CSV outputs already in the r
 ### Dashboard Architecture (5 Tabs)
 1. **Portfolio Overview:** Dense, institutional summary metrics and sector-grouped constituent tables for the 8 locked stocks (`Cement`, `Capital Goods/EPC`, `Power`) with visible investment committee notes (including the NTPC fundamental inclusion caveat).
 2. **Fundamentals:** Screener criteria view (ROCE, 3Yr Avg ROCE, OPM, Debt/Equity, Operating Cash Flow, 3Yr Sales Growth, 3Yr Profit Growth) dynamically loading Screener.in CSV exports from `data/fundamentals/`.
-3. **Technicals:** Full technical summary table with subtle green/red trend direction tinting and an interactive 1-year OHLCV line chart with horizontal Support and Resistance reference levels.
+3. **Technicals:** Full technical summary table with subtle green/red trend direction tinting, a separate **Risk, Sizing & Stop-Loss** section (volatility, placeholder expected return and weight, hybrid stop-loss and the winning method), and an interactive 1-year OHLCV line chart with horizontal Support and Resistance reference levels.
 4. **Risk & Hedging:** *(Module in Progress)* Beta regression, explained/unexplained risk decomposition, and hedge ratio analysis.
 5. **Performance:** *(Module in Progress)* Sharpe ratio, Treynor ratio, XIRR, and Capital Market Line (scheduled for 28th September snapshot).
 
@@ -291,6 +303,18 @@ The pipeline prints a formatted table and saves `output/portfolio_technical_summ
 | `rs_score_vs_nifty500` | Float (pp) | Relative Strength spread vs Nifty 500 over the past 63 trading days (approx. 1 quarter). |
 | `nearest_support` | Float (INR) | Nearest key price floor below current price (stop-loss reference). |
 | `nearest_resistance` | Float (INR) | Nearest price ceiling above current price (`ATH / Blue Sky` if breaking new highs). |
+
+It also saves `output/portfolio_risk_summary.csv`, one row per locked portfolio stock:
+
+| Column | Data Type | Description |
+| :--- | :--- | :--- |
+| `symbol`, `sector`, `current_price` | String / Float (INR) | As above. |
+| `annualized_volatility_pct` | Float (%) | Sample std. dev. of daily returns x sqrt(252). |
+| `historical_expected_return_pct` | Float (%) | **Placeholder:** mean daily return x 252 (may become CAPM-implied). |
+| `weight_pct` | Float (%) | **Placeholder:** equal weight (12.5%) pending formal weight assignment. |
+| `stop_loss_price` | Float (INR) | Tighter of nearest support and the volatility cap. |
+| `stop_loss_pct_below_current` | Float (%) | Distance of the stop below the current price. |
+| `stop_loss_method` | String | `support` or `volatility_cap` (whichever was tighter); `unavailable` if neither could be computed. |
 
 ---
 

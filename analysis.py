@@ -5,7 +5,8 @@ Author: Antigravity / SAPM & Derivatives Coursework (IIM Bodh Gaya)
 This module ingests processed historical OHLCV data for the target stock universe,
 runs the technical indicators (RSI, ADX, Relative Strength vs Nifty 500, Support/Resistance),
 assembles the consolidated portfolio summary row per stock, saves the output CSV,
-and renders a readable terminal summary table.
+and renders a readable terminal summary table. It also builds the locked portfolio's
+risk summary (volatility, historical expected return, weight, hybrid stop-loss).
 """
 
 import logging
@@ -19,7 +20,11 @@ from config import (
     CEMENT_STOCKS,
     CAPITAL_GOODS_EPC_STOCKS,
     LOCKED_PORTFOLIO,
+    LOCKED_PORTFOLIO_SYMBOLS,
     POWER_SECTOR_STOCKS,
+    RISK_SUMMARY_OUTPUT_CSV,
+    STOP_LOSS_HOLDING_PERIOD_DAYS,
+    STOP_LOSS_VOL_MULTIPLIER,
     SUMMARY_OUTPUT_CSV,
 )
 from indicators import (
@@ -27,6 +32,14 @@ from indicators import (
     compute_relative_strength,
     compute_rsi,
     compute_support_resistance,
+)
+from stoploss import (
+    compute_annualized_volatility,
+    compute_daily_returns,
+    compute_daily_volatility,
+    compute_historical_expected_return,
+    compute_volatility_cap_stop,
+    select_stop_loss,
 )
 
 logger = logging.getLogger("analysis")
@@ -271,3 +284,129 @@ def print_summary_table(summary_df: pd.DataFrame) -> None:
     print(" - ADX > 25: Strong directional trend | ADX < 20: Consolidating / Range-bound")
     print(" - RS Score: Percentage-point excess return over Nifty 500 during the last 63 trading days")
     print("=" * 115 + "\n")
+
+
+RISK_SUMMARY_COLUMNS = [
+    "symbol",
+    "sector",
+    "current_price",
+    "annualized_volatility_pct",
+    "historical_expected_return_pct",
+    "weight_pct",
+    "stop_loss_price",
+    "stop_loss_pct_below_current",
+    "stop_loss_method",
+]
+
+
+def _pct(fraction: Optional[float]) -> Optional[float]:
+    return None if fraction is None else round(fraction * 100, 2)
+
+
+def generate_portfolio_risk_summary(
+    stock_data: pd.DataFrame,
+    technical_summary: pd.DataFrame,
+    symbols: Optional[List[str]] = None,
+    output_csv_path: Optional[Path] = RISK_SUMMARY_OUTPUT_CSV,
+) -> pd.DataFrame:
+    """
+    Build one risk/sizing row per locked portfolio stock and save it as a CSV.
+
+    Columns: symbol, sector, current_price, annualized_volatility_pct,
+    historical_expected_return_pct, weight_pct, stop_loss_price,
+    stop_loss_pct_below_current, stop_loss_method. See stoploss.py for the methodology.
+
+    Parameters:
+        stock_data (pd.DataFrame): Consolidated historical OHLCV (Bhavcopy) data.
+        technical_summary (pd.DataFrame): Output of generate_portfolio_summary(); supplies
+            current_price and the support-based stop candidate (nearest_support).
+        symbols (List[str], optional): Stocks to include. Defaults to LOCKED_PORTFOLIO_SYMBOLS.
+        output_csv_path (Path, optional): Destination CSV; None skips saving.
+
+    Returns:
+        pd.DataFrame: The risk summary, one row per symbol.
+    """
+    if symbols is None:
+        symbols = LOCKED_PORTFOLIO_SYMBOLS
+
+    # PLACEHOLDER: equal weighting across the locked stocks (100 / 8 = 12.5% each). To be
+    # replaced once formal weight assignment, respecting the project's minimum and maximum
+    # weight-capping constraints, is completed.
+    equal_weight_pct = round(100.0 / len(symbols), 2) if symbols else None
+
+    technicals = technical_summary.set_index("symbol") if not technical_summary.empty else pd.DataFrame()
+    records = []
+    for symbol in symbols:
+        tech = technicals.loc[symbol] if symbol in technicals.index else None
+        current_price = float(tech["current_price"]) if tech is not None and pd.notna(tech["current_price"]) else None
+        support = float(tech["nearest_support"]) if tech is not None and pd.notna(tech["nearest_support"]) else None
+
+        sym_df = stock_data[stock_data["SYMBOL"] == symbol] if not stock_data.empty else pd.DataFrame()
+        returns = compute_daily_returns(sym_df)
+        daily_vol = compute_daily_volatility(returns)
+
+        stop_price, method = (None, "unavailable")
+        if current_price is not None:
+            vol_cap = compute_volatility_cap_stop(current_price, daily_vol)
+            stop_price, method = select_stop_loss(current_price, support, vol_cap)
+            logger.info(
+                "%s stop-loss: support=%s, volatility cap (k=%.2f, N=%d)=%s -> %s wins at %s",
+                symbol,
+                "n/a" if support is None else f"{support:,.2f}",
+                STOP_LOSS_VOL_MULTIPLIER,
+                STOP_LOSS_HOLDING_PERIOD_DAYS,
+                "n/a" if vol_cap is None else f"{vol_cap:,.2f}",
+                method,
+                "n/a" if stop_price is None else f"{stop_price:,.2f}",
+            )
+        if len(returns) < 2:
+            logger.warning("%s: insufficient price history for volatility (%d daily returns).", symbol, len(returns))
+
+        records.append({
+            "symbol": symbol,
+            "sector": LOCKED_PORTFOLIO.get(symbol, {}).get("sector", _classify_sector(symbol)),
+            "current_price": current_price,
+            "annualized_volatility_pct": _pct(compute_annualized_volatility(returns)),
+            "historical_expected_return_pct": _pct(compute_historical_expected_return(returns)),
+            "weight_pct": equal_weight_pct,
+            "stop_loss_price": None if stop_price is None else round(stop_price, 2),
+            "stop_loss_pct_below_current": (
+                None if stop_price is None or not current_price
+                else round((current_price - stop_price) / current_price * 100, 2)
+            ),
+            "stop_loss_method": method,
+        })
+
+    risk_df = pd.DataFrame(records, columns=RISK_SUMMARY_COLUMNS)
+
+    if output_csv_path:
+        out_path = Path(output_csv_path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        risk_df.to_csv(out_path, index=False)
+        logger.info("Saved portfolio risk summary to: %s", out_path.resolve())
+
+    return risk_df
+
+
+def print_risk_summary_table(risk_df: pd.DataFrame) -> None:
+    """Print the locked portfolio's risk, sizing and stop-loss table to the terminal."""
+    print("\n" + "=" * 115)
+    print(" LOCKED PORTFOLIO RISK, SIZING & STOP-LOSS SUMMARY")
+    print(f" Stop-loss: tighter of nearest support vs. price x (1 - {STOP_LOSS_VOL_MULTIPLIER} x daily vol "
+          f"x sqrt({STOP_LOSS_HOLDING_PERIOD_DAYS}))")
+    print("=" * 115)
+    if risk_df.empty:
+        print("No risk records to display.")
+    else:
+        try:
+            from tabulate import tabulate
+            print(tabulate(risk_df, headers="keys", tablefmt="grid", showindex=False,
+                           numalign="right", stralign="left", floatfmt=",.2f"))
+        except ImportError:
+            print(risk_df.to_string(index=False))
+    print("=" * 115)
+    print(" PLACEHOLDERS - pending finalization:")
+    print(" - historical_expected_return_pct: simple historical average; may be replaced by CAPM-implied return")
+    print(" - weight_pct: equal weighting; to be replaced by formal weight assignment within the capping constraints")
+    print("=" * 115 + "\n")
+

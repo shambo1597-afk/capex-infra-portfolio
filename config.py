@@ -138,3 +138,25 @@ BHAVCOPY_EXPECTED_COLUMNS = [
 # Output files
 SUMMARY_OUTPUT_CSV = OUTPUT_DIR / "portfolio_technical_summary.csv"
 HISTORICAL_OHLCV_CSV = OUTPUT_DIR / "portfolio_historical_ohlcv.csv"
+RISK_SUMMARY_OUTPUT_CSV = OUTPUT_DIR / "portfolio_risk_summary.csv"
+
+# -----------------------------------------------------------------------------
+# RISK, STOP-LOSS & SIZING ASSUMPTIONS (see stoploss.py)
+# These are stated, adjustable modelling choices, not universally "correct" values.
+# -----------------------------------------------------------------------------
+
+# Trading sessions per year, used to annualize daily volatility and mean returns
+TRADING_DAYS_PER_YEAR = 252
+
+# Lookback for volatility / expected return: the trailing ~1 year of daily returns
+RISK_LOOKBACK_TRADING_DAYS = 252
+
+# k: volatility multiplier for the volatility-capped stop. 1.75 daily-sigma-scaled
+# moves leaves a reasonable cushion against ordinary noise without letting a loss run;
+# raise it for a looser stop, lower it for a tighter one.
+STOP_LOSS_VOL_MULTIPLIER = 1.75
+
+# N: holding-period scaling in trading days (daily sigma is scaled by sqrt(N)).
+# 21 ~ one trading month: a middle ground for the 3-month tactical mandate, where stops
+# are reviewed and potentially tightened monthly rather than held static for the quarter.
+STOP_LOSS_HOLDING_PERIOD_DAYS = 21
