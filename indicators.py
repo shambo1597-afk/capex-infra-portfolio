@@ -13,7 +13,7 @@ Every function is annotated with comprehensive docstrings explaining the underly
 financial intuition, market dynamics, and mathematical mechanics.
 """
 
-from typing import Optional, Tuple
+from typing import Dict, Mapping, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -347,6 +347,38 @@ def compute_relative_strength(
     rs_spread_pp = stock_return_pct - bench_return_pct
 
     return round(rs_spread_pp, 2), round(stock_return_pct, 2), round(bench_return_pct, 2)
+
+
+def compute_sector_relative_strength(
+    stock_returns_pct: Mapping[str, float],
+) -> Tuple[Dict[str, float], float]:
+    """
+    Relative strength of each stock against its own sector's equal-weighted average return.
+
+    Same percentage-point spread methodology as compute_relative_strength(), but the benchmark
+    is the simple average of the sector constituents' own cumulative returns over the same
+    window (e.g. the stock_cumulative_return_pct values from compute_relative_strength):
+
+        sector_avg = mean(R_i)            (equal-weighted, over stocks with a valid return)
+        RS_sector_i = R_i - sector_avg    (percentage points)
+
+    By construction the spreads sum to zero across the stocks included in the average. It
+    answers "which stock is best positioned among its peers", independent of whether the
+    sector as a whole beat the market.
+
+    Parameters:
+        stock_returns_pct (Mapping[str, float]): Cumulative return (%) per symbol; NaN/None
+            entries are excluded from the average and get a NaN spread.
+
+    Returns:
+        Tuple[Dict[str, float], float]: ({symbol: spread in pp}, sector average return %).
+    """
+    valid = {s: float(r) for s, r in stock_returns_pct.items() if r is not None and not np.isnan(r)}
+    if not valid:
+        return {s: np.nan for s in stock_returns_pct}, np.nan
+    sector_avg = float(np.mean(list(valid.values())))
+    spreads = {s: (valid[s] - sector_avg if s in valid else np.nan) for s in stock_returns_pct}
+    return spreads, sector_avg
 
 
 # -----------------------------------------------------------------------------

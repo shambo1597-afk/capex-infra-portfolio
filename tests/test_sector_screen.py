@@ -4,6 +4,7 @@ Unit tests for the technical-first sector screen and the fundamentals parsers it
 
 from unittest.mock import patch
 
+import numpy as np
 import pandas as pd
 import pytest
 from bs4 import BeautifulSoup
@@ -153,11 +154,52 @@ class TestReviewTable:
             # DDD: no fundamentals record at all -> still gets a row, with 0 criteria passed
         ])
         members = pd.DataFrame({"Symbol": ["AAA", "BBB", "CCC", "DDD"], "Company Name": list("ABCD")})
+        # 63-day stock returns (%) in constituent order: AAA 10, BBB 2, CCC -4, DDD unavailable.
+        # Sector average of the valid three = 8/3 = 2.667 -> spreads AAA +7.33, BBB -0.67, CCC -6.67
+        returns = [(0.0, 10.0, 0.0), (0.0, 2.0, 0.0), (0.0, -4.0, 0.0), (float("nan"),) * 3]
         with patch("sector_screen.evaluate_stock_technicals", side_effect=fake_tech), \
+                patch("sector_screen.compute_relative_strength", side_effect=returns), \
                 patch("sector_screen.get_fundamentals_summary", return_value=fundamentals) as live:
             table = build_review_table(members, pd.DataFrame(), pd.DataFrame(), criteria)
 
         live.assert_called_once_with(["AAA", "BBB", "CCC", "DDD"], use_cache=False)
-        assert table["symbol"].tolist() == ["CCC", "BBB", "AAA", "DDD"]  # count desc, then RS desc
+        # fundamentals_passed_count desc, then sector_rank asc: BBB (rank 2) beats CCC (rank 3)
+        # even though CCC's RS vs Nifty 500 is higher
+        assert table["symbol"].tolist() == ["BBB", "CCC", "AAA", "DDD"]
+        by_sym = table.set_index("symbol")
+        assert by_sym.loc["AAA", "rs_score_vs_sector_avg"] == pytest.approx(7.33)
+        assert by_sym.loc["BBB", "rs_score_vs_sector_avg"] == pytest.approx(-0.67)
+        assert by_sym.loc["CCC", "rs_score_vs_sector_avg"] == pytest.approx(-6.67)
+        assert pd.isna(by_sym.loc["DDD", "rs_score_vs_sector_avg"]) and pd.isna(by_sym.loc["DDD", "sector_rank"])
+        assert by_sym["sector_rank"].dropna().astype(int).to_dict() == {"AAA": 1, "BBB": 2, "CCC": 3}
         assert table.set_index("symbol")["fundamentals_passed_count"].to_dict() == {"CCC": 2, "BBB": 2, "AAA": 1, "DDD": 0}
         assert table.set_index("symbol")["technically_attractive"].to_dict() == {"CCC": False, "BBB": False, "AAA": True, "DDD": False}
+
+
+class TestSectorRelativeStrength:
+    """RS vs the sector's own equal-weighted average return (indicators.compute_sector_relative_strength)."""
+
+    def test_sector_average_and_spreads(self):
+        from indicators import compute_sector_relative_strength
+        # Known 63-day returns (%): mean = (10 - 5 + 4 + 7) / 4 = 4.0
+        spreads, sector_avg = compute_sector_relative_strength({"A": 10.0, "B": -5.0, "C": 4.0, "D": 7.0})
+
+        assert sector_avg == pytest.approx(4.0)
+        assert spreads == pytest.approx({"A": 6.0, "B": -9.0, "C": 0.0, "D": 3.0})
+        assert sum(spreads.values()) == pytest.approx(0.0, abs=1e-9)  # spreads from the own average
+
+    def test_spreads_sum_to_zero_for_arbitrary_returns(self):
+        from indicators import compute_sector_relative_strength
+        rng = np.random.default_rng(7)
+        returns = {f"S{i}": float(r) for i, r in enumerate(rng.normal(0, 12, 16))}
+        spreads, sector_avg = compute_sector_relative_strength(returns)
+        assert sector_avg == pytest.approx(np.mean(list(returns.values())))
+        assert sum(spreads.values()) == pytest.approx(0.0, abs=1e-9)
+
+    def test_missing_return_excluded_from_average(self):
+        from indicators import compute_sector_relative_strength
+        spreads, sector_avg = compute_sector_relative_strength({"A": 6.0, "B": 2.0, "C": float("nan")})
+        assert sector_avg == pytest.approx(4.0)
+        assert spreads["A"] == pytest.approx(2.0) and spreads["B"] == pytest.approx(-2.0)
+        assert np.isnan(spreads["C"])
+

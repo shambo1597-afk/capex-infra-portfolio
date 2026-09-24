@@ -34,6 +34,7 @@ from analysis import evaluate_stock_technicals
 from config import SECTOR_SCREENS, TECHNICAL_RS_LOOKBACK_DAYS
 from fetch_data import NSEBhavcopyFetcher, fetch_benchmark_nifty500, get_one_year_date_range
 from fundamentals import evaluate_fundamental_screen, get_fundamentals_summary
+from indicators import compute_relative_strength, compute_sector_relative_strength
 
 logger = logging.getLogger("sector_screen")
 
@@ -159,13 +160,17 @@ def build_review_table(
     pass/fail flag against the reference criteria) and technicals side by side.
 
     Nothing is screened out; the flags, fundamentals_passed_count and technically_attractive
-    are informational. Sorted by fundamentals_passed_count, then RS vs Nifty 500, descending.
+    are informational. Two RS measures over the same 63-session window:
+    rs_score_vs_nifty500 (vs the broad market) and rs_score_vs_sector_avg (vs the equal-weighted
+    average return of all constituents), with sector_rank 1 = best within the sector.
+    Sorted by fundamentals_passed_count descending, then sector_rank ascending.
     """
     symbols = constituents["Symbol"].tolist()
     fundamentals = get_fundamentals_summary(symbols, use_cache=False)
     records = {r["symbol"]: r for r in fundamentals.to_dict("records")} if not fundamentals.empty else {}
 
     rows = []
+    stock_returns: Dict[str, float] = {}
     for _, member in constituents.iterrows():
         symbol = member["Symbol"]
         record = records.get(symbol, {"status": "Data Unavailable"})
@@ -174,6 +179,9 @@ def build_review_table(
         sym_prices = prices[prices["SYMBOL"] == symbol] if not prices.empty else pd.DataFrame()
         tech = evaluate_stock_technicals(symbol, sym_prices, benchmark, rs_lookback=TECHNICAL_RS_LOOKBACK_DAYS)
         attractive, _ = technical_screen_result(tech["rs_score_vs_nifty500"], tech["trend_direction"])
+        # The stock's own 63-session return, exactly as used for rs_score_vs_nifty500
+        _, stock_return_pct, _ = compute_relative_strength(sym_prices, benchmark, lookback_days=TECHNICAL_RS_LOOKBACK_DAYS)
+        stock_returns[symbol] = stock_return_pct
         rows.append({
             "symbol": symbol,
             "company_name": member.get("Company Name"),
@@ -195,8 +203,15 @@ def build_review_table(
             "price_sessions": int(sym_prices["DATE1"].nunique()) if not sym_prices.empty else 0,
         })
     table = pd.DataFrame(rows)
-    return table.sort_values(["fundamentals_passed_count", "rs_score_vs_nifty500"],
-                             ascending=[False, False], na_position="last").reset_index(drop=True)
+
+    # Within-sector relative strength vs the equal-weighted average of all constituents
+    sector_rs, sector_avg = compute_sector_relative_strength(stock_returns)
+    table["rs_score_vs_sector_avg"] = table["symbol"].map(lambda sym: round(sector_rs[sym], 2)
+                                                          if not pd.isna(sector_rs[sym]) else float("nan"))
+    table["sector_rank"] = table["rs_score_vs_sector_avg"].rank(ascending=False, method="min").astype("Int64")
+    table.attrs["sector_avg_return_pct"] = sector_avg
+    return table.sort_values(["fundamentals_passed_count", "sector_rank"],
+                             ascending=[False, True], na_position="last").reset_index(drop=True)
 
 
 def run_review_table(sector: str, output_csv: Path) -> pd.DataFrame:
@@ -215,7 +230,35 @@ def run_review_table(sector: str, output_csv: Path) -> pd.DataFrame:
     output_csv.parent.mkdir(parents=True, exist_ok=True)
     table.to_csv(output_csv, index=False)
     logger.info("Saved %s review table (%d rows) to %s", sector, len(table), output_csv.resolve())
+    notes_path = output_csv.with_name(f"{sector.lower().replace(' ', '_')}_review_notes.md")
+    notes_path.write_text(_review_notes(sector, table, start, end), encoding="utf-8")
+    logger.info("Saved %s review notes to %s", sector, notes_path.resolve())
     return table
+
+
+def _review_notes(sector: str, table: pd.DataFrame, start: date, end: date) -> str:
+    avg = table.attrs.get("sector_avg_return_pct")
+    avg_text = f"{avg:+.2f}%" if avg is not None and not pd.isna(avg) else "n/a"
+    return f"""# Nifty {sector} review table: notes
+
+`{sector.lower().replace(' ', '_')}_full_review_table.csv` lists every Nifty {sector} constituent ({len(table)} rows,
+none excluded), with live fundamentals and technicals as of {end:%d-%b-%Y} (price window
+{start:%d-%b-%Y} to {end:%d-%b-%Y}). It is sorted by `fundamentals_passed_count` (descending),
+then `sector_rank` (ascending).
+
+## Two relative strength measures
+
+**`rs_score_vs_nifty500`** measures whether a stock beats the broad market: its 63-session
+cumulative return minus the Nifty 500's (^CRSLDX), in percentage points. It bears on whether
+{sector} as a theme deserves capital at all, versus simply holding the index.
+**`rs_score_vs_sector_avg`** measures which {sector} stock is best positioned relative to its
+{sector} peers: the same 63-session return minus the equal-weighted average return of all
+{len(table)} constituents ({avg_text} over this window). It is the relevant measure once the
+decision to hold {sector} exposure has been made, per the project's sector-rotation requirement.
+
+`sector_rank` ranks `rs_score_vs_sector_avg` from 1 (best) to {len(table)} (worst); the spreads
+sum to approximately zero by construction.
+"""
 
 
 def print_screen_summary(results: Dict[str, pd.DataFrame]) -> None:
