@@ -178,6 +178,24 @@ IAPFDOF/
 
 ---
 
+## Running the Dashboard
+
+Launch the interactive Streamlit portfolio terminal:
+```bash
+streamlit run app.py
+```
+
+The web dashboard loads instantly from the existing CSV outputs already in the repository (`output/portfolio_technical_summary.csv` and `output/portfolio_historical_ohlcv.csv`) without requiring network re-fetching.
+
+### Dashboard Architecture (5 Tabs)
+1. **Portfolio Overview:** Dense, institutional summary metrics and sector-grouped constituent tables for the 8 locked stocks (`Cement`, `Capital Goods/EPC`, `Power`) with visible investment committee notes (including the NTPC fundamental inclusion caveat).
+2. **Fundamentals:** Screener criteria view (ROCE, 3Yr Avg ROCE, OPM, Debt/Equity, Operating Cash Flow, 3Yr Sales Growth, 3Yr Profit Growth) dynamically loading Screener.in CSV exports from `data/fundamentals/`.
+3. **Technicals:** Full technical summary table with subtle green/red trend direction tinting and an interactive 1-year OHLCV line chart with horizontal Support and Resistance reference levels.
+4. **Risk & Hedging:** *(Module in Progress)* Beta regression, explained/unexplained risk decomposition, and hedge ratio analysis.
+5. **Performance:** *(Module in Progress)* Sharpe ratio, Treynor ratio, XIRR, and Capital Market Line (scheduled for 28th September snapshot).
+
+---
+
 ## How to Run the Pipeline
 
 ### 1. Default Run (1-Year Bhavcopy Download & Analysis)

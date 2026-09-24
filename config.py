@@ -54,6 +54,30 @@ POWER_SECTOR_STOCKS = [
     # e.g., "NTPC", "POWERGRID", "TATAPOWER"
 ]
 
+# -----------------------------------------------------------------------------
+# LOCKED PORTFOLIO (8 STOCKS)
+# Coursework Final Portfolio Allocation across 3 key Infra/Capex Sectors
+# -----------------------------------------------------------------------------
+
+LOCKED_PORTFOLIO = {
+    "JKCEMENT": {"sector": "Cement", "name": "J K Cement"},
+    "ULTRACEMCO": {"sector": "Cement", "name": "UltraTech Cement"},
+    "STARCEMENT": {"sector": "Cement", "name": "Star Cement"},
+    "BHEL": {"sector": "Capital Goods/EPC", "name": "Bharat Heavy Electricals"},
+    "VOLTAMP": {"sector": "Capital Goods/EPC", "name": "Voltamp Transformers"},
+    "POWERGRID": {"sector": "Power", "name": "Power Grid Corp."},
+    "TATAPOWER": {"sector": "Power", "name": "Tata Power"},
+    "NTPC": {"sector": "Power", "name": "NTPC"},
+}
+
+LOCKED_PORTFOLIO_SYMBOLS = list(LOCKED_PORTFOLIO.keys())
+
+# Documented investment committee caveat for NTPC
+NTPC_CAVEAT = (
+    "Note: Shows a bearish near-term technical trend but was included "
+    "for its strong fundamentals during a sector-wide downturn."
+)
+
 # Complete portfolio watchlist to fetch and analyze
 PORTFOLIO_SYMBOLS = CEMENT_STOCKS + CAPITAL_GOODS_EPC_STOCKS + POWER_SECTOR_STOCKS
 ALL_TARGET_STOCKS = PORTFOLIO_SYMBOLS

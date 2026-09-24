@@ -18,6 +18,7 @@ import pandas as pd
 from config import (
     CEMENT_STOCKS,
     CAPITAL_GOODS_EPC_STOCKS,
+    LOCKED_PORTFOLIO,
     POWER_SECTOR_STOCKS,
     SUMMARY_OUTPUT_CSV,
 )
@@ -126,12 +127,14 @@ def evaluate_stock_technicals(
 
 def _classify_sector(symbol: str) -> str:
     """Helper to classify stock into its portfolio sector."""
-    if symbol in CEMENT_STOCKS:
-        return "Cement (Locked)"
+    if symbol in LOCKED_PORTFOLIO:
+        return LOCKED_PORTFOLIO[symbol]["sector"]
+    elif symbol in CEMENT_STOCKS:
+        return "Cement"
     elif symbol in CAPITAL_GOODS_EPC_STOCKS:
-        return "Capital Goods / EPC"
+        return "Capital Goods/EPC"
     elif symbol in POWER_SECTOR_STOCKS:
-        return "Power (Pending)"
+        return "Power"
     return "Other"
 
 
