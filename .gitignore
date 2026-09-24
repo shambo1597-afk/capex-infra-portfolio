@@ -43,3 +43,6 @@ htmlcov/
 
 # Large raw bhavcopy daily downloads cache
 data/raw_bhavcopy/
+
+# Local backup / cloned folder
+capex-infra-portfolio/

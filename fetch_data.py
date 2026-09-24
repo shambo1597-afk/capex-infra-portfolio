@@ -403,6 +403,214 @@ def load_benchmark_tri(csv_path: Optional[Path] = None) -> pd.DataFrame:
     return df
 
 
+def fetch_benchmark_tri_automated(start_date: str, end_date: str) -> pd.DataFrame:
+    """
+    Fetch Nifty 500 TRI historical data via browser automation, since
+    niftyindices.com's TRI data is only reachable through its
+    JavaScript-rendered UI, not a stable public API.
+    """
+    import tempfile
+    import urllib.parse
+
+    logger.info("Attempting automated browser retrieval of Nifty 500 TRI from niftyindices.com...")
+    try:
+        from playwright.sync_api import sync_playwright
+
+        # Standardize dates into DD-Mon-YYYY (e.g. '24-Sep-2024') required by niftyindices portal
+        if isinstance(start_date, (datetime, date)):
+            start_dt = start_date
+        else:
+            start_dt = pd.to_datetime(start_date).date()
+
+        if isinstance(end_date, (datetime, date)):
+            end_dt = end_date
+        else:
+            end_dt = pd.to_datetime(end_date).date()
+
+        start_str = start_dt.strftime("%d-%b-%Y")
+        end_str = end_dt.strftime("%d-%b-%Y")
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=True,
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                ]
+            )
+            try:
+                context = browser.new_context(
+                    user_agent=(
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                        "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+                    ),
+                    viewport={"width": 1280, "height": 800},
+                    accept_downloads=True,
+                )
+                page = context.new_page()
+                page.set_default_timeout(30000)
+
+                # Auto-accept dialog alerts (e.g., date range limit notices)
+                page.on("dialog", lambda dialog: dialog.accept())
+
+                # 1. Launch headless Chromium, navigate to historical data page
+                logger.info("Navigating to https://niftyindices.com/reports/historical-data...")
+                try:
+                    page.goto("https://niftyindices.com/reports/historical-data", wait_until="domcontentloaded", timeout=30000)
+                except Exception:
+                    # Retry with commit if domcontentloaded stalls on external trackers
+                    page.goto("https://niftyindices.com/reports/historical-data", wait_until="commit", timeout=20000)
+                page.wait_for_timeout(1500)
+
+                # 2. Click dropdown currently showing 'Historical Index Data' and select 'Total returns Index Values'
+                menu_btn = page.locator("#HistoricalMenu, a.btn.btn-select")
+                if menu_btn.count() > 0:
+                    menu_btn.first.click()
+                    page.wait_for_timeout(500)
+
+                tri_opt = page.locator("#maindd li.form5, #maindd li:has-text('Total returns Index Values')")
+                if tri_opt.count() > 0:
+                    tri_opt.first.click()
+                else:
+                    page.evaluate("if (typeof ReturnIndextype === 'function') ReturnIndextype();")
+                page.wait_for_timeout(1000)
+
+                # 3. Set 'Select an Index Type' to 'Equity'
+                page.wait_for_selector("#ddlHistoricalreturntypee option[value='Equity']", timeout=15000)
+                page.select_option("#ddlHistoricalreturntypee", value="Equity")
+                page.wait_for_timeout(1000)
+
+                # 4. Set 'Select a Sub-Index' to 'Broad Based Indices' / 'Broad Market Indices'
+                page.wait_for_selector("#ddlHistoricalreturntypeeSubindex option:not([value='0'])", timeout=15000)
+                subindex_select = page.locator("#ddlHistoricalreturntypeeSubindex")
+                options = subindex_select.locator("option").all_inner_texts()
+                matched_sub = None
+                for opt in options:
+                    if "broad" in opt.lower():
+                        matched_sub = opt.strip()
+                        break
+                if matched_sub:
+                    subindex_select.select_option(label=matched_sub)
+                else:
+                    subindex_select.select_option(label="Broad Market Indices")
+                page.wait_for_timeout(1000)
+
+                # 5. Set 'Select an Index' to 'NIFTY 500'
+                page.wait_for_selector("#ddlHistoricalreturntypeeindex option:not([value='0'])", timeout=15000)
+                index_select = page.locator("#ddlHistoricalreturntypeeindex")
+                idx_options = index_select.locator("option").all_inner_texts()
+                matched_idx = None
+                for opt in idx_options:
+                    if "500" in opt:
+                        matched_idx = opt.strip()
+                        break
+                if matched_idx:
+                    index_select.select_option(label=matched_idx)
+                else:
+                    index_select.select_option(label="NIFTY 500")
+                page.wait_for_timeout(500)
+
+                # 6. Set the two date pickers to start_date and end_date
+                page.evaluate(
+                    """([startVal, endVal]) => {
+                        $('#datepickerFromtotalindex').datepicker('setDate', startVal);
+                        $('#datepickerTototalindex').datepicker('setDate', endVal);
+                        $('#datepickerFromtotalindex').val(startVal);
+                        $('#datepickerTototalindex').val(endVal);
+                    }""",
+                    [start_str, end_str]
+                )
+                page.wait_for_timeout(500)
+
+                # 7. Click 'Submit'
+                submit_btn = page.locator("#submit_totalindexhistorical, a.submitBtn:has-text('Submit')")
+                submit_btn.first.click()
+
+                # 8. Wait for results table to render and export CSV button to appear
+                page.wait_for_selector("#exportTotalindex:visible", timeout=20000)
+                page.wait_for_timeout(1000)
+
+                # 9. Capture the downloaded CSV (Playwright expect_download pattern)
+                df = None
+                try:
+                    with page.expect_download(timeout=10000) as download_info:
+                        page.locator("#exportTotalindex").click()
+                    download = download_info.value
+                    with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tf:
+                        tmp_csv_path = Path(tf.name)
+                    download.save_as(str(tmp_csv_path))
+                    try:
+                        df = pd.read_csv(tmp_csv_path)
+                    finally:
+                        if tmp_csv_path.exists():
+                            tmp_csv_path.unlink()
+                except Exception as dl_err:
+                    logger.debug("Download capture fallback triggered: %s", dl_err)
+                    export_elem = page.locator("#exportTotalindex")
+                    href = export_elem.get_attribute("href")
+                    if href and href.startswith("data:"):
+                        csv_payload = urllib.parse.unquote(href.split(",", 1)[1])
+                        df = pd.read_csv(io.StringIO(csv_payload))
+                    else:
+                        table_elem = page.locator("#historytotalindexexport")
+                        if table_elem.count() > 0:
+                            html_content = table_elem.inner_html()
+                            dfs = pd.read_html(io.StringIO(f"<table>{html_content}</table>"))
+                            if dfs:
+                                df = dfs[0]
+
+                if df is None or df.empty:
+                    raise ValueError("No records extracted from niftyindices.com automated TRI response.")
+
+                # Standardize column names to match: IndexName, Date, Total Returns Index, Net Total Return Index
+                df.columns = [c.strip() for c in df.columns]
+                col_rename = {}
+                for c in df.columns:
+                    clean_c = c.replace("_", " ").title()
+                    if "Total Returns" in clean_c or "Total Return Index" in clean_c:
+                        if "Net" in clean_c:
+                            col_rename[c] = "Net Total Return Index"
+                        else:
+                            col_rename[c] = "Total Returns Index"
+                    elif "Index Name" in clean_c or "Indexname" in clean_c:
+                        col_rename[c] = "IndexName"
+                    elif "Date" in clean_c:
+                        col_rename[c] = "Date"
+                    elif "Ntr" in clean_c:
+                        col_rename[c] = "Net Total Return Index"
+                df = df.rename(columns=col_rename)
+
+                # Validate expected columns
+                required_cols = ["IndexName", "Date", "Total Returns Index"]
+                for rc in required_cols:
+                    if rc not in df.columns:
+                        raise ValueError(f"TRI DataFrame missing column '{rc}'. Available: {df.columns.tolist()}")
+
+                if "Net Total Return Index" not in df.columns:
+                    df["Net Total Return Index"] = float("nan")
+
+                # Parse dates and numeric columns
+                df["Date"] = pd.to_datetime(df["Date"], format="mixed", errors="coerce").dt.tz_localize(None)
+                df["Total Returns Index"] = pd.to_numeric(df["Total Returns Index"].astype(str).str.replace(",", ""), errors="coerce")
+                df["Net Total Return Index"] = pd.to_numeric(df["Net Total Return Index"].astype(str).str.replace(",", ""), errors="coerce")
+
+                df = df.dropna(subset=["Date", "Total Returns Index"]).sort_values("Date").reset_index(drop=True)
+                logger.info("Automated TRI retrieval successful: %d daily sessions acquired.", len(df))
+                return df
+            finally:
+                browser.close()
+
+    except Exception as exc:
+        logger.warning(
+            "Automated benchmark TRI fetching failed (%s). Falling back to local manual CSV at '%s'.",
+            exc,
+            DEFAULT_TRI_CSV_PATH,
+            exc_info=True
+        )
+        return load_benchmark_tri(DEFAULT_TRI_CSV_PATH)
+
+
 def get_one_year_date_range() -> Tuple[date, date]:
     """
     Calculate the standard 1-year back date window from current execution date.

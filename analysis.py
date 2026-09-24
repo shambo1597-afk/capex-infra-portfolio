@@ -247,7 +247,18 @@ def print_summary_table(summary_df: pd.DataFrame) -> None:
             numalign="right",
             stralign="left"
         )
-        print(table_str)
+        try:
+            print(table_str)
+        except UnicodeEncodeError:
+            # Windows cp1252 console fallback for box-drawing characters
+            print(tabulate(
+                formatted_df,
+                headers="keys",
+                tablefmt="grid",
+                showindex=False,
+                numalign="right",
+                stralign="left"
+            ))
     except ImportError:
         # Fallback to pandas string rendering
         pd.set_option("display.max_columns", None)

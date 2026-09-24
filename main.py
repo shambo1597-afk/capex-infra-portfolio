@@ -40,6 +40,7 @@ from config import (
 from fetch_data import (
     NSEBhavcopyFetcher,
     fetch_benchmark_nifty500,
+    fetch_benchmark_tri_automated,
     get_one_year_date_range,
     load_benchmark_tri,
 )
@@ -78,6 +79,13 @@ def parse_arguments() -> argparse.Namespace:
         help="Force re-download of all NSE daily bhavcopies ignoring existing cache."
     )
     parser.add_argument(
+        "--tri-source",
+        type=str,
+        choices=["manual", "automated"],
+        default="manual",
+        help="Source for Nifty 500 TRI data: 'manual' (default local CSV) or 'automated' (browser automation via Playwright)."
+    )
+    parser.add_argument(
         "--tri-csv",
         type=str,
         default=str(DEFAULT_TRI_CSV_PATH),
@@ -98,7 +106,7 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def display_project_header() -> None:
+def display_project_header(tri_source: str = "manual") -> None:
     """Print academic project banner and universe overview."""
     print("=" * 115)
     print(" INDIAN EQUITY PORTFOLIO DATA PIPELINE & ANALYSIS TOOLKIT")
@@ -112,7 +120,8 @@ def display_project_header() -> None:
     else:
         print(" [*] Power Sector Candidates:          [Pending / Placeholder: Not yet finalized]")
     print(f" [*] Benchmark 1 (Price Return):       Nifty 500 ({BENCHMARK_PRICE_TICKER} via yfinance)")
-    print(f" [*] Benchmark 2 (Total Return Index): Local Nifty 500 TRI CSV (niftyindices.com)")
+    tri_desc = "Local Nifty 500 TRI CSV (manual)" if tri_source == "manual" else "Automated Browser Fetch (niftyindices.com)"
+    print(f" [*] Benchmark 2 (Total Return Index): {tri_desc}")
     print("=" * 115 + "\n")
 
 
@@ -121,7 +130,7 @@ def run_pipeline() -> int:
     Execute the end-to-end data ingestion, benchmark alignment, and technical analysis workflow.
     """
     args = parse_arguments()
-    display_project_header()
+    display_project_header(args.tri_source)
 
     start_date = datetime.strptime(args.start_date, "%Y-%m-%d").date()
     end_date = datetime.strptime(args.end_date, "%Y-%m-%d").date()
@@ -145,13 +154,21 @@ def run_pipeline() -> int:
     if benchmark_price_df.empty:
         logger.warning("Could not download benchmark price series. Proceeding with caution.")
 
-    # 1B. Benchmark Total Return Index (TRI) via Local CSV
-    benchmark_tri_df = load_benchmark_tri(Path(args.tri_csv))
+    # 1B. Benchmark Total Return Index (TRI) via Local CSV or Browser Automation
+    if args.tri_source == "automated":
+        print(f"     [+] Fetching Benchmark TRI via automated browser session ({args.start_date} to {args.end_date})...")
+        benchmark_tri_df = fetch_benchmark_tri_automated(
+            start_date=args.start_date,
+            end_date=args.end_date
+        )
+    else:
+        benchmark_tri_df = load_benchmark_tri(Path(args.tri_csv))
+
     if not benchmark_tri_df.empty:
         print(f"     [+] Benchmark TRI verified: {len(benchmark_tri_df)} daily sessions loaded.")
     else:
-        print(f"     [!] Notice: Benchmark TRI CSV not found at '{args.tri_csv}'. "
-              f"Please supply the official CSV from niftyindices.com via --tri-csv.")
+        print(f"     [!] Notice: Benchmark TRI data not available. "
+              f"Please supply the official CSV from niftyindices.com via --tri-csv or use --tri-source automated.")
 
     # -------------------------------------------------------------------------
     # STEP 2: Individual Stock Price History via Direct NSE Bhavcopy

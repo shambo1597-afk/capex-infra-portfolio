@@ -185,6 +185,8 @@ IAPFDOF/
 3. **Install Dependencies:**
    ```bash
    pip install -r requirements.txt
+   # Run once to install headless Chromium for automated benchmark retrieval:
+   playwright install chromium
    ```
 
 ---
@@ -230,6 +232,41 @@ python main.py --start-date 2025-09-24 --end-date 2026-09-23
 ```bash
 python main.py --tri-csv path/to/nifty500_tri.csv
 ```
+
+### 5. Automated TRI Retrieval (Opt-In / Experimental)
+```bash
+python main.py --tri-source automated
+```
+
+---
+
+## Automated TRI Fetching (Experimental)
+
+### Why Browser Automation is Needed
+The benchmark Nifty 500 Total Returns Index (TRI) series is hosted at [niftyindices.com/reports/historical-data](https://niftyindices.com/reports/historical-data). Unlike standardized price return series available on Yahoo Finance (`^CRSLDX`), TRI historical records are reachable solely through the portal's client-side JavaScript UI. Direct HTTP requests to the underlying endpoints (`Backpage.aspx/getHistoricaldatatabletoString` and `Backpage.aspx/getTotalReturnIndexString`) return raw HTML error shells rather than structured JSON/CSV data. A real headless browser (Chromium via Playwright) that navigates the DOM, interacts with dropdown menus and date pickers, submits the query, and captures the generated CSV export is required.
+
+### How to Enable
+Automated fetching is strictly opt-in and disabled by default:
+```bash
+# Opt-in to automated browser retrieval:
+python main.py --tri-source automated
+
+# Combine with cached stock data:
+python main.py --skip-fetch --tri-source automated
+```
+
+### Requirements & Setup
+Playwright requires a headless Chromium browser binary. After installing project requirements, run:
+```bash
+playwright install chromium
+```
+
+### Reliability & Fragility Disclaimer
+> [!WARNING]
+> **Experimental Feature:** Automated browser retrieval depends directly on `niftyindices.com`'s active DOM layout, element IDs (`#ddlHistoricalreturntypee`, `#submit_totalindexhistorical`, `#exportTotalindex`), and client-side scripts. If the portal redesigns its layout or changes dropdown hierarchies, automated scraping may fail.
+
+### Fail-Safe Fallback Guarantee
+The automated fetch routine in `fetch_benchmark_tri_automated()` is completely wrapped in a defensive `try...except` block. If any step fails (network timeout, element not found, download failure, missing Playwright browser binary), the pipeline logs a detailed warning and **automatically falls back** to `load_benchmark_tri()` using the local manual CSV at `data/nifty500_tri.csv`. Running `python main.py` with no flags remains the default, proven-working, and most reliable production path.
 
 ---
 
