@@ -37,10 +37,12 @@ class TestUniverseConfiguration:
         expected_cg = [
             "ABB", "CGPOWER", "GVT&D", "POWERINDIA", "TRITURBINE", "TDPOWERSYS",
             "SIEMENS", "BHEL", "INOXWIND", "ENRIN", "SUZLON", "THERMAX", "VOLTAMP",
+            # Not Nifty Capital Goods index members; included on the fundamental screen alone
+            "CEMPRO", "SCHNEIDER",
         ]
         for sym in expected_cg:
             assert sym in CAPITAL_GOODS_EPC_STOCKS
-        assert len(CAPITAL_GOODS_EPC_STOCKS) == 13
+        assert len(CAPITAL_GOODS_EPC_STOCKS) == 15
 
     def test_power_sector_stocks(self):
         expected_power = [
@@ -176,14 +178,32 @@ class TestBhavcopyHolidayAndBlockHandling:
         fetcher = self._fetcher(tmp_path, [_Resp(200, _bhav_csv("24-Dec-2025"))])
         assert fetcher.fetch_daily_bhavcopy(date(2025, 12, 25), ["JKCEMENT"]) is None
         assert (tmp_path / "holiday_v2_25-Dec-2025.flag").exists()
-        assert not (tmp_path / "bhav_25-Dec-2025.csv").exists()
+        assert not list(tmp_path.glob("bhav*25-Dec-2025.csv"))
 
-    def test_stale_cached_file_for_other_session_is_discarded(self, tmp_path):
-        (tmp_path / "bhav_25-Dec-2025.csv").write_text(
-            "SYMBOL,SERIES,DATE1,CLOSE_PRICE\nJKCEMENT,EQ,2025-12-24,4785.0\n", encoding="utf-8")
-        fetcher = self._fetcher(tmp_path, [])
-        assert fetcher.fetch_daily_bhavcopy(date(2025, 12, 25), ["JKCEMENT"]) is None
-        assert not (tmp_path / "bhav_25-Dec-2025.csv").exists()
+    def test_legacy_symbol_filtered_cache_is_ignored(self, tmp_path):
+        """Old 'bhav_' cache files held only the universe of their day; they must be re-fetched."""
+        (tmp_path / "bhav_23-Sep-2024.csv").write_text(
+            "SYMBOL,SERIES,DATE1,CLOSE_PRICE\nOTHER,EQ,2024-09-23,1.0\n", encoding="utf-8")
+        fetcher = self._fetcher(tmp_path, [_Resp(200, _bhav_csv("23-Sep-2024"))])
+
+        df = fetcher.fetch_daily_bhavcopy(date(2024, 9, 23), ["JKCEMENT"])
+
+        assert df is not None and df["SYMBOL"].tolist() == ["JKCEMENT"]
+
+    def test_symbols_added_later_are_served_from_full_day_cache(self, tmp_path):
+        """The cache keeps every symbol of the day, so extending the universe needs no re-download."""
+        two_symbols = _bhav_csv("23-Sep-2024") + (
+            "ITDCEM, EQ, 23-Sep-2024, 500.00, 505.00, 510.00, 495.00, 507.00, 508.00, 503.00, "
+            "10000, 50.00, 400, 5000, 50.00\n")
+        fetcher = self._fetcher(tmp_path, [_Resp(200, two_symbols)])
+        first = fetcher.fetch_daily_bhavcopy(date(2024, 9, 23), ["JKCEMENT"])
+        assert first["SYMBOL"].tolist() == ["JKCEMENT"]
+
+        # No network response queued: this must come from cache, with the ITDCEM -> CEMPRO alias applied
+        later = fetcher.fetch_daily_bhavcopy(date(2024, 9, 23), ["JKCEMENT", "CEMPRO"])
+
+        assert sorted(later["SYMBOL"]) == ["CEMPRO", "JKCEMENT"]
+        assert later.loc[later["SYMBOL"] == "CEMPRO", "CLOSE_PRICE"].iloc[0] == 508.00
 
     def test_legacy_holiday_flags_are_ignored(self, tmp_path):
         """Old-style flags may mark blocked trading days as holidays, so they are re-checked."""

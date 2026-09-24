@@ -23,7 +23,9 @@ accounting mechanics, and investment risk management applications.
 """
 
 import logging
+import operator
 import re
+from datetime import date
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -32,10 +34,15 @@ import requests
 from bs4 import BeautifulSoup
 
 from config import (
+    CAPITAL_GOODS_EPC_STOCKS,
+    CAPITAL_GOODS_SCREEN_CRITERIA,
+    CEMENT_STOCKS,
     FUNDAMENTALS_CACHE_DIR,
+    FUNDAMENTALS_SCREEN_OUTPUT_CSV,
     LOCKED_PORTFOLIO,
     LOCKED_PORTFOLIO_SYMBOLS,
     NSE_REQUEST_HEADERS,
+    POWER_SECTOR_STOCKS,
 )
 
 logger = logging.getLogger("fundamentals")
@@ -305,6 +312,25 @@ def parse_operating_cash_flow(soup: BeautifulSoup) -> Optional[float]:
     return None
 
 
+def parse_operating_cash_flow_3yr(soup: BeautifulSoup) -> Optional[float]:
+    """
+    Sum of Cash from Operating Activity over the last 3 financial years (Rs Crores), from the
+    same 'Cash Flows' row as parse_operating_cash_flow(). Matches Screener.in's
+    "Operating cash flow 3years" screen field; None if fewer than 3 years are reported.
+    """
+    sec = soup.find("section", id="cash-flow")
+    table = sec.find("table") if sec else None
+    if not table:
+        return None
+    for tr in table.find_all("tr"):
+        tds = [td.text.strip() for td in tr.find_all("td")]
+        if tds and "operating activity" in tds[0].lower():
+            numeric_vals = [_clean_numeric(v) for v in tds[1:] if _clean_numeric(v) is not None]
+            if len(numeric_vals) >= 3:
+                return round(sum(numeric_vals[-3:]), 2)
+    return None
+
+
 def parse_debt_to_equity(soup: BeautifulSoup) -> Optional[float]:
     """
     Extract Total Borrowings and Shareholders' Net Worth from the 'Balance Sheet' table
@@ -465,6 +491,7 @@ def extract_stock_fundamentals(symbol: str, use_cache: bool = True) -> Dict[str,
         "opm": None,
         "debt_to_equity": None,
         "operating_cash_flow": None,
+        "operating_cash_flow_3yr": None,
         "sales_growth_3yr": None,
         "profit_growth_3yr": None,
         "status": "Data Unavailable",
@@ -479,6 +506,7 @@ def extract_stock_fundamentals(symbol: str, use_cache: bool = True) -> Dict[str,
         top_ratios = parse_top_ratios(soup)
         roce_3yr = parse_roce_3yr_average(soup)
         cfo = parse_operating_cash_flow(soup)
+        cfo_3yr = parse_operating_cash_flow_3yr(soup)
         debt_eq = parse_debt_to_equity(soup)
         opm = parse_opm(soup)
         sales_3y, profit_3y = parse_sales_and_profit_growth(soup)
@@ -495,6 +523,7 @@ def extract_stock_fundamentals(symbol: str, use_cache: bool = True) -> Dict[str,
             "opm": opm,
             "debt_to_equity": debt_eq,
             "operating_cash_flow": cfo,
+            "operating_cash_flow_3yr": cfo_3yr,
             "sales_growth_3yr": sales_3y,
             "profit_growth_3yr": profit_3y,
             "status": "OK",
@@ -531,3 +560,73 @@ def get_fundamentals_summary(
     df = pd.DataFrame(records)
     logger.info("Extracted fundamentals summary for %d symbols.", len(df))
     return df
+
+
+_SCREEN_COMPARISONS = {">": operator.gt, "<": operator.lt, ">=": operator.ge, "<=": operator.le}
+
+
+def _universe_sector(symbol: str) -> str:
+    if symbol in LOCKED_PORTFOLIO:
+        return LOCKED_PORTFOLIO[symbol]["sector"]
+    if symbol in CEMENT_STOCKS:
+        return "Cement"
+    if symbol in CAPITAL_GOODS_EPC_STOCKS:
+        return "Capital Goods/EPC"
+    if symbol in POWER_SECTOR_STOCKS:
+        return "Power"
+    return "Other"
+
+
+def generate_fundamentals_screen_check(
+    symbols: List[str],
+    criteria: Optional[List[Tuple[str, str, float, str]]] = None,
+    use_cache: bool = False,
+    output_csv_path: Optional[Path] = FUNDAMENTALS_SCREEN_OUTPUT_CSV,
+) -> pd.DataFrame:
+    """
+    Check stocks against a fundamental screen and save one row per symbol.
+
+    Columns: symbol, sector, as_of, status, each screened metric, pass_<metric> for each
+    criterion, passes_screen, failed_criteria. A metric that could not be read counts as a
+    failure ("<label> (missing)"), never as a pass.
+
+    Parameters:
+        symbols (List[str]): Stocks to check.
+        criteria (list, optional): (field, comparison, threshold, label) tuples.
+            Defaults to CAPITAL_GOODS_SCREEN_CRITERIA.
+        use_cache (bool): False (default) fetches live Screener.in pages.
+        output_csv_path (Path, optional): Destination CSV; None skips saving.
+
+    Returns:
+        pd.DataFrame: The screen check table.
+    """
+    if criteria is None:
+        criteria = CAPITAL_GOODS_SCREEN_CRITERIA
+
+    rows = []
+    for symbol in symbols:
+        record = extract_stock_fundamentals(symbol, use_cache=use_cache)
+        row = {"symbol": symbol, "sector": _universe_sector(symbol),
+               "as_of": date.today().isoformat(), "status": record["status"]}
+        failed = []
+        for field, comparison, threshold, label in criteria:
+            value = record.get(field)
+            row[field] = value
+            passed = value is not None and not pd.isna(value) and _SCREEN_COMPARISONS[comparison](value, threshold)
+            row[f"pass_{field}"] = bool(passed)
+            if not passed:
+                failed.append(label if value is not None and not pd.isna(value) else f"{label} (missing)")
+        row["passes_screen"] = not failed
+        row["failed_criteria"] = "; ".join(failed)
+        rows.append(row)
+        logger.info("%s fundamental screen: %s%s", symbol, "PASS" if not failed else "FAIL",
+                    "" if not failed else f" ({row['failed_criteria']})")
+
+    screen_df = pd.DataFrame(rows)
+    if output_csv_path:
+        out_path = Path(output_csv_path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        screen_df.to_csv(out_path, index=False)
+        logger.info("Saved fundamentals screen check to: %s", out_path.resolve())
+    return screen_df
+

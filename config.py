@@ -34,11 +34,15 @@ CEMENT_STOCKS = [
     "STARCEMENT",  # Star Cement Ltd. (Regional Growth Play)
 ]
 
-# Capital Goods / EPC Candidates (Screened candidate universe - 13 stocks)
-# Full set of official Nifty Capital Goods index candidates that passed the fundamental screen
+# Capital Goods / EPC Candidates (Screened candidate universe - 15 stocks)
+# The 13 official Nifty Capital Goods index constituents that passed the fundamental screen,
+# plus CEMPRO and SCHNEIDER: not index members, but they passed the same screen on their own
+# merits (index membership is a methodological preference, not a requirement).
 CAPITAL_GOODS_EPC_STOCKS = [
     "ABB", "CGPOWER", "GVT&D", "POWERINDIA", "TRITURBINE", "TDPOWERSYS",
     "SIEMENS", "BHEL", "INOXWIND", "ENRIN", "SUZLON", "THERMAX", "VOLTAMP",
+    "CEMPRO",     # Cemindia Projects Ltd. (formerly ITD Cementation; see SYMBOL_ALIASES)
+    "SCHNEIDER",  # Schneider Electric Infrastructure Ltd.
 ]
 
 # Power Sector Stocks (Screened candidate universe - 11 stocks)
@@ -152,6 +156,18 @@ BHAVCOPY_EXPECTED_COLUMNS = [
 SUMMARY_OUTPUT_CSV = OUTPUT_DIR / "portfolio_technical_summary.csv"
 HISTORICAL_OHLCV_CSV = OUTPUT_DIR / "portfolio_historical_ohlcv.csv"
 RISK_SUMMARY_OUTPUT_CSV = OUTPUT_DIR / "portfolio_risk_summary.csv"
+FUNDAMENTALS_SCREEN_OUTPUT_CSV = OUTPUT_DIR / "fundamentals_screen_check.csv"
+
+# Capital Goods / EPC fundamental screen (Screener.in basis): (field, comparison, threshold, label)
+CAPITAL_GOODS_SCREEN_CRITERIA = [
+    ("market_cap", ">", 1000, "Market Cap > 1000 (Rs Cr)"),
+    ("sales_growth_3yr", ">", 8, "Sales growth 3Years > 8%"),
+    ("profit_growth_3yr", ">", 8, "Profit growth 3Years > 8%"),
+    ("roce_3yr_avg", ">", 13, "Average ROCE 3Years > 13%"),
+    ("opm", ">", 9, "OPM > 9%"),
+    ("operating_cash_flow_3yr", ">", 0, "Operating cash flow 3years > 0 (Rs Cr)"),
+    ("debt_to_equity", "<", 1.2, "Debt to equity < 1.2"),
+]
 
 # -----------------------------------------------------------------------------
 # RISK, STOP-LOSS & SIZING ASSUMPTIONS (see stoploss.py)

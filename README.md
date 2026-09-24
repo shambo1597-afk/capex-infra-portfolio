@@ -156,7 +156,8 @@ IAPFDOF/
 ├── output/
 │   ├── portfolio_technical_summary.csv # Single-row summary table for portfolio review
 │   ├── portfolio_historical_ohlcv.csv  # Clean historical OHLCV data across universe
-│   └── portfolio_risk_summary.csv      # Locked portfolio volatility, placeholder return/weight, stop-loss
+│   ├── portfolio_risk_summary.csv      # Locked portfolio volatility, placeholder return/weight, stop-loss
+│   └── fundamentals_screen_check.csv   # Candidate fundamentals vs. the Capital Goods/EPC screen thresholds
 ├── tests/
 │   ├── __init__.py
 │   ├── test_automated_tri.py     # Unit tests for automated TRI retrieval, retries, and fallback
@@ -317,6 +318,8 @@ It also saves `output/portfolio_risk_summary.csv`, one row per locked portfolio 
 | `stop_loss_price` | Float (INR) | Tighter of nearest support and the volatility cap. |
 | `stop_loss_pct_below_current` | Float (%) | Distance of the stop below the current price. |
 | `stop_loss_method` | String | `support` or `volatility_cap` (whichever was tighter); `unavailable` if neither could be computed. |
+
+`output/fundamentals_screen_check.csv` (from `fundamentals.generate_fundamentals_screen_check()`, live Screener.in data by default) records each checked stock's screen metrics, a `pass_<metric>` flag per criterion (`config.CAPITAL_GOODS_SCREEN_CRITERIA`: Market Cap > 1000 Cr, 3-yr sales and profit growth > 8%, 3-yr average ROCE > 13%, OPM > 9%, 3-yr operating cash flow > 0, Debt/Equity < 1.2), `passes_screen`, and `failed_criteria`. A metric that cannot be read counts as a failure.
 
 ---
 

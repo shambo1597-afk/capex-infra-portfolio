@@ -112,6 +112,20 @@ class NSEBhavcopyFetcher:
         return not dates.empty and (dates != target_date).all()
 
     @staticmethod
+    def _select_symbols(day_df: pd.DataFrame, target_symbols: List[str], date_str: str) -> Optional[pd.DataFrame]:
+        """
+        Map historical ticker aliases to current tickers (e.g. GET&D -> GVT&D, ITDCEM -> CEMPRO)
+        and keep only the requested symbols; None when none of them traded that day.
+        """
+        df = day_df.copy()
+        df["SYMBOL"] = df["SYMBOL"].replace(SYMBOL_ALIASES)
+        target_df = df[df["SYMBOL"].isin(target_symbols)].copy()
+        if target_df.empty:
+            logger.debug("Bhavcopy for %s valid, but contains no target portfolio symbols.", date_str)
+            return None
+        return target_df
+
+    @staticmethod
     def _mark_holiday(holiday_flag_file: Path) -> None:
         try:
             holiday_flag_file.touch()
@@ -171,15 +185,12 @@ class NSEBhavcopyFetcher:
         if target_symbols is None:
             target_symbols = PORTFOLIO_SYMBOLS
 
-        # Account for historical ticker aliases (e.g., GET&D -> GVT&D, ITDCEM -> CEMPRO)
-        all_query_symbols = set(target_symbols)
-        for old_sym, new_sym in SYMBOL_ALIASES.items():
-            if new_sym in all_query_symbols or old_sym in all_query_symbols:
-                all_query_symbols.add(old_sym)
-                all_query_symbols.add(new_sym)
-
         date_str = self._format_date(target_date)
-        cache_file = self.cache_dir / f"bhav_{date_str}.csv"
+        # The cache holds the whole day's equity file (every symbol), so a later change to the
+        # symbol universe is still served correctly from cache. ("bhav_eq_" replaces the older
+        # "bhav_" files, which held only the universe current at download time and would
+        # silently return no rows for symbols added later.)
+        cache_file = self.cache_dir / f"bhav_eq_{date_str}.csv"
         # v2: flags written before holiday detection was fixed may mark blocked trading days
         # as holidays; the new name ignores them so those dates are re-checked.
         holiday_flag_file = self.cache_dir / f"holiday_v2_{date_str}.flag"
@@ -192,14 +203,9 @@ class NSEBhavcopyFetcher:
             if cache_file.exists():
                 logger.debug("Reading cached bhavcopy for %s", date_str)
                 try:
-                    df = pd.read_csv(cache_file)
-                    df["DATE1"] = pd.to_datetime(df["DATE1"], format="mixed", errors="coerce")
-                    if self._is_other_session(df, target_date):
-                        # Cached before date validation existed: a holiday served the previous session
-                        self._mark_holiday(holiday_flag_file)
-                        cache_file.unlink(missing_ok=True)
-                        return None
-                    return df
+                    day_df = pd.read_csv(cache_file)
+                    day_df["DATE1"] = pd.to_datetime(day_df["DATE1"], format="mixed", errors="coerce")
+                    return self._select_symbols(day_df, target_symbols, date_str)
                 except Exception as exc:
                     logger.warning("Failed to parse cached file %s (%s). Re-fetching.", cache_file, exc)
 
@@ -237,20 +243,9 @@ class NSEBhavcopyFetcher:
         # to exclude bonds, sovereign debt (GS), and derivative series
         if "SERIES" in raw_df.columns:
             series_mask = raw_df["SERIES"].isin(["EQ", "BE", "SM"])
-            filtered_df = raw_df[series_mask].copy()
+            day_df = raw_df[series_mask].copy()
         else:
-            filtered_df = raw_df.copy()
-
-        # Map historical ticker aliases to current unified ticker
-        filtered_df["SYMBOL"] = filtered_df["SYMBOL"].replace(SYMBOL_ALIASES)
-
-        # Filter to only the needed portfolio SYMBOLS
-        portfolio_mask = filtered_df["SYMBOL"].isin(target_symbols)
-        target_df = filtered_df[portfolio_mask].copy()
-
-        if target_df.empty:
-            logger.debug("Bhavcopy for %s valid, but contains no target portfolio symbols.", date_str)
-            return None
+            day_df = raw_df.copy()
 
         # Parse and standardize numeric fields
         numeric_cols = [
@@ -259,29 +254,29 @@ class NSEBhavcopyFetcher:
             "NO_OF_TRADES", "DELIV_QTY", "DELIV_PER"
         ]
         for ncol in numeric_cols:
-            if ncol in target_df.columns:
-                target_df[ncol] = pd.to_numeric(target_df[ncol].astype(str).str.replace(",", ""), errors="coerce")
+            if ncol in day_df.columns:
+                day_df[ncol] = pd.to_numeric(day_df[ncol].astype(str).str.replace(",", ""), errors="coerce")
 
         # Standardize date column
-        target_df["DATE1"] = pd.to_datetime(target_df["DATE1"], format="mixed", errors="coerce")
+        day_df["DATE1"] = pd.to_datetime(day_df["DATE1"], format="mixed", errors="coerce")
 
         # On some holidays NSE serves the previous session's file (e.g. 25-Dec returns 24-Dec);
         # accepting it would duplicate that session under a second request date
-        if self._is_other_session(target_df, target_date):
+        if self._is_other_session(day_df, target_date):
             logger.debug("Bhavcopy requested for %s contains another session; treating as holiday.", date_str)
             self._mark_holiday(holiday_flag_file)
             return None
 
-        # Cache the filtered daily slice locally for fast re-runs
+        # Cache the full day's equity file locally for fast re-runs
         try:
-            target_df.to_csv(cache_file, index=False)
+            day_df.to_csv(cache_file, index=False)
         except Exception as exc:
             logger.warning("Could not write cache file for %s: %s", date_str, exc)
 
         # Respectful throttle delay between queries
         time.sleep(self.delay_seconds)
 
-        return target_df
+        return self._select_symbols(day_df, target_symbols, date_str)
 
     def fetch_date_range(
         self,

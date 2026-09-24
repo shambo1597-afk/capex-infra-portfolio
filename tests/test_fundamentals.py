@@ -6,10 +6,14 @@ Author: Antigravity / SAPM & Derivatives Coursework (IIM Bodh Gaya)
 import pytest
 from bs4 import BeautifulSoup
 
+from unittest.mock import patch
+
 from fundamentals import (
     _clean_numeric,
+    generate_fundamentals_screen_check,
     parse_debt_to_equity,
     parse_operating_cash_flow,
+    parse_operating_cash_flow_3yr,
     parse_opm,
     parse_roce_3yr_average,
     parse_sales_and_profit_growth,
@@ -117,6 +121,10 @@ class TestScreenerParsing:
         cfo = parse_operating_cash_flow(soup)
         assert cfo == 1873.0
 
+    def test_operating_cash_flow_3yr(self, soup):
+        # Screener's "Operating cash flow 3years": 1,377 + 1,959 + 1,873 = 5,209
+        assert parse_operating_cash_flow_3yr(soup) == pytest.approx(5209.0)
+
     def test_debt_to_equity(self, soup):
         # Borrowings = 6183, Net Worth = 77 + 6960 = 7037 -> D/E = 6183 / 7037 = 0.878 -> 0.88
         de = parse_debt_to_equity(soup)
@@ -141,3 +149,40 @@ class TestGracefulDegradation:
         assert parse_roce_3yr_average(empty_soup) is None
         assert parse_operating_cash_flow(empty_soup) is None
         assert parse_debt_to_equity(empty_soup) is None
+
+
+PASSING_RECORD = {
+    "status": "OK", "market_cap": 21808.0, "sales_growth_3yr": 25.0, "profit_growth_3yr": 68.0,
+    "roce_3yr_avg": 29.33, "opm": 10.0, "operating_cash_flow_3yr": 1388.0, "debt_to_equity": 0.42,
+}
+
+
+class TestFundamentalsScreenCheck:
+    """Capital Goods/EPC screen: every threshold must be strictly met; missing data fails."""
+
+    def _run(self, record):
+        with patch("fundamentals.extract_stock_fundamentals", return_value=record):
+            return generate_fundamentals_screen_check(["CEMPRO"], output_csv_path=None).iloc[0]
+
+    def test_all_criteria_met_passes(self):
+        row = self._run(PASSING_RECORD)
+        assert row["passes_screen"] and row["failed_criteria"] == ""
+        assert row["sector"] == "Capital Goods/EPC"
+
+    def test_boundary_values_fail_strict_thresholds(self):
+        row = self._run({**PASSING_RECORD, "opm": 9.0, "debt_to_equity": 1.2})
+        assert not row["passes_screen"]
+        assert not row["pass_opm"] and not row["pass_debt_to_equity"]
+        assert row["failed_criteria"] == "OPM > 9%; Debt to equity < 1.2"
+
+    def test_missing_metric_fails_and_is_labelled(self):
+        row = self._run({**PASSING_RECORD, "operating_cash_flow_3yr": None})
+        assert not row["passes_screen"]
+        assert row["failed_criteria"] == "Operating cash flow 3years > 0 (Rs Cr) (missing)"
+
+    def test_writes_csv(self, tmp_path):
+        out = tmp_path / "fundamentals_screen_check.csv"
+        with patch("fundamentals.extract_stock_fundamentals", return_value=PASSING_RECORD):
+            generate_fundamentals_screen_check(["CEMPRO", "SCHNEIDER"], output_csv_path=out)
+        assert out.exists() and out.read_text().count("\n") == 3
+
