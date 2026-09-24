@@ -6,6 +6,7 @@ This module centralizes all portfolio universe configurations, benchmark setting
 NSE endpoint specifications, header requirements, and directory paths.
 """
 
+from datetime import date
 from pathlib import Path
 
 # Base Paths
@@ -132,6 +133,13 @@ REQUEST_DELAY_SECONDS = 0.5
 # retried (with backoff and a fresh cookie warm-up) rather than treated as holidays
 BHAVCOPY_FETCH_ATTEMPTS = 4
 BHAVCOPY_RETRY_BACKOFF_SECONDS = 3
+
+# NSE normally trades Monday-Friday, so weekends are not requested. Exceptional weekend
+# sessions (e.g. Union Budget day) must be listed here to be included in the history.
+NSE_SPECIAL_WEEKEND_SESSIONS = frozenset({
+    date(2025, 2, 1),  # Saturday: Union Budget special session
+    date(2026, 2, 1),  # Sunday: Union Budget special session
+})
 
 # Standard expected columns in official NSE Full Bhavcopy CSV
 BHAVCOPY_EXPECTED_COLUMNS = [

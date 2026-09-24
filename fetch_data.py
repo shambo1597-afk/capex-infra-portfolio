@@ -33,6 +33,7 @@ from config import (
     NSE_BHAVCOPY_URL_TEMPLATE,
     NSE_HOME_URL,
     NSE_REQUEST_HEADERS,
+    NSE_SPECIAL_WEEKEND_SESSIONS,
     PORTFOLIO_SYMBOLS,
     RAW_BHAVCOPY_DIR,
     REQUEST_DELAY_SECONDS,
@@ -318,8 +319,8 @@ class NSEBhavcopyFetcher:
         fetched_days = 0
 
         while current_date <= end_date:
-            # Skip Saturday (5) and Sunday (6)
-            if current_date.weekday() < 5:
+            # Skip Saturday (5) and Sunday (6) unless NSE held a special session that day
+            if current_date.weekday() < 5 or current_date in NSE_SPECIAL_WEEKEND_SESSIONS:
                 total_weekdays += 1
                 df_day = self.fetch_daily_bhavcopy(
                     target_date=current_date,

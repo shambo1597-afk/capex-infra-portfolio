@@ -200,3 +200,14 @@ class TestBhavcopyHolidayAndBlockHandling:
         out = fetcher.fetch_date_range(date(2024, 9, 23), date(2024, 9, 24), ["JKCEMENT"])
 
         assert len(out) == 1
+
+    def test_special_weekend_sessions_are_requested(self, tmp_path):
+        """Weekends are skipped except listed special sessions (e.g. Budget Sunday 1-Feb-2026)."""
+        fetcher = self._fetcher(tmp_path, [])
+        requested = []
+        fetcher.fetch_daily_bhavcopy = lambda target_date, target_symbols, use_cache: requested.append(target_date)
+
+        fetcher.fetch_date_range(date(2026, 1, 30), date(2026, 2, 2), ["JKCEMENT"])
+
+        assert requested == [date(2026, 1, 30), date(2026, 2, 1), date(2026, 2, 2)]  # Sat 31-Jan skipped
+
