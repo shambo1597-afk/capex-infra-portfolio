@@ -5,8 +5,8 @@ Institution: Indian Institute of Management (IIM) Bodh Gaya
 Author / Pair Programmer: Antigravity
 
 This dashboard serves as the central visual terminal for project defense and presentation.
-It imports and reuses the existing pipeline outputs, focusing on the 8 locked portfolio
-stocks across Cement, Capital Goods/EPC, and Power sectors.
+It imports and reuses the existing pipeline outputs, focusing on the locked portfolio
+(config.LOCKED_PORTFOLIO) across the Cement, Capital Goods and Power sectors.
 """
 
 from datetime import date
@@ -22,7 +22,7 @@ from config import (
     HISTORICAL_OHLCV_CSV,
     LOCKED_PORTFOLIO,
     LOCKED_PORTFOLIO_SYMBOLS,
-    NTPC_CAVEAT,
+    SECTOR_SCREENS,
     RISK_SUMMARY_OUTPUT_CSV,
     STOP_LOSS_HOLDING_PERIOD_DAYS,
     STOP_LOSS_VOL_MULTIPLIER,
@@ -112,7 +112,7 @@ st.markdown(
         border: 1px solid rgba(5, 150, 105, 0.25);
     }
     
-    /* NTPC Caveat Callout Box */
+    /* Caveat Callout Box */
     .caveat-box {
         background-color: rgba(245, 158, 11, 0.08);
         border-left: 4px solid #F59E0B;
@@ -208,7 +208,7 @@ def _file_mtime(path: Path) -> float:
 @st.cache_data(show_spinner=False)
 def load_summary_data(file_mtime: float) -> pd.DataFrame:
     """
-    Load the technical summary table, filter strictly for the 8 locked portfolio
+    Load the technical summary table, filter strictly for the locked portfolio
     symbols, and enrich with official company display names and sectors.
     file_mtime is only a cache key (see _file_mtime).
     """
@@ -366,12 +366,14 @@ with tab_overview:
             unsafe_allow_html=True,
         )
     with m_col2:
+        sector_counts = pd.Series([v["sector"] for v in LOCKED_PORTFOLIO.values()]).value_counts()
+        sector_breakdown = " &bull; ".join(f"{sec} ({sector_counts.get(sec, 0)})" for sec in SECTOR_SCREENS)
         st.markdown(
-            """
+            f"""
             <div class="metric-card">
                 <div class="metric-title">Sector Allocation</div>
-                <div class="metric-value">3 Sectors</div>
-                <div class="metric-sub">Cement (3) &bull; Cap Goods (2) &bull; Power (3)</div>
+                <div class="metric-value">{len(SECTOR_SCREENS)} Sectors</div>
+                <div class="metric-sub">{sector_breakdown}</div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -401,16 +403,6 @@ with tab_overview:
 
     st.write("")
 
-    # Visual NTPC Caveat Notice
-    st.markdown(
-        f"""
-        <div class="caveat-box">
-            <strong>Investment Committee Note (NTPC):</strong> {NTPC_CAVEAT}
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
     # 2. Sector-Grouped Table Display
     st.markdown("### Portfolio Constituents by Sector")
     st.caption(
@@ -418,10 +410,10 @@ with tab_overview:
         "daily NSE Bhavcopy exchange files. Weights and P&L are deliberately omitted pending capital allocation."
     )
 
-    sectors = ["Cement", "Capital Goods/EPC", "Power"]
+    sectors = list(SECTOR_SCREENS)
     sector_badge_classes = {
         "Cement": "badge-cement",
-        "Capital Goods/EPC": "badge-capital-goods",
+        "Capital Goods": "badge-capital-goods",
         "Power": "badge-power",
     }
 
@@ -449,9 +441,6 @@ with tab_overview:
             "Nearest Resistance (₹)": sec_df["nearest_resistance"].apply(
                 lambda x: "ATH / Blue Sky" if pd.isna(x) or x is None else f"₹{x:,.2f}"
             ),
-            "Notes": sec_df["symbol"].apply(
-                lambda s: "⚠️ Bearish trend overridden on strong fundamentals" if s == "NTPC" else "Locked Constituent"
-            ),
         })
 
         st.dataframe(
@@ -469,19 +458,7 @@ with tab_fundamentals:
     st.caption(
         "Fundamental metrics fetched directly from authentic Screener.in company pages (/consolidated/ with standalone fallback) "
         "and cached locally in data/fundamentals_cache/. Evaluates core financial health, capital productivity, leverage, "
-        "and cash flow resilience across the 8 locked portfolio constituents."
-    )
-
-    # Visible NTPC Fundamental Justification Banner
-    st.markdown(
-        """
-        <div class="caveat-box">
-            <strong>NTPC Fundamental Thesis:</strong> While displaying near-term technical consolidation, NTPC was included
-            for its industry-leading operating cash flow generation (<strong>₹50,902 Cr</strong> &mdash; largest in portfolio),
-            strong <strong>15.1% ROE</strong>, and regulated tariff cost-plus model providing defensive ballast during sector downturns.
-        </div>
-        """,
-        unsafe_allow_html=True,
+        "and cash flow resilience across the locked portfolio constituents."
     )
 
     fund_raw_df = load_fundamentals_summary()
@@ -508,6 +485,8 @@ with tab_fundamentals:
                     "Debt / Equity": "Data Unavailable",
                     "Operating Cash Flow (₹ Cr)": "Data Unavailable",
                     "OPM (%)": "Data Unavailable",
+                    "Interest Coverage (x)": "Data Unavailable",
+                    "Pledged (%)": "Data Unavailable",
                     "3-Yr Sales Growth (%)": "Data Unavailable",
                     "3-Yr Profit Growth (%)": "Data Unavailable",
                 })
@@ -524,6 +503,8 @@ with tab_fundamentals:
                     "Debt / Equity": f"{row['debt_to_equity']:.2f}" if pd.notna(row.get("debt_to_equity")) else "Data Unavailable",
                     "Operating Cash Flow (₹ Cr)": f"₹{row['operating_cash_flow']:,.0f} Cr" if pd.notna(row.get("operating_cash_flow")) else "Data Unavailable",
                     "OPM (%)": f"{row['opm']:.1f}%" if pd.notna(row.get("opm")) else "Data Unavailable",
+                    "Interest Coverage (x)": f"{row['interest_coverage']:.2f}" if pd.notna(row.get("interest_coverage")) else "Data Unavailable",
+                    "Pledged (%)": f"{row['pledged_pct']:.2f}%" if pd.notna(row.get("pledged_pct")) else "Data Unavailable",
                     "3-Yr Sales Growth (%)": f"{row['sales_growth_3yr']:+.1f}%" if pd.notna(row.get("sales_growth_3yr")) else "Data Unavailable",
                     "3-Yr Profit Growth (%)": f"{row['profit_growth_3yr']:+.1f}%" if pd.notna(row.get("profit_growth_3yr")) else "Data Unavailable",
                 })
@@ -532,24 +513,15 @@ with tab_fundamentals:
         st.dataframe(display_fund_df, hide_index=True, width="stretch")
 
     st.write("")
-    st.markdown("#### Academic Fundamental Screen Framework & Methodology")
-    f_col1, f_col2 = st.columns(2)
-    with f_col1:
-        st.markdown(
-            """
-            - **ROCE & 3-Year Avg ROCE (%):** Quantifies core operating profitability per unit of debt + equity capital employed. Multi-year averaging filters out cyclical lumpy capacity additions.
-            - **ROE (%):** Evaluates equity compounding power and DuPont efficiency.
-            - **OPM (%):** Operating Profit Margin resilience against raw material and power tariff swings.
-            """
-        )
-    with f_col2:
-        st.markdown(
-            """
-            - **Debt to Equity:** Solvency constraint. Capital-goods transformer specialist Voltamp operates debt-free ($0.00$), and UltraTech maintains prudent leverage ($0.31$).
-            - **Operating Cash Flow (₹ Cr):** Quality of earnings acid test; confirms cash conversion of accrual profits to service debt and fund capex.
-            - **3-Year Compounded Growth:** Demonstrates execution momentum across multi-year infrastructure order books.
-            """
-        )
+    st.markdown("#### Fundamental Safety Screen (current-year, per sector)")
+    st.caption(
+        "Stocks are screened technically first (RS vs Nifty 500 > +2 pp and a Bullish trend), then must pass "
+        "their sector's fundamental safety screen below. Every threshold is strict; a metric that cannot be "
+        "read counts as a failure. Full per-sector results: output/*_full_review_table.csv."
+    )
+    for f_col, (sec, spec) in zip(st.columns(len(SECTOR_SCREENS)), SECTOR_SCREENS.items()):
+        with f_col:
+            st.markdown(f"**{sec}**\n\n" + "\n".join(f"- {label}" for _, _, _, label in spec["criteria"]))
 
 
 # =============================================================================
@@ -561,16 +533,6 @@ with tab_technicals:
         "Technical indicators computed directly with NumPy/Pandas from official NSE Bhavcopy data. "
         "RSI & ADX use J. Welles Wilder's exact 14-period exponential smoothing. "
         "RS score measures 63-day cumulative percentage-point alpha over the Nifty 500."
-    )
-
-    # NTPC Caveat Notice in Technicals Tab
-    st.markdown(
-        f"""
-        <div class="caveat-box">
-            <strong>NTPC Technical Alert:</strong> {NTPC_CAVEAT}
-        </div>
-        """,
-        unsafe_allow_html=True,
     )
 
     # 1. Full Technical Summary Table with subtle trend_direction color tinting
@@ -619,11 +581,12 @@ with tab_technicals:
             f"(N = {STOP_LOSS_HOLDING_PERIOD_DAYS} trading days, about one month, for stops reviewed monthly)."
         )
         st.markdown(
-            """
+            f"""
             <span class="placeholder-badge" style="margin-bottom: 0;">Placeholder &mdash; pending finalization</span>
             <span style="font-size: 0.82rem;">
                 <strong>Hist. Expected Return</strong> is a simple historical average (a CAPM-implied return may
-                replace it once portfolio beta is computed). <strong>Weight</strong> is equal weighting (12.5% each)
+                replace it once portfolio beta is computed). <strong>Weight</strong> is equal weighting
+                ({100 / len(LOCKED_PORTFOLIO_SYMBOLS):.2f}% each across {len(LOCKED_PORTFOLIO_SYMBOLS)} stocks)
                 until formal weight assignment within the capping constraints is completed.
             </span>
             """,
@@ -692,17 +655,6 @@ with tab_technicals:
         with c_p6:
             dist_res = f"{((res_p - curr_p) / curr_p) * 100:.1f}% to ceiling" if res_p else "Blue Sky"
             st.metric("Resistance Ceiling", f"₹{res_p:,.2f}" if res_p else "ATH / Blue Sky", delta=dist_res, delta_color="normal")
-
-        # Specific NTPC badge under chart metrics
-        if selected_symbol == "NTPC":
-            st.markdown(
-                f"""
-                <div class="caveat-box">
-                    <strong>NTPC Caveat:</strong> {NTPC_CAVEAT}
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
 
         # Build Interactive Plotly Price Chart with Horizontal Reference Lines
         fig = go.Figure()

@@ -121,14 +121,11 @@ def display_project_header(tri_source: str = "manual") -> None:
     print(" Coursework: Security Analysis & Portfolio Management (SAPM) / Derivatives")
     print(" Institution: Indian Institute of Management (IIM) Bodh Gaya")
     print("=" * 115)
-    print(f" [*] Cement Universe (Locked):          {', '.join(CEMENT_STOCKS)}")
-    print(f" [*] Capital Goods / EPC Candidates:   {', '.join(CAPITAL_GOODS_EPC_STOCKS)}")
-    if POWER_SECTOR_STOCKS:
-        print(f" [*] Power Sector Candidates:          {', '.join(POWER_SECTOR_STOCKS)}")
-    else:
-        print(" [*] Power Sector Candidates:          [Pending / Placeholder: Not yet finalized]")
+    print(f" [*] Nifty Cement universe ({len(CEMENT_STOCKS)}):        {', '.join(CEMENT_STOCKS)}")
+    print(f" [*] Nifty Capital Goods universe ({len(CAPITAL_GOODS_EPC_STOCKS)}): {', '.join(CAPITAL_GOODS_EPC_STOCKS)}")
+    print(f" [*] Nifty Power universe ({len(POWER_SECTOR_STOCKS)}):         {', '.join(POWER_SECTOR_STOCKS)}")
     print("-" * 115)
-    print(f" [*] FINAL LOCKED PORTFOLIO (8 stocks): {', '.join(LOCKED_PORTFOLIO_SYMBOLS)}")
+    print(f" [*] FINAL LOCKED PORTFOLIO ({len(LOCKED_PORTFOLIO_SYMBOLS)} stocks): {', '.join(LOCKED_PORTFOLIO_SYMBOLS)}")
     print("-" * 115)
     print(" [*] Benchmark 1 (Price Return):       Nifty 500 (NSE official daily index closes)")
     tri_desc = "Local Nifty 500 TRI CSV (manual)" if tri_source == "manual" else "Automated Browser Fetch (niftyindices.com)"

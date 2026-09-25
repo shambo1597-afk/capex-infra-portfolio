@@ -37,18 +37,15 @@ import requests
 from bs4 import BeautifulSoup
 
 from config import (
-    CAPITAL_GOODS_EPC_STOCKS,
     CAPITAL_GOODS_SCREEN_CRITERIA,
-    CEMENT_STOCKS,
     FUNDAMENTALS_CACHE_DIR,
-    FUNDAMENTALS_SCREEN_OUTPUT_CSV,
-    LOCKED_PORTFOLIO,
     LOCKED_PORTFOLIO_SYMBOLS,
     NSE_BOARD_MEETINGS_API_URL,
     NSE_PLEDGE_API_URL,
     NSE_PLEDGE_PAGE_URL,
     NSE_REQUEST_HEADERS,
-    POWER_SECTOR_STOCKS,
+    SYMBOL_NAME,
+    sector_of,
 )
 
 logger = logging.getLogger("fundamentals")
@@ -259,7 +256,7 @@ def parse_top_ratios(soup: BeautifulSoup) -> Dict[str, Optional[float]]:
        The aggregate market value of the company's outstanding equity shares:
        Market Cap = Share Price * Total Outstanding Shares.
        In portfolio construction, market cap determines liquidity thresholds, index weightings,
-       and categorizes the firm across Large-cap (UltraTech, NTPC) vs Mid-cap (Voltamp, Star Cement).
+       and categorizes the firm across large-cap vs mid-cap.
     2. Current Price (₹):
        The latest traded price per share on the National Stock Exchange.
     3. ROCE (%) - Return on Capital Employed:
@@ -753,8 +750,8 @@ def extract_stock_fundamentals(symbol: str, use_cache: bool = True) -> Dict[str,
     """
     default_record = {
         "symbol": symbol,
-        "name": LOCKED_PORTFOLIO.get(symbol, {}).get("name", symbol),
-        "sector": LOCKED_PORTFOLIO.get(symbol, {}).get("sector", "Other"),
+        "name": SYMBOL_NAME.get(symbol, symbol),
+        "sector": sector_of(symbol),
         "market_cap": None,
         "current_price": None,
         "roce": None,
@@ -792,8 +789,8 @@ def extract_stock_fundamentals(symbol: str, use_cache: bool = True) -> Dict[str,
 
         return {
             "symbol": symbol,
-            "name": LOCKED_PORTFOLIO.get(symbol, {}).get("name", symbol),
-            "sector": LOCKED_PORTFOLIO.get(symbol, {}).get("sector", "Other"),
+            "name": SYMBOL_NAME.get(symbol, symbol),
+            "sector": sector_of(symbol),
             "market_cap": top_ratios.get("market_cap"),
             "current_price": top_ratios.get("current_price"),
             "roce": top_ratios.get("roce"),
@@ -847,18 +844,6 @@ def get_fundamentals_summary(
 _SCREEN_COMPARISONS = {">": operator.gt, "<": operator.lt, ">=": operator.ge, "<=": operator.le}
 
 
-def _universe_sector(symbol: str) -> str:
-    if symbol in LOCKED_PORTFOLIO:
-        return LOCKED_PORTFOLIO[symbol]["sector"]
-    if symbol in CEMENT_STOCKS:
-        return "Cement"
-    if symbol in CAPITAL_GOODS_EPC_STOCKS:
-        return "Capital Goods/EPC"
-    if symbol in POWER_SECTOR_STOCKS:
-        return "Power"
-    return "Other"
-
-
 def evaluate_fundamental_screen(record: Dict[str, Any], criteria: List[Tuple[str, str, float, str]]) -> Dict[str, Any]:
     """
     Score one stock's fundamentals record against screen criteria.
@@ -885,7 +870,7 @@ def generate_fundamentals_screen_check(
     symbols: List[str],
     criteria: Optional[List[Tuple[str, str, float, str]]] = None,
     use_cache: bool = False,
-    output_csv_path: Optional[Path] = FUNDAMENTALS_SCREEN_OUTPUT_CSV,
+    output_csv_path: Optional[Path] = None,
 ) -> pd.DataFrame:
     """
     Check stocks against a fundamental screen and save one row per symbol.
@@ -899,7 +884,7 @@ def generate_fundamentals_screen_check(
         criteria (list, optional): (field, comparison, threshold, label) tuples.
             Defaults to CAPITAL_GOODS_SCREEN_CRITERIA.
         use_cache (bool): False (default) fetches live Screener.in pages.
-        output_csv_path (Path, optional): Destination CSV; None skips saving.
+        output_csv_path (Path, optional): Destination CSV; None (default) skips saving.
 
     Returns:
         pd.DataFrame: The screen check table.
@@ -910,7 +895,7 @@ def generate_fundamentals_screen_check(
     rows = []
     for symbol in symbols:
         record = extract_stock_fundamentals(symbol, use_cache=use_cache)
-        row = {"symbol": symbol, "sector": _universe_sector(symbol),
+        row = {"symbol": symbol, "sector": sector_of(symbol),
                "as_of": date.today().isoformat(), "status": record["status"]}
         result = evaluate_fundamental_screen(record, criteria)
         failed = result.pop("failed_criteria")

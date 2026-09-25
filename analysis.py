@@ -17,15 +17,12 @@ import numpy as np
 import pandas as pd
 
 from config import (
-    CEMENT_STOCKS,
-    CAPITAL_GOODS_EPC_STOCKS,
-    LOCKED_PORTFOLIO,
     LOCKED_PORTFOLIO_SYMBOLS,
-    POWER_SECTOR_STOCKS,
     RISK_SUMMARY_OUTPUT_CSV,
     STOP_LOSS_HOLDING_PERIOD_DAYS,
     STOP_LOSS_VOL_MULTIPLIER,
     SUMMARY_OUTPUT_CSV,
+    sector_of,
 )
 from indicators import (
     compute_adx,
@@ -91,7 +88,7 @@ def evaluate_stock_technicals(
             "rs_score_vs_nifty500": np.nan,
             "nearest_support": None,
             "nearest_resistance": None,
-            "sector": _classify_sector(symbol),
+            "sector": sector_of(symbol),
         }
 
     # Sort stock history by date
@@ -125,7 +122,7 @@ def evaluate_stock_technicals(
 
     return {
         "symbol": symbol,
-        "sector": _classify_sector(symbol),
+        "sector": sector_of(symbol),
         "current_price": round(latest_close, 2),
         "latest_rsi": round(latest_rsi, 2) if not np.isnan(latest_rsi) else np.nan,
         "latest_adx": round(latest_adx, 2) if not np.isnan(latest_adx) else np.nan,
@@ -136,19 +133,6 @@ def evaluate_stock_technicals(
         "nearest_support": support_lvl,
         "nearest_resistance": resistance_lvl,
     }
-
-
-def _classify_sector(symbol: str) -> str:
-    """Helper to classify stock into its portfolio sector."""
-    if symbol in LOCKED_PORTFOLIO:
-        return LOCKED_PORTFOLIO[symbol]["sector"]
-    elif symbol in CEMENT_STOCKS:
-        return "Cement"
-    elif symbol in CAPITAL_GOODS_EPC_STOCKS:
-        return "Capital Goods/EPC"
-    elif symbol in POWER_SECTOR_STOCKS:
-        return "Power"
-    return "Other"
 
 
 def generate_portfolio_summary(
@@ -329,7 +313,7 @@ def generate_portfolio_risk_summary(
     if symbols is None:
         symbols = LOCKED_PORTFOLIO_SYMBOLS
 
-    # PLACEHOLDER: equal weighting across the locked stocks (100 / 8 = 12.5% each). To be
+    # PLACEHOLDER: equal weighting across the locked stocks (100 / N, e.g. 100 / 9 = 11.11% for the 9 picks). To be
     # replaced once formal weight assignment, respecting the project's minimum and maximum
     # weight-capping constraints, is completed.
     equal_weight_pct = round(100.0 / len(symbols), 2) if symbols else None
@@ -364,7 +348,7 @@ def generate_portfolio_risk_summary(
 
         records.append({
             "symbol": symbol,
-            "sector": LOCKED_PORTFOLIO.get(symbol, {}).get("sector", _classify_sector(symbol)),
+            "sector": sector_of(symbol),
             "current_price": current_price,
             "annualized_volatility_pct": _pct(compute_annualized_volatility(returns)),
             "historical_expected_return_pct": _pct(compute_historical_expected_return(returns)),

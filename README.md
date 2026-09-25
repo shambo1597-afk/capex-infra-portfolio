@@ -73,13 +73,19 @@ A production-grade, mathematically transparent data pipeline and quantitative sc
 
 ---
 
-## Portfolio Universe (Locked Allocation — 8 Stocks)
+## Portfolio Universe & Locked Portfolio
 
-| Sector | Allocation | Symbols | Notes & Investment Committee Thesis |
-| :--- | :---: | :--- | :--- |
-| **Cement** | 3 Stocks | `JKCEMENT`, `ULTRACEMCO`, `STARCEMENT` | Core capex infrastructure plays with strong capacity expansion and pricing power |
-| **Capital Goods / EPC** | 2 Stocks | `BHEL`, `VOLTAMP` | BHEL (power equipment recovery) & Voltamp (debt-free, 28% 3-yr ROCE transformer specialist) |
-| **Power** | 3 Stocks | `POWERGRID`, `TATAPOWER`, `NTPC` | Transmission moat & green energy transition. **NTPC Caveat:** Near-term technical consolidation overridden for sector-best cash flows (₹50,902 Cr CFO) |
+**Universes.** The three sector universes are the official Nifty sector index constituent files in `data/index_constituents/` (niftyindices.com, downloaded 24-Sep-2026): Nifty Cement (16), Nifty Capital Goods (50) and Nifty Power (21), 87 stocks in total. `config.py` reads them at import time, so the universe lists, each symbol's sector and each company's name all come from these files; nothing is hand-typed.
+
+**Locked portfolio (9 stocks, `config.LOCKED_PORTFOLIO`).** Each pick passed the technical screen (RS vs Nifty 500 > +2 pp and a Bullish trend) and its sector's fundamental safety screen (see Sector Screen and `output/*_full_review_table.csv`).
+
+| Sector | Stocks | Symbols |
+| :--- | :---: | :--- |
+| **Cement** | 2 | `JKCEMENT`, `JKLAKSHMI` |
+| **Capital Goods** | 5 | `VOLTAMP`, `FINCABLES`, `ELGIEQUIP`, `APARINDS`, `WELCORP` |
+| **Power** | 2 | `ACMESOLAR`, `TATAPOWER` |
+
+`config.LOCKED_PORTFOLIO` is the single definition used by the pipeline's risk summary, the dashboard, and `sector_screen.py` (`--locked-check`, and the exclusion list for `--tenth-sweep`).
 
 ---
 
@@ -137,7 +143,7 @@ Using a 20-day rolling window:
 - **Daily returns:** $r_t = \text{Close}_t / \text{PrevClose}_t - 1$ over the trailing 252 sessions, using NSE's `PREV_CLOSE` so every return is a true one-session move even when sessions are missing from the local history (and corporate actions are exchange-adjusted).
 - **Volatility:** sample standard deviation $\sigma_d$ of daily returns; annualized as $\sigma_d\sqrt{252}$.
 - **Historical expected return (placeholder):** mean daily return $\times 252$. May be replaced by a CAPM-implied return once portfolio beta is computed.
-- **Weight (placeholder):** equal weighting, $100/8 = 12.5\%$ per stock, until formal weight assignment within the capping constraints is completed.
+- **Weight (placeholder):** equal weighting, $100/N$ per stock ($100/9 = 11.11\%$ for the 9 picks), until formal weight assignment within the capping constraints is completed.
 - **Stop-loss:** the tighter (closer to price) of two candidates, recording which one won:
   1. *Support:* the nearest support level (Section 5).
   2. *Volatility cap:* $P \times (1 - k\,\sigma_d\sqrt{N})$ with $k = 1.75$ and $N = 21$ trading days (about one month, for a 3-month mandate whose stops are reviewed monthly). Both are stated, adjustable assumptions in `config.py`.
@@ -152,13 +158,16 @@ IAPFDOF/
 │   ├── raw_bhavcopy/             # Cached daily NSE Bhavcopy slices (bhav_DD-Mon-YYYY.csv)
 │   ├── fundamentals_cache/       # Cached company HTML pages from Screener.in
 │   ├── processed/                # Unified historical OHLCV dataset
+│   ├── index_constituents/       # Official Nifty Cement / Capital Goods / Power constituent files
 │   └── nifty500_tri.csv          # Official Nifty 500 Total Returns Index CSV
 ├── output/
-│   ├── portfolio_technical_summary.csv # Single-row summary table for portfolio review
+│   ├── portfolio_technical_summary.csv # Technical summary, one row per universe stock (87)
 │   ├── portfolio_historical_ohlcv.csv  # Clean historical OHLCV data across universe
 │   ├── portfolio_risk_summary.csv      # Locked portfolio volatility, placeholder return/weight, stop-loss
-│   ├── fundamentals_screen_check.csv   # Candidate fundamentals vs. the Capital Goods/EPC screen thresholds
-│   └── *_full_screen.csv               # Technical-first sector screens (cement, capital_goods, power)
+│   ├── *_full_screen.csv               # Technical-first sector screens (cement, capital_goods, power)
+│   ├── *_full_review_table.csv         # Unfiltered per-sector review tables (+ *_review_notes.md)
+│   ├── tenth_candidate_sweep.csv       # Run-up / results-date sweep of non-picked stocks
+│   └── locked_portfolio_runup_catalyst_check.csv # Same checks on the locked picks
 ├── tests/
 │   ├── __init__.py
 │   ├── test_automated_tri.py     # Unit tests for automated TRI retrieval, retries, and fallback
@@ -219,8 +228,8 @@ streamlit run app.py
 The web dashboard loads instantly from the existing CSV outputs already in the repository (`output/portfolio_technical_summary.csv` and `output/portfolio_historical_ohlcv.csv`) without requiring network re-fetching.
 
 ### Dashboard Architecture (5 Tabs)
-1. **Portfolio Overview:** Dense, institutional summary metrics and sector-grouped constituent tables for the 8 locked stocks (`Cement`, `Capital Goods/EPC`, `Power`) with visible investment committee notes (including the NTPC fundamental inclusion caveat).
-2. **Fundamentals:** Screener criteria view (Market Cap, Price, ROCE, 3-Yr Avg ROCE, ROE, Debt/Equity, Operating Cash Flow, OPM, 3-Yr Sales Growth, 3-Yr Profit Growth) scraped directly from Screener.in company pages by `fundamentals.py` and cached under `data/fundamentals_cache/`.
+1. **Portfolio Overview:** Dense, institutional summary metrics and sector-grouped constituent tables for the locked portfolio (`Cement`, `Capital Goods`, `Power`); counts and sector breakdown are read from `config.LOCKED_PORTFOLIO`.
+2. **Fundamentals:** Fundamentals of the locked picks (Market Cap, Price, ROCE, 3-Yr Avg ROCE, ROE, Debt/Equity, Operating Cash Flow, OPM, Interest Coverage, Pledged %, 3-Yr Sales and Profit Growth) plus each sector's safety-screen thresholds, read from `config.SECTOR_SCREENS`, scraped directly from Screener.in company pages by `fundamentals.py` and cached under `data/fundamentals_cache/`.
 3. **Technicals:** Full technical summary table with subtle green/red trend direction tinting, a separate **Risk, Sizing & Stop-Loss** section (volatility, placeholder expected return and weight, hybrid stop-loss and the winning method), and an interactive 1-year OHLCV line chart with horizontal Support and Resistance reference levels.
 4. **Risk & Hedging:** *(Module in Progress)* Beta regression, explained/unexplained risk decomposition, and hedge ratio analysis.
 5. **Performance:** *(Module in Progress)* Sharpe ratio, Treynor ratio, XIRR, and Capital Market Line (scheduled for 28th September snapshot).
@@ -327,7 +336,7 @@ The pipeline prints a formatted table and saves `output/portfolio_technical_summ
 | Column | Data Type | Description & Financial Interpretation |
 | :--- | :--- | :--- |
 | `symbol` | String | Official NSE equity ticker. |
-| `sector` | String | Sector classification: `Cement`, `Capital Goods/EPC`, or `Power`. |
+| `sector` | String | Sector classification: `Cement`, `Capital Goods`, or `Power` (from the official constituent files). |
 | `current_price` | Float (INR) | Latest official NSE closing price. |
 | `latest_rsi` | Float [0-100] | 14-period Wilder's RSI. Above 70 = Overbought; Below 30 = Oversold. |
 | `latest_adx` | Float | 14-period Wilder's ADX trend strength. > 25 = Strong Trend; < 20 = Weak / Choppy. |
@@ -343,12 +352,10 @@ It also saves `output/portfolio_risk_summary.csv`, one row per locked portfolio 
 | `symbol`, `sector`, `current_price` | String / Float (INR) | As above. |
 | `annualized_volatility_pct` | Float (%) | Sample std. dev. of daily returns x sqrt(252). |
 | `historical_expected_return_pct` | Float (%) | **Placeholder:** mean daily return x 252 (may become CAPM-implied). |
-| `weight_pct` | Float (%) | **Placeholder:** equal weight (12.5%) pending formal weight assignment. |
+| `weight_pct` | Float (%) | **Placeholder:** equal weight (100/N; 11.11% for 9 stocks) pending formal weight assignment. |
 | `stop_loss_price` | Float (INR) | Tighter of nearest support and the volatility cap. |
 | `stop_loss_pct_below_current` | Float (%) | Distance of the stop below the current price. |
 | `stop_loss_method` | String | `support` or `volatility_cap` (whichever was tighter); `unavailable` if neither could be computed. |
-
-`output/fundamentals_screen_check.csv` is an earlier one-off check of CEMPRO and SCHNEIDER against the *previous* long-term Capital Goods screen (3-year ROCE and growth). It is kept for the record; the current screens are the lightened safety checks described under Sector Screen.
 
 ---
 
@@ -359,13 +366,14 @@ Run the full automated unit test suite with `pytest`:
 pytest tests/ -v
 ```
 
-All 16 tests verify:
+The 130 tests cover, among other things:
 - Exact convergence of Wilder's smoothing against recursive mathematical definitions.
 - Boundary conditions for RSI ($RSI = 100$ in monotonic gains, $RSI = 0$ in monotonic losses).
 - Directional movement calculations and trend indicators for ADX.
 - 63-day Relative Strength alpha spread calculations.
 - Support and resistance level identification.
 - NSE Bhavcopy CSV whitespace stripping and symbol alias replacement.
+- The universes matching the official constituent files, and `sector_screen.CURRENT_PICKS` being `config.LOCKED_PORTFOLIO_SYMBOLS`.
 
 ---
 

@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 
 from analysis import RISK_SUMMARY_COLUMNS, generate_portfolio_risk_summary
+from config import LOCKED_PORTFOLIO_SYMBOLS
 from stoploss import (
     compute_annualized_volatility,
     compute_daily_returns,
@@ -138,8 +139,8 @@ class TestPortfolioRiskSummary:
         assert bbb["stop_loss_method"] == "volatility_cap"
         assert 80.0 < bbb["stop_loss_price"] < 100.0
 
-    def test_locked_portfolio_is_equal_weighted_at_12_5_pct(self):
+    def test_locked_portfolio_is_equal_weighted(self):
         risk = generate_portfolio_risk_summary(pd.DataFrame(), pd.DataFrame(), output_csv_path=None)
-        assert len(risk) == 8
-        assert (risk["weight_pct"] == 12.5).all()
+        assert risk["symbol"].tolist() == LOCKED_PORTFOLIO_SYMBOLS
+        assert (risk["weight_pct"] == round(100 / len(LOCKED_PORTFOLIO_SYMBOLS), 2)).all()  # 11.11% for 9
         assert (risk["stop_loss_method"] == "unavailable").all()  # no data: no stop, no crash

@@ -14,8 +14,12 @@ from config import (
     DEFAULT_TRI_CSV_PATH,
     LOCKED_PORTFOLIO,
     LOCKED_PORTFOLIO_SYMBOLS,
+    PORTFOLIO_SYMBOLS,
     POWER_SECTOR_STOCKS,
+    SECTOR_CONSTITUENT_FILES,
     SYMBOL_ALIASES,
+    SYMBOL_NAME,
+    sector_of,
 )
 from fetch_data import (
     NSEBhavcopyFetcher,
@@ -27,36 +31,32 @@ from fetch_data import (
 class TestUniverseConfiguration:
     """Verify stock universe setup and symbol alias mapping."""
 
-    def test_cement_stocks(self):
-        assert "JKCEMENT" in CEMENT_STOCKS
-        assert "ULTRACEMCO" in CEMENT_STOCKS
-        assert "STARCEMENT" in CEMENT_STOCKS
-        assert len(CEMENT_STOCKS) == 3
-
-    def test_capital_goods_stocks(self):
-        expected_cg = [
-            "ABB", "CGPOWER", "GVT&D", "POWERINDIA", "TRITURBINE", "TDPOWERSYS",
-            "SIEMENS", "BHEL", "INOXWIND", "ENRIN", "SUZLON", "THERMAX", "VOLTAMP",
-            # Not Nifty Capital Goods index members; included on the fundamental screen alone
-            "CEMPRO", "SCHNEIDER",
-        ]
-        for sym in expected_cg:
-            assert sym in CAPITAL_GOODS_EPC_STOCKS
-        assert len(CAPITAL_GOODS_EPC_STOCKS) == 15
-
-    def test_power_sector_stocks(self):
-        expected_power = [
-            "ADANIENSOL", "ADANIPOWER", "CESC", "KPIGREEN", "NAVA", "NLCINDIA",
-            "NTPC", "POWERGRID", "PTC", "TATAPOWER", "TORNTPOWER",
-        ]
-        for sym in expected_power:
-            assert sym in POWER_SECTOR_STOCKS
-        assert len(POWER_SECTOR_STOCKS) == 11
+    def test_universes_match_official_constituent_files(self):
+        """The three universes are read from the official niftyindices.com files, not hand-typed."""
+        for sector, universe in (("Cement", CEMENT_STOCKS), ("Capital Goods", CAPITAL_GOODS_EPC_STOCKS),
+                                 ("Power", POWER_SECTOR_STOCKS)):
+            official = pd.read_csv(SECTOR_CONSTITUENT_FILES[sector])["Symbol"].str.strip().tolist()
+            assert universe == official
+            assert all(sector_of(sym) == sector for sym in universe)
+        assert (len(CEMENT_STOCKS), len(CAPITAL_GOODS_EPC_STOCKS), len(POWER_SECTOR_STOCKS)) == (16, 50, 21)
+        assert len(set(PORTFOLIO_SYMBOLS)) == len(PORTFOLIO_SYMBOLS) == 87
+        assert sector_of("NOT_A_SYMBOL") == "Other"
 
     def test_locked_portfolio(self):
-        expected_locked = ["JKCEMENT", "ULTRACEMCO", "STARCEMENT", "BHEL", "VOLTAMP", "POWERGRID", "TATAPOWER", "NTPC"]
-        assert len(LOCKED_PORTFOLIO) == 8
-        assert sorted(LOCKED_PORTFOLIO_SYMBOLS) == sorted(expected_locked)
+        expected_locked = ["JKCEMENT", "JKLAKSHMI", "VOLTAMP", "FINCABLES", "ELGIEQUIP",
+                           "APARINDS", "WELCORP", "ACMESOLAR", "TATAPOWER"]
+        assert LOCKED_PORTFOLIO_SYMBOLS == expected_locked
+        assert list(LOCKED_PORTFOLIO) == expected_locked
+        # Every pick belongs to one of the three official universes, with name/sector from the files
+        for sym, info in LOCKED_PORTFOLIO.items():
+            assert sym in PORTFOLIO_SYMBOLS
+            assert info["sector"] == sector_of(sym) and info["name"] == SYMBOL_NAME[sym]
+        sectors = [info["sector"] for info in LOCKED_PORTFOLIO.values()]
+        assert (sectors.count("Cement"), sectors.count("Capital Goods"), sectors.count("Power")) == (2, 5, 2)
+
+    def test_sector_screen_picks_are_the_locked_portfolio(self):
+        from sector_screen import CURRENT_PICKS
+        assert CURRENT_PICKS == LOCKED_PORTFOLIO_SYMBOLS
 
     def test_symbol_aliases(self):
         # GET&D -> GVT&D (GE Vernova T&D)

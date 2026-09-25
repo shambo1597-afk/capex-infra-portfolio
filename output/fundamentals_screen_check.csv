@@ -1,3 +1,0 @@
-symbol,sector,as_of,status,market_cap,pass_market_cap,sales_growth_3yr,pass_sales_growth_3yr,profit_growth_3yr,pass_profit_growth_3yr,roce_3yr_avg,pass_roce_3yr_avg,opm,pass_opm,operating_cash_flow_3yr,pass_operating_cash_flow_3yr,debt_to_equity,pass_debt_to_equity,passes_screen,failed_criteria
-CEMPRO,Capital Goods/EPC,2026-09-24,OK,21808.0,True,25.0,True,68.0,True,29.33,True,10.0,True,1388.0,True,0.42,True,True,
-SCHNEIDER,Capital Goods/EPC,2026-09-24,OK,29118.0,True,18.0,True,27.0,True,36.33,True,11.0,True,721.0,True,0.92,True,True,

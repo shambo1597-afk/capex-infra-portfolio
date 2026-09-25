@@ -35,7 +35,7 @@ from typing import Dict, List, Optional, Tuple
 import pandas as pd
 
 from analysis import evaluate_stock_technicals
-from config import OUTPUT_DIR, SECTOR_SCREENS, TECHNICAL_RS_LOOKBACK_DAYS, TECHNICAL_RS_MARGIN_PP
+from config import LOCKED_PORTFOLIO_SYMBOLS, OUTPUT_DIR, SECTOR_SCREENS, TECHNICAL_RS_LOOKBACK_DAYS, TECHNICAL_RS_MARGIN_PP
 from fetch_data import NSEBhavcopyFetcher, fetch_benchmark_nifty500, get_one_year_date_range
 from fundamentals import evaluate_fundamental_screen, fetch_results_calendar, get_fundamentals_summary
 from indicators import compute_recent_rs_contribution, compute_relative_strength, compute_sector_relative_strength
@@ -276,9 +276,8 @@ sum to approximately zero by construction.
 """
 
 
-# The 9 current picks (as given on 25-Sep-2026) excluded from the 10th-candidate sweep. Note that
-# config.LOCKED_PORTFOLIO has not been updated to this list; it is maintained by the user.
-CURRENT_PICKS = ["JKCEMENT", "JKLAKSHMI", "VOLTAMP", "FINCABLES", "ELGIEQUIP", "APARINDS", "WELCORP", "ACMESOLAR", "TATAPOWER"]
+# The current picks (config.LOCKED_PORTFOLIO), excluded from the 10th-candidate sweep
+CURRENT_PICKS = LOCKED_PORTFOLIO_SYMBOLS
 
 # recent_10day_contribution_pct above this counts as a recent spike rather than sustained
 # strength: 10 of 63 sessions is ~16% of the window, so > 50% is over 3x the steady pace

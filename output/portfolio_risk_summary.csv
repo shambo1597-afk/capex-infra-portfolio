@@ -1,9 +1,10 @@
 symbol,sector,current_price,annualized_volatility_pct,historical_expected_return_pct,weight_pct,stop_loss_price,stop_loss_pct_below_current,stop_loss_method
-JKCEMENT,Cement,5184.5,32.59,-23.02,12.5,5165.0,0.38,support
-ULTRACEMCO,Cement,11056.0,23.4,-8.93,12.5,11020.0,0.33,support
-STARCEMENT,Cement,187.24,22.85,-34.43,12.5,186.0,0.66,support
-BHEL,Capital Goods/EPC,415.35,36.95,63.15,12.5,408.15,1.73,support
-VOLTAMP,Capital Goods/EPC,10587.0,40.24,47.79,12.5,10259.0,3.1,support
-POWERGRID,Power,266.4,21.45,-5.86,12.5,266.3,0.04,support
-TATAPOWER,Power,363.45,21.65,-6.25,12.5,362.95,0.14,support
-NTPC,Power,326.6,19.29,-3.13,12.5,324.7,0.58,support
+JKCEMENT,Cement,5184.5,32.59,-23.02,11.11,5165.0,0.38,support
+JKLAKSHMI,Cement,509.45,27.54,-51.67,11.11,505.9,0.7,support
+VOLTAMP,Capital Goods,10587.0,40.24,47.79,11.11,10259.0,3.1,support
+FINCABLES,Capital Goods,1480.0,43.55,68.66,11.11,1186.5,19.83,support
+ELGIEQUIP,Capital Goods,608.8,33.11,24.76,11.11,596.0,2.1,support
+APARINDS,Capital Goods,17804.0,46.8,83.84,11.11,16199.0,9.01,support
+WELCORP,Capital Goods,2692.2,42.26,122.27,11.11,2240.2,16.79,support
+ACMESOLAR,Power,446.65,38.13,51.95,11.11,376.3,15.75,support
+TATAPOWER,Power,363.45,21.65,-6.25,11.11,362.95,0.14,support

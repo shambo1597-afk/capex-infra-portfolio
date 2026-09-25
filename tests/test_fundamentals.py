@@ -158,16 +158,16 @@ PASSING_RECORD = {
 
 
 class TestFundamentalsScreenCheck:
-    """Capital Goods/EPC safety screen: every threshold must be strictly met; missing data fails."""
+    """Capital Goods safety screen: every threshold must be strictly met; missing data fails."""
 
     def _run(self, record):
         with patch("fundamentals.extract_stock_fundamentals", return_value=record):
-            return generate_fundamentals_screen_check(["CEMPRO"], output_csv_path=None).iloc[0]
+            return generate_fundamentals_screen_check(["VOLTAMP"], output_csv_path=None).iloc[0]
 
     def test_all_criteria_met_passes(self):
         row = self._run(PASSING_RECORD)
         assert row["passes_screen"] and row["failed_criteria"] == ""
-        assert row["sector"] == "Capital Goods/EPC"
+        assert row["sector"] == "Capital Goods"
 
     def test_boundary_values_fail_strict_thresholds(self):
         row = self._run({**PASSING_RECORD, "opm": 8.0, "debt_to_equity": 1.5})
@@ -187,6 +187,6 @@ class TestFundamentalsScreenCheck:
     def test_writes_csv(self, tmp_path):
         out = tmp_path / "fundamentals_screen_check.csv"
         with patch("fundamentals.extract_stock_fundamentals", return_value=PASSING_RECORD):
-            generate_fundamentals_screen_check(["CEMPRO", "SCHNEIDER"], output_csv_path=out)
+            generate_fundamentals_screen_check(["VOLTAMP", "FINCABLES"], output_csv_path=out)
         assert out.exists() and out.read_text().count("\n") == 3
 

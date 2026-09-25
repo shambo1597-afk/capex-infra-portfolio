@@ -6,8 +6,10 @@ This module centralizes all portfolio universe configurations, benchmark setting
 NSE endpoint specifications, header requirements, and directory paths.
 """
 
+import csv
 from datetime import date
 from pathlib import Path
+from typing import Dict, List
 
 # Base Paths
 BASE_DIR = Path(__file__).resolve().parent
@@ -27,58 +29,62 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 # PORTFOLIO STOCK UNIVERSE CONFIGURATION
 # -----------------------------------------------------------------------------
 
-# Cement Sector (Locked universe for coursework portfolio allocation)
-CEMENT_STOCKS = [
-    "JKCEMENT",    # JK Cement Ltd.
-    "ULTRACEMCO",  # UltraTech Cement Ltd. (Market Leader)
-    "STARCEMENT",  # Star Cement Ltd. (Regional Growth Play)
-]
-
-# Capital Goods / EPC Candidates (Screened candidate universe - 15 stocks)
-# The 13 official Nifty Capital Goods index constituents that passed the fundamental screen,
-# plus CEMPRO and SCHNEIDER: not index members, but they passed the same screen on their own
-# merits (index membership is a methodological preference, not a requirement).
-CAPITAL_GOODS_EPC_STOCKS = [
-    "ABB", "CGPOWER", "GVT&D", "POWERINDIA", "TRITURBINE", "TDPOWERSYS",
-    "SIEMENS", "BHEL", "INOXWIND", "ENRIN", "SUZLON", "THERMAX", "VOLTAMP",
-    "CEMPRO",     # Cemindia Projects Ltd. (formerly ITD Cementation; see SYMBOL_ALIASES)
-    "SCHNEIDER",  # Schneider Electric Infrastructure Ltd.
-]
-
-# Power Sector Stocks (Screened candidate universe - 11 stocks)
-# Official Nifty Power index candidates that passed the fundamental screen
-POWER_SECTOR_STOCKS = [
-    "ADANIENSOL", "ADANIPOWER", "CESC", "KPIGREEN", "NAVA", "NLCINDIA",
-    "NTPC", "POWERGRID", "PTC", "TATAPOWER", "TORNTPOWER",
-]
-
-# -----------------------------------------------------------------------------
-# LOCKED PORTFOLIO (8 STOCKS)
-# Coursework Final Portfolio Allocation across 3 key Infra/Capex Sectors
-# -----------------------------------------------------------------------------
-
-LOCKED_PORTFOLIO = {
-    "JKCEMENT": {"sector": "Cement", "name": "J K Cement"},
-    "ULTRACEMCO": {"sector": "Cement", "name": "UltraTech Cement"},
-    "STARCEMENT": {"sector": "Cement", "name": "Star Cement"},
-    "BHEL": {"sector": "Capital Goods/EPC", "name": "Bharat Heavy Electricals"},
-    "VOLTAMP": {"sector": "Capital Goods/EPC", "name": "Voltamp Transformers"},
-    "POWERGRID": {"sector": "Power", "name": "Power Grid Corp."},
-    "TATAPOWER": {"sector": "Power", "name": "Tata Power"},
-    "NTPC": {"sector": "Power", "name": "NTPC"},
+# Official Nifty sector index constituent files, downloaded from niftyindices.com
+# (https://www.niftyindices.com/IndexConstituent/ind_nifty<Name>_list.csv) on 24-Sep-2026.
+# These files are the single source of truth for the three sector universes.
+INDEX_CONSTITUENTS_DIR = DATA_DIR / "index_constituents"
+SECTOR_CONSTITUENT_FILES = {
+    "Cement": INDEX_CONSTITUENTS_DIR / "ind_niftyCement_list.csv",
+    "Capital Goods": INDEX_CONSTITUENTS_DIR / "ind_niftyCapitalGoods_list.csv",
+    "Power": INDEX_CONSTITUENTS_DIR / "ind_niftyPower_list.csv",
 }
 
-LOCKED_PORTFOLIO_SYMBOLS = list(LOCKED_PORTFOLIO.keys())
 
-# Documented investment committee caveat for NTPC
-NTPC_CAVEAT = (
-    "Note: Shows a bearish near-term technical trend but was included "
-    "for its strong fundamentals during a sector-wide downturn."
-)
+def _read_constituents(csv_path: Path) -> List[Dict[str, str]]:
+    """Rows (symbol, name) of an official constituent file; empty if the file is missing."""
+    if not csv_path.exists():
+        return []
+    with open(csv_path, newline="", encoding="utf-8-sig") as f:
+        return [{"symbol": row["Symbol"].strip(), "name": row["Company Name"].strip()}
+                for row in csv.DictReader(f) if row.get("Symbol", "").strip()]
 
-# Complete portfolio watchlist to fetch and analyze
+
+_CONSTITUENTS = {sector: _read_constituents(path) for sector, path in SECTOR_CONSTITUENT_FILES.items()}
+
+CEMENT_STOCKS = [r["symbol"] for r in _CONSTITUENTS["Cement"]]
+CAPITAL_GOODS_EPC_STOCKS = [r["symbol"] for r in _CONSTITUENTS["Capital Goods"]]
+POWER_SECTOR_STOCKS = [r["symbol"] for r in _CONSTITUENTS["Power"]]
+
+# Symbol -> sector / company name lookups shared by every module
+SYMBOL_SECTOR = {r["symbol"]: sector for sector, rows in _CONSTITUENTS.items() for r in rows}
+SYMBOL_NAME = {r["symbol"]: r["name"] for rows in _CONSTITUENTS.values() for r in rows}
+
+
+def sector_of(symbol: str) -> str:
+    """Sector of a symbol in the three official universes, or "Other"."""
+    return SYMBOL_SECTOR.get(symbol, "Other")
+
+
+# -----------------------------------------------------------------------------
+# LOCKED PORTFOLIO
+# The final picks: each passed the technical screen (RS vs Nifty 500 > +2 pp and Bullish
+# trend) and the sector fundamental safety screen (see sector_screen.py and the
+# output/*_full_review_table.csv files). Names and sectors come from the constituent files.
+# -----------------------------------------------------------------------------
+
+LOCKED_PORTFOLIO_SYMBOLS = [
+    "JKCEMENT", "JKLAKSHMI",                                       # Cement
+    "VOLTAMP", "FINCABLES", "ELGIEQUIP", "APARINDS", "WELCORP",    # Capital Goods
+    "ACMESOLAR", "TATAPOWER",                                      # Power
+]
+
+LOCKED_PORTFOLIO = {
+    symbol: {"sector": sector_of(symbol), "name": SYMBOL_NAME.get(symbol, symbol)}
+    for symbol in LOCKED_PORTFOLIO_SYMBOLS
+}
+
+# Complete watchlist to fetch and analyze: every constituent of the three sector indices
 PORTFOLIO_SYMBOLS = CEMENT_STOCKS + CAPITAL_GOODS_EPC_STOCKS + POWER_SECTOR_STOCKS
-ALL_TARGET_STOCKS = PORTFOLIO_SYMBOLS
 
 # Corporate Action / Symbol Change Alias Mapping
 # On the NSE, corporate renamings change the trading symbol. For continuous 1-year historical
@@ -165,7 +171,6 @@ BHAVCOPY_EXPECTED_COLUMNS = [
 SUMMARY_OUTPUT_CSV = OUTPUT_DIR / "portfolio_technical_summary.csv"
 HISTORICAL_OHLCV_CSV = OUTPUT_DIR / "portfolio_historical_ohlcv.csv"
 RISK_SUMMARY_OUTPUT_CSV = OUTPUT_DIR / "portfolio_risk_summary.csv"
-FUNDAMENTALS_SCREEN_OUTPUT_CSV = OUTPUT_DIR / "fundamentals_screen_check.csv"
 
 # -----------------------------------------------------------------------------
 # FUNDAMENTAL SAFETY SCREENS: (field, comparison, threshold, label)
@@ -219,23 +224,19 @@ POWER_SCREEN_CRITERIA = [
 # SECTOR SCREEN (technical screen FIRST, then fundamental safety screen; see sector_screen.py)
 # -----------------------------------------------------------------------------
 
-# Official Nifty sector index constituent files, downloaded from niftyindices.com
-# (https://www.niftyindices.com/IndexConstituent/ind_nifty<Name>_list.csv) on 24-Sep-2026.
-INDEX_CONSTITUENTS_DIR = DATA_DIR / "index_constituents"
-
 SECTOR_SCREENS = {
     "Cement": {
-        "constituents_csv": INDEX_CONSTITUENTS_DIR / "ind_niftyCement_list.csv",
+        "constituents_csv": SECTOR_CONSTITUENT_FILES["Cement"],
         "criteria": CEMENT_SCREEN_CRITERIA,
         "output_csv": OUTPUT_DIR / "cement_full_screen.csv",
     },
     "Capital Goods": {
-        "constituents_csv": INDEX_CONSTITUENTS_DIR / "ind_niftyCapitalGoods_list.csv",
+        "constituents_csv": SECTOR_CONSTITUENT_FILES["Capital Goods"],
         "criteria": CAPITAL_GOODS_SCREEN_CRITERIA,
         "output_csv": OUTPUT_DIR / "capital_goods_full_screen.csv",
     },
     "Power": {
-        "constituents_csv": INDEX_CONSTITUENTS_DIR / "ind_niftyPower_list.csv",
+        "constituents_csv": SECTOR_CONSTITUENT_FILES["Power"],
         "criteria": POWER_SCREEN_CRITERIA,
         "output_csv": OUTPUT_DIR / "power_full_screen.csv",
     },
