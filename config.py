@@ -266,12 +266,18 @@ TRADING_DAYS_PER_YEAR = 252
 # Lookback for volatility / expected return: the trailing ~1 year of daily returns
 RISK_LOOKBACK_TRADING_DAYS = 252
 
-# k: volatility multiplier for the volatility-capped stop. 1.75 daily-sigma-scaled
-# moves leaves a reasonable cushion against ordinary noise without letting a loss run;
-# raise it for a looser stop, lower it for a tighter one.
-STOP_LOSS_VOL_MULTIPLIER = 1.75
-
-# N: holding-period scaling in trading days (daily sigma is scaled by sqrt(N)).
-# 21 ~ one trading month: a middle ground for the 3-month tactical mandate, where stops
-# are reviewed and potentially tightened monthly rather than held static for the quarter.
-STOP_LOSS_HOLDING_PERIOD_DAYS = 21
+# Stop-loss for the 3-month mandate (see stoploss.py). The stop is sized for about one month
+# and trailed up at each monthly review, rather than sized for the full quarter: a 63-session
+# volatility stop sits ~19-41% below price for these stocks, a larger loss than a 3-month
+# tactical trade is expected to earn.
+# ATR period (Wilder smoothing of the true range, in sessions)
+STOP_LOSS_ATR_PERIOD = 14
+# Base stop = price - 3 x ATR(14). 3 ATR roughly equals a one-month, one-standard-deviation
+# move (e.g. JKCEMENT: 3 ATR = 8.5% vs sigma_annual x sqrt(21/252) = 9.4%), so the stop sits
+# just outside ordinary noise. Raise it for a looser stop, lower it for a tighter one.
+STOP_LOSS_ATR_MULTIPLE = 3.0
+# Support adjustment: a clear support level lying up to this many ATRs beyond the base stop
+# pulls the stop down to just below that support (so the stop is not parked just above it)...
+STOP_LOSS_SUPPORT_BAND_ATR = 1.0
+# ...placed this many ATRs under the support level
+STOP_LOSS_SUPPORT_BUFFER_ATR = 0.25

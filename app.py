@@ -24,8 +24,8 @@ from config import (
     LOCKED_PORTFOLIO_SYMBOLS,
     SECTOR_SCREENS,
     RISK_SUMMARY_OUTPUT_CSV,
-    STOP_LOSS_HOLDING_PERIOD_DAYS,
-    STOP_LOSS_VOL_MULTIPLIER,
+    STOP_LOSS_ATR_MULTIPLE,
+    STOP_LOSS_ATR_PERIOD,
     SUMMARY_OUTPUT_CSV,
 )
 from fetch_data import TRI_REDOWNLOAD_INSTRUCTIONS, TriStaleness, assess_tri_staleness, load_benchmark_tri
@@ -575,10 +575,11 @@ with tab_technicals:
         st.markdown("### Risk, Sizing & Stop-Loss")
         st.caption(
             "Risk and position-sizing figures, not momentum signals. Volatility and historical return use "
-            "~1 year of daily returns (close vs. the exchange's previous close). Stop-loss = the tighter of "
-            f"(a) the nearest support level and (b) price x (1 - {STOP_LOSS_VOL_MULTIPLIER} x daily volatility "
-            f"x sqrt({STOP_LOSS_HOLDING_PERIOD_DAYS})); k and N are stated, adjustable assumptions "
-            f"(N = {STOP_LOSS_HOLDING_PERIOD_DAYS} trading days, about one month, for stops reviewed monthly)."
+            "~1 year of daily returns (close vs. the exchange's previous close). Stop-loss = price - "
+            f"{STOP_LOSS_ATR_MULTIPLE:g} x ATR({STOP_LOSS_ATR_PERIOD}), about a one-month, one-standard-deviation "
+            "move; if a support level sits up to 1 ATR below that, the stop moves just under the support. "
+            "For the 3-month holding period the stop is sized for one month and trailed up (never down) at "
+            "each monthly review (python main.py --trail-stops <previous risk summary CSV>)."
         )
         st.markdown(
             f"""
@@ -596,7 +597,8 @@ with tab_technicals:
         if risk_df.empty:
             st.info("Risk summary not found. Run `python main.py` to generate output/portfolio_risk_summary.csv.")
         else:
-            method_labels = {"support": "Support", "volatility_cap": "Volatility cap"}
+            method_labels = {"atr": f"{STOP_LOSS_ATR_MULTIPLE:g} x ATR", "support": "Below support",
+                             "trailed": "Trailed (previous stop)", "breached": "BREACHED"}
             risk_table_df = pd.DataFrame({
                 "Symbol": risk_df["symbol"],
                 "Sector": risk_df["sector"],
@@ -605,6 +607,7 @@ with tab_technicals:
                 "Hist. Expected Return (%) · Placeholder": risk_df["historical_expected_return_pct"].apply(
                     lambda x: f"{x:+.2f}%" if pd.notna(x) else "—"),
                 "Weight (%) · Placeholder": risk_df["weight_pct"].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
+                f"ATR({STOP_LOSS_ATR_PERIOD}) (%)": risk_df["atr_pct"].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
                 "Stop-Loss (₹)": risk_df["stop_loss_price"].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) else "—"),
                 "Stop Below Price (%)": risk_df["stop_loss_pct_below_current"].apply(
                     lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),

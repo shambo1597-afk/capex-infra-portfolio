@@ -1,10 +1,10 @@
-symbol,sector,current_price,annualized_volatility_pct,historical_expected_return_pct,weight_pct,stop_loss_price,stop_loss_pct_below_current,stop_loss_method
-JKCEMENT,Cement,5184.5,32.59,-23.02,11.11,5165.0,0.38,support
-JKLAKSHMI,Cement,509.45,27.54,-51.67,11.11,505.9,0.7,support
-VOLTAMP,Capital Goods,10587.0,40.24,47.79,11.11,10259.0,3.1,support
-FINCABLES,Capital Goods,1480.0,43.55,68.66,11.11,1186.5,19.83,support
-ELGIEQUIP,Capital Goods,608.8,33.11,24.76,11.11,596.0,2.1,support
-APARINDS,Capital Goods,17804.0,46.8,83.84,11.11,16199.0,9.01,support
-WELCORP,Capital Goods,2692.2,42.26,122.27,11.11,2240.2,16.79,support
-ACMESOLAR,Power,446.65,38.13,51.95,11.11,376.3,15.75,support
-TATAPOWER,Power,363.45,21.65,-6.25,11.11,362.95,0.14,support
+symbol,sector,current_price,annualized_volatility_pct,historical_expected_return_pct,weight_pct,atr_14,atr_pct,stop_loss_price,stop_loss_pct_below_current,stop_loss_method
+JKCEMENT,Cement,5184.5,32.59,-23.02,11.11,147.76,2.85,4741.23,8.55,atr
+JKLAKSHMI,Cement,509.45,27.54,-51.67,11.11,12.35,2.42,472.41,7.27,atr
+VOLTAMP,Capital Goods,10587.0,40.24,47.79,11.11,367.34,3.47,9484.99,10.41,atr
+FINCABLES,Capital Goods,1480.0,43.55,68.66,11.11,63.64,4.3,1289.07,12.9,atr
+ELGIEQUIP,Capital Goods,608.8,33.11,24.76,11.11,18.44,3.03,553.48,9.09,atr
+APARINDS,Capital Goods,17804.0,46.8,83.84,11.11,813.42,4.57,15363.73,13.71,atr
+WELCORP,Capital Goods,2692.2,42.26,122.27,11.11,129.8,4.82,2207.75,17.99,support
+ACMESOLAR,Power,446.65,38.13,51.95,11.11,19.74,4.42,371.36,16.86,support
+TATAPOWER,Power,363.45,21.65,-6.25,11.11,7.36,2.03,341.37,6.08,atr

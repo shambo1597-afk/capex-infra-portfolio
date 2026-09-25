@@ -1,13 +1,14 @@
 """
 Stop-Loss, Volatility and Historical Return Calculation Engine.
 
-This module implements the portfolio's hybrid stop-loss methodology and the per-stock
+This module implements the portfolio's ATR stop-loss methodology and the per-stock
 risk statistics that feed the portfolio risk summary:
 1. Daily returns from official NSE Bhavcopy closes, measured against the exchange's
    PREV_CLOSE so every return is a genuine one-session move.
 2. Daily and annualized volatility (sample standard deviation of daily returns).
 3. Historical expected return (simple average daily return, annualized).
-4. Hybrid stop-loss: the tighter of a support-based level and a volatility-scaled cap.
+4. ATR stop-loss for the 3-month mandate: 3 x ATR(14) below price, moved to just below a
+   support level that lies slightly beyond it, and trailed up (never down) at each review.
 
 Pure calculations only (no I/O); analysis.generate_portfolio_risk_summary() assembles
 the per-stock table.
@@ -20,13 +21,18 @@ import pandas as pd
 
 from config import (
     RISK_LOOKBACK_TRADING_DAYS,
-    STOP_LOSS_HOLDING_PERIOD_DAYS,
-    STOP_LOSS_VOL_MULTIPLIER,
+    STOP_LOSS_ATR_MULTIPLE,
+    STOP_LOSS_ATR_PERIOD,
+    STOP_LOSS_SUPPORT_BAND_ATR,
+    STOP_LOSS_SUPPORT_BUFFER_ATR,
     TRADING_DAYS_PER_YEAR,
 )
+from indicators import wilder_smoothing
 
+METHOD_ATR = "atr"
 METHOD_SUPPORT = "support"
-METHOD_VOLATILITY_CAP = "volatility_cap"
+METHOD_TRAILED = "trailed"
+METHOD_BREACHED = "breached"
 METHOD_UNAVAILABLE = "unavailable"
 
 
@@ -99,60 +105,95 @@ def compute_historical_expected_return(returns: pd.Series) -> Optional[float]:
 
 
 # -----------------------------------------------------------------------------
-# HYBRID STOP-LOSS
+# ATR STOP-LOSS
 # -----------------------------------------------------------------------------
 
-def compute_volatility_cap_stop(
-    current_price: float,
-    daily_volatility: Optional[float],
-    k: float = STOP_LOSS_VOL_MULTIPLIER,
-    holding_period_days: int = STOP_LOSS_HOLDING_PERIOD_DAYS,
-) -> Optional[float]:
-    """
-    Volatility-scaled stop: current_price x (1 - k x daily_volatility x sqrt(N)).
+def _one_row_per_session(stock_df: pd.DataFrame) -> pd.DataFrame:
+    df = stock_df.copy()
+    df["DATE1"] = pd.to_datetime(df["DATE1"], format="mixed", errors="coerce")
+    return df.dropna(subset=["DATE1"]).drop_duplicates(subset=["DATE1"], keep="last").sort_values("DATE1")
 
-    k (default 1.75) and N (default 21 trading days, about one month for a 3-month mandate
-    reviewed monthly) are stated, adjustable assumptions; see config.py. The stop sits
-    k standard deviations of an N-day move below the current price.
+
+def compute_atr(stock_df: pd.DataFrame, period: int = STOP_LOSS_ATR_PERIOD) -> Optional[float]:
+    """
+    Latest Average True Range: Wilder smoothing of max(High - Low, |High - PrevClose|,
+    |Low - PrevClose|), in price units.
+
+    PrevClose is the exchange's PREV_CLOSE (a true one-session reference even when sessions
+    are missing locally, and adjusted for corporate actions); falls back to the prior row's
+    close when the column is absent.
 
     Returns:
-        float, or None when volatility is unknown or the cushion would reach 100%.
+        float, or None when there are fewer than `period` sessions.
     """
-    if daily_volatility is None or current_price is None or current_price <= 0:
+    if stock_df is None or stock_df.empty:
         return None
-    cushion = k * daily_volatility * math.sqrt(holding_period_days)
-    if cushion >= 1:
+    df = _one_row_per_session(stock_df)
+    high = pd.to_numeric(df["HIGH_PRICE"], errors="coerce")
+    low = pd.to_numeric(df["LOW_PRICE"], errors="coerce")
+    close = pd.to_numeric(df["CLOSE_PRICE"], errors="coerce")
+    prev_close = pd.to_numeric(df["PREV_CLOSE"], errors="coerce") if "PREV_CLOSE" in df.columns else close.shift(1)
+    true_range = pd.concat([high - low, (high - prev_close).abs(), (low - prev_close).abs()], axis=1).max(axis=1)
+    true_range = true_range.dropna().reset_index(drop=True)
+    if len(true_range) < period:
         return None
-    return current_price * (1 - cushion)
+    atr = wilder_smoothing(true_range, period=period).iloc[-1]
+    return None if pd.isna(atr) else float(atr)
 
 
-def _is_valid_stop(candidate: Optional[float], current_price: float) -> bool:
-    """A usable stop is a real price strictly between zero and the current price."""
-    return candidate is not None and not pd.isna(candidate) and 0 < candidate < current_price
-
-
-def select_stop_loss(
+def compute_atr_stop(
     current_price: float,
-    support_price: Optional[float],
-    volatility_cap_price: Optional[float],
+    atr: Optional[float],
+    support_price: Optional[float] = None,
+    atr_multiple: float = STOP_LOSS_ATR_MULTIPLE,
+    support_band_atr: float = STOP_LOSS_SUPPORT_BAND_ATR,
+    support_buffer_atr: float = STOP_LOSS_SUPPORT_BUFFER_ATR,
 ) -> Tuple[Optional[float], str]:
     """
-    Choose the final stop-loss: whichever candidate is CLOSER to the current price.
+    Stop-loss for the 3-month mandate, sized for about one month and trailed at reviews.
 
-    Both candidates sit below the current price, so the closer one is the higher one,
-    i.e. the tighter, more conservative stop. A candidate that is missing or not strictly
-    below the current price (a stop at or above the price would trigger immediately) is
-    ignored. On an exact tie the support level wins, since it is an observed price level.
+    1. Base stop = current_price - atr_multiple x ATR (3 ATR ~ a one-month, one-sigma move).
+    2. If a support level lies below the base stop but within support_band_atr ATRs of it,
+       the stop moves to support - support_buffer_atr x ATR, just under that level, so an
+       ordinary retest of support does not trigger it.
+    A support level above the base stop is ignored: it never makes the stop tighter than
+    3 ATR (the previous "tighter of support vs cap" rule produced stops 0.1-0.7% below price).
 
     Returns:
-        (stop_loss_price, method): method is "support" or "volatility_cap", or
-        (None, "unavailable") when neither candidate is usable.
+        (stop_price, method): method is "atr" or "support", or (None, "unavailable") when
+        the price or ATR is unknown or the stop would not be a positive price.
     """
-    support_ok = _is_valid_stop(support_price, current_price)
-    vol_cap_ok = _is_valid_stop(volatility_cap_price, current_price)
+    if current_price is None or current_price <= 0 or atr is None or atr <= 0:
+        return None, METHOD_UNAVAILABLE
+    base_stop = current_price - atr_multiple * atr
+    stop, method = base_stop, METHOD_ATR
+    if (support_price is not None and not pd.isna(support_price)
+            and base_stop - support_band_atr * atr <= support_price < base_stop):
+        stop, method = support_price - support_buffer_atr * atr, METHOD_SUPPORT
+    if stop <= 0:
+        return None, METHOD_UNAVAILABLE
+    return float(stop), method
 
-    if support_ok and (not vol_cap_ok or support_price >= volatility_cap_price):
-        return float(support_price), METHOD_SUPPORT
-    if vol_cap_ok:
-        return float(volatility_cap_price), METHOD_VOLATILITY_CAP
-    return None, METHOD_UNAVAILABLE
+
+def apply_trailing_stop(
+    new_stop: Optional[float],
+    new_method: str,
+    previous_stop: Optional[float],
+    current_price: Optional[float],
+) -> Tuple[Optional[float], str]:
+    """
+    Trail the stop: keep the previous review's stop when it is higher than the newly computed
+    one (a stop is only ever raised), provided it is still below the current price.
+
+    A previous stop at or above the current price means the stop has been hit: it is returned
+    with method "breached" (a negative distance below price) so the exit is not silently lost.
+    """
+    if previous_stop is None or pd.isna(previous_stop) or current_price is None:
+        return new_stop, new_method
+    if previous_stop >= current_price:
+        return float(previous_stop), METHOD_BREACHED
+    # Compare at the 2-decimal precision stops are saved with, so re-reading an unchanged stop
+    # from the previous CSV is not mistaken for a trailed one
+    if new_stop is None or round(float(previous_stop), 2) > round(new_stop, 2):
+        return float(previous_stop), METHOD_TRAILED
+    return new_stop, new_method

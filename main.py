@@ -41,8 +41,8 @@ from config import (
     POWER_SECTOR_STOCKS,
     PROCESSED_DATA_DIR,
     RISK_SUMMARY_OUTPUT_CSV,
-    STOP_LOSS_HOLDING_PERIOD_DAYS,
-    STOP_LOSS_VOL_MULTIPLIER,
+    STOP_LOSS_ATR_MULTIPLE,
+    STOP_LOSS_ATR_PERIOD,
     SUMMARY_OUTPUT_CSV,
 )
 from fetch_data import (
@@ -110,6 +110,15 @@ def parse_arguments() -> argparse.Namespace:
         type=str,
         default=str(HISTORICAL_OHLCV_CSV),
         help="File path to write consolidated historical OHLCV data."
+    )
+    parser.add_argument(
+        "--trail-stops",
+        type=str,
+        default=None,
+        help="Monthly review: path to the previous review's risk summary CSV. Each stop is only "
+             "ever raised (a higher previous stop is kept); a previous stop at or above the "
+             "current price is reported as 'breached'. Copy the CSV before re-running, since "
+             "the run overwrites output/portfolio_risk_summary.csv."
     )
     return parser.parse_args()
 
@@ -219,8 +228,9 @@ def run_pipeline() -> int:
     print("     [+] ADX: 14-period Wilder's method with +DI and -DI directional strength")
     print("     [+] Relative Strength: 63-day cumulative return spread vs Nifty 500 (pp)")
     print("     [+] Support / Resistance: 20-day rolling swing highs & lows")
-    print(f"     [+] Stop-loss: tighter of nearest support vs. volatility cap "
-          f"(k={STOP_LOSS_VOL_MULTIPLIER}, N={STOP_LOSS_HOLDING_PERIOD_DAYS} trading days)")
+    print(f"     [+] Stop-loss: price - {STOP_LOSS_ATR_MULTIPLE:g} x ATR({STOP_LOSS_ATR_PERIOD}), "
+          "moved just below a support level up to 1 ATR beyond it"
+          + (f"; trailed from {args.trail_stops}" if args.trail_stops else ""))
 
     summary_df = generate_portfolio_summary(
         stock_data=stock_df,
@@ -229,10 +239,16 @@ def run_pipeline() -> int:
         output_csv_path=Path(args.output_csv)
     )
 
+    previous_stops = None
+    if args.trail_stops:
+        previous = pd.read_csv(args.trail_stops)
+        previous_stops = dict(zip(previous["symbol"], previous["stop_loss_price"]))
+
     risk_df = generate_portfolio_risk_summary(
         stock_data=stock_df,
         technical_summary=summary_df,
-        output_csv_path=RISK_SUMMARY_OUTPUT_CSV
+        output_csv_path=RISK_SUMMARY_OUTPUT_CSV,
+        previous_stops=previous_stops,
     )
 
     # -------------------------------------------------------------------------

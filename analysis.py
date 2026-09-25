@@ -6,7 +6,7 @@ This module ingests processed historical OHLCV data for the target stock univers
 runs the technical indicators (RSI, ADX, Relative Strength vs Nifty 500, Support/Resistance),
 assembles the consolidated portfolio summary row per stock, saves the output CSV,
 and renders a readable terminal summary table. It also builds the locked portfolio's
-risk summary (volatility, historical expected return, weight, hybrid stop-loss).
+risk summary (volatility, historical expected return, weight, ATR stop-loss).
 """
 
 import logging
@@ -19,8 +19,8 @@ import pandas as pd
 from config import (
     LOCKED_PORTFOLIO_SYMBOLS,
     RISK_SUMMARY_OUTPUT_CSV,
-    STOP_LOSS_HOLDING_PERIOD_DAYS,
-    STOP_LOSS_VOL_MULTIPLIER,
+    STOP_LOSS_ATR_MULTIPLE,
+    STOP_LOSS_ATR_PERIOD,
     SUMMARY_OUTPUT_CSV,
     sector_of,
 )
@@ -34,9 +34,10 @@ from stoploss import (
     compute_annualized_volatility,
     compute_daily_returns,
     compute_daily_volatility,
+    apply_trailing_stop,
+    compute_atr,
+    compute_atr_stop,
     compute_historical_expected_return,
-    compute_volatility_cap_stop,
-    select_stop_loss,
 )
 
 logger = logging.getLogger("analysis")
@@ -277,6 +278,8 @@ RISK_SUMMARY_COLUMNS = [
     "annualized_volatility_pct",
     "historical_expected_return_pct",
     "weight_pct",
+    "atr_14",
+    "atr_pct",
     "stop_loss_price",
     "stop_loss_pct_below_current",
     "stop_loss_method",
@@ -292,6 +295,7 @@ def generate_portfolio_risk_summary(
     technical_summary: pd.DataFrame,
     symbols: Optional[List[str]] = None,
     output_csv_path: Optional[Path] = RISK_SUMMARY_OUTPUT_CSV,
+    previous_stops: Optional[Dict[str, float]] = None,
 ) -> pd.DataFrame:
     """
     Build one risk/sizing row per locked portfolio stock and save it as a CSV.
@@ -306,6 +310,9 @@ def generate_portfolio_risk_summary(
             current_price and the support-based stop candidate (nearest_support).
         symbols (List[str], optional): Stocks to include. Defaults to LOCKED_PORTFOLIO_SYMBOLS.
         output_csv_path (Path, optional): Destination CSV; None skips saving.
+        previous_stops (dict, optional): symbol -> stop from the previous review. A stop is
+            only ever raised: a higher previous stop is kept ("trailed"), and one at or above
+            the current price is reported as "breached".
 
     Returns:
         pd.DataFrame: The risk summary, one row per symbol.
@@ -329,20 +336,19 @@ def generate_portfolio_risk_summary(
         returns = compute_daily_returns(sym_df)
         daily_vol = compute_daily_volatility(returns)
 
-        stop_price, method = (None, "unavailable")
-        if current_price is not None:
-            vol_cap = compute_volatility_cap_stop(current_price, daily_vol)
-            stop_price, method = select_stop_loss(current_price, support, vol_cap)
-            logger.info(
-                "%s stop-loss: support=%s, volatility cap (k=%.2f, N=%d)=%s -> %s wins at %s",
-                symbol,
-                "n/a" if support is None else f"{support:,.2f}",
-                STOP_LOSS_VOL_MULTIPLIER,
-                STOP_LOSS_HOLDING_PERIOD_DAYS,
-                "n/a" if vol_cap is None else f"{vol_cap:,.2f}",
-                method,
-                "n/a" if stop_price is None else f"{stop_price:,.2f}",
-            )
+        atr = compute_atr(sym_df)
+        stop_price, method = compute_atr_stop(current_price, atr, support)
+        stop_price, method = apply_trailing_stop(
+            stop_price, method, (previous_stops or {}).get(symbol), current_price)
+        logger.info(
+            "%s stop-loss: ATR(%d)=%s, support=%s -> %s at %s",
+            symbol,
+            STOP_LOSS_ATR_PERIOD,
+            "n/a" if atr is None else f"{atr:,.2f}",
+            "n/a" if support is None else f"{support:,.2f}",
+            method,
+            "n/a" if stop_price is None else f"{stop_price:,.2f}",
+        )
         if len(returns) < 2:
             logger.warning("%s: insufficient price history for volatility (%d daily returns).", symbol, len(returns))
 
@@ -353,6 +359,8 @@ def generate_portfolio_risk_summary(
             "annualized_volatility_pct": _pct(compute_annualized_volatility(returns)),
             "historical_expected_return_pct": _pct(compute_historical_expected_return(returns)),
             "weight_pct": equal_weight_pct,
+            "atr_14": None if atr is None else round(atr, 2),
+            "atr_pct": None if atr is None or not current_price else round(atr / current_price * 100, 2),
             "stop_loss_price": None if stop_price is None else round(stop_price, 2),
             "stop_loss_pct_below_current": (
                 None if stop_price is None or not current_price
@@ -376,8 +384,8 @@ def print_risk_summary_table(risk_df: pd.DataFrame) -> None:
     """Print the locked portfolio's risk, sizing and stop-loss table to the terminal."""
     print("\n" + "=" * 115)
     print(" LOCKED PORTFOLIO RISK, SIZING & STOP-LOSS SUMMARY")
-    print(f" Stop-loss: tighter of nearest support vs. price x (1 - {STOP_LOSS_VOL_MULTIPLIER} x daily vol "
-          f"x sqrt({STOP_LOSS_HOLDING_PERIOD_DAYS}))")
+    print(f" Stop-loss: price - {STOP_LOSS_ATR_MULTIPLE:g} x ATR({STOP_LOSS_ATR_PERIOD}), moved just below a support "
+          "level up to 1 ATR beyond it; trailed up (never down) at monthly reviews")
     print("=" * 115)
     if risk_df.empty:
         print("No risk records to display.")

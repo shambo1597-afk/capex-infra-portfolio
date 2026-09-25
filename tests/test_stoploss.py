@@ -1,5 +1,5 @@
 """
-Unit tests for the hybrid stop-loss, volatility and portfolio risk summary calculations.
+Unit tests for the ATR stop-loss, volatility and portfolio risk summary calculations.
 """
 
 import math
@@ -10,12 +10,13 @@ import pytest
 from analysis import RISK_SUMMARY_COLUMNS, generate_portfolio_risk_summary
 from config import LOCKED_PORTFOLIO_SYMBOLS
 from stoploss import (
+    apply_trailing_stop,
     compute_annualized_volatility,
+    compute_atr,
+    compute_atr_stop,
     compute_daily_returns,
     compute_daily_volatility,
     compute_historical_expected_return,
-    compute_volatility_cap_stop,
-    select_stop_loss,
 )
 
 # Daily returns of +1%, -2%, +3%, 0%, expressed as Bhavcopy rows (CLOSE vs PREV_CLOSE).
@@ -25,7 +26,7 @@ FIXTURE_RETURNS = [0.01, -0.02, 0.03, 0.0]
 EXPECTED_ANNUALIZED_VOL = math.sqrt(0.1092)  # 0.330454...
 
 
-def _bhavcopy_rows(symbol, returns, start_price=100.0, start_date="2026-09-01"):
+def _bhavcopy_rows(symbol, returns, start_price=100.0, start_date="2026-09-01", day_range=0.0):
     rows, prev_close = [], start_price
     for i, r in enumerate(returns):
         close = prev_close * (1 + r)
@@ -34,49 +35,71 @@ def _bhavcopy_rows(symbol, returns, start_price=100.0, start_date="2026-09-01"):
             "DATE1": (pd.Timestamp(start_date) + pd.offsets.BDay(i)).strftime("%Y-%m-%d"),
             "PREV_CLOSE": prev_close,
             "CLOSE_PRICE": close,
+            "HIGH_PRICE": close + day_range / 2,
+            "LOW_PRICE": close - day_range / 2,
         })
         prev_close = close
     return pd.DataFrame(rows)
 
 
-class TestTighterOfTwoCandidates:
-    """The final stop is whichever candidate is closer to (i.e. higher below) the price."""
+class TestAtr:
+    def test_flat_price_with_constant_range_has_atr_equal_to_range(self):
+        # Close never moves, High - Low = 4 every day: every true range is 4, so ATR = 4
+        rows = _bhavcopy_rows("TEST", [0.0] * 20, day_range=4.0)
+        assert compute_atr(rows) == pytest.approx(4.0)
 
-    def test_support_wins_when_tighter(self):
-        # Price 100, 2% daily vol: cap = 100 x (1 - 1.75 x 0.02 x sqrt(21)) = 83.96; support 95 is closer
-        vol_cap = compute_volatility_cap_stop(100.0, 0.02)
-        assert vol_cap == pytest.approx(100 * (1 - 1.75 * 0.02 * math.sqrt(21)))
+    def test_gap_uses_previous_close(self):
+        # A +10% gap with a 1-point range: TR = |High - PrevClose| = 110.5 - 100 = 10.5 on that day
+        rows = _bhavcopy_rows("TEST", [0.0] * 14 + [0.10], day_range=1.0)
+        # Wilder: seed = mean of first 14 TRs (1.0), then (1.0 x 13 + 10.5) / 14
+        assert compute_atr(rows) == pytest.approx((13 * 1.0 + 10.5) / 14)
 
-        stop, method = select_stop_loss(100.0, support_price=95.0, volatility_cap_price=vol_cap)
+    def test_needs_a_full_period(self):
+        assert compute_atr(_bhavcopy_rows("TEST", [0.0] * 13, day_range=1.0)) is None
+        assert compute_atr(pd.DataFrame()) is None
 
-        assert method == "support"
-        assert stop == pytest.approx(95.0)
 
-    def test_volatility_cap_wins_when_tighter(self):
-        # Price 100, 0.5% daily vol: cap = 100 x (1 - 1.75 x 0.005 x sqrt(21)) = 95.99; support 80 is far below
-        vol_cap = compute_volatility_cap_stop(100.0, 0.005)
+class TestAtrStop:
+    """Base stop = price - 3 ATR; a support up to 1 ATR beyond it pulls the stop to support - 0.25 ATR."""
 
-        stop, method = select_stop_loss(100.0, support_price=80.0, volatility_cap_price=vol_cap)
+    def test_base_stop_is_three_atr_below_price(self):
+        assert compute_atr_stop(100.0, 2.0) == (pytest.approx(94.0), "atr")
 
-        assert method == "volatility_cap"
-        assert stop == pytest.approx(100 * (1 - 1.75 * 0.005 * math.sqrt(21)))
+    def test_support_just_beyond_base_stop_moves_stop_below_support(self):
+        # Base 94; support 93 is within 1 ATR (92-94) -> stop 93 - 0.5 = 92.5
+        assert compute_atr_stop(100.0, 2.0, support_price=93.0) == (pytest.approx(92.5), "support")
+        # Band edge (support exactly 1 ATR beyond) still counts
+        assert compute_atr_stop(100.0, 2.0, support_price=92.0) == (pytest.approx(91.5), "support")
 
-    def test_support_at_or_above_price_is_ignored(self):
-        stop, method = select_stop_loss(100.0, support_price=100.0, volatility_cap_price=90.0)
-        assert (stop, method) == (90.0, "volatility_cap")
+    def test_support_close_to_price_never_tightens_the_stop(self):
+        # The old rule would have put the stop at 99.9 (0.1% below price)
+        assert compute_atr_stop(100.0, 2.0, support_price=99.9) == (pytest.approx(94.0), "atr")
 
-    def test_missing_support_falls_back_to_volatility_cap(self):
-        assert select_stop_loss(100.0, None, 90.0) == (90.0, "volatility_cap")
+    def test_support_far_below_is_ignored(self):
+        assert compute_atr_stop(100.0, 2.0, support_price=80.0) == (pytest.approx(94.0), "atr")
 
-    def test_tie_goes_to_support(self):
-        assert select_stop_loss(100.0, 90.0, 90.0) == (90.0, "support")
+    def test_unavailable_without_price_or_atr(self):
+        assert compute_atr_stop(100.0, None) == (None, "unavailable")
+        assert compute_atr_stop(None, 2.0) == (None, "unavailable")
+        assert compute_atr_stop(10.0, 5.0) == (None, "unavailable")  # 3 ATR exceeds the price
 
-    def test_no_usable_candidate(self):
-        assert select_stop_loss(100.0, None, None) == (None, "unavailable")
 
-    def test_volatility_cap_unavailable_when_cushion_reaches_100_pct(self):
-        assert compute_volatility_cap_stop(100.0, 0.5) is None
-        assert compute_volatility_cap_stop(100.0, None) is None
+class TestTrailingStop:
+    def test_higher_previous_stop_is_kept(self):
+        assert apply_trailing_stop(90.0, "atr", 93.0, 100.0) == (93.0, "trailed")
+
+    def test_unchanged_stop_read_back_at_csv_precision_is_not_trailed(self):
+        assert apply_trailing_stop(472.4077, "atr", 472.41, 509.45) == (472.4077, "atr")
+
+    def test_higher_new_stop_replaces_previous(self):
+        assert apply_trailing_stop(95.0, "atr", 93.0, 100.0) == (95.0, "atr")
+
+    def test_previous_stop_at_or_above_price_is_breached(self):
+        assert apply_trailing_stop(85.0, "atr", 93.0, 92.0) == (93.0, "breached")
+
+    def test_no_previous_stop(self):
+        assert apply_trailing_stop(90.0, "support", None, 100.0) == (90.0, "support")
+        assert apply_trailing_stop(90.0, "atr", float("nan"), 100.0) == (90.0, "atr")
 
 
 class TestVolatilityAndReturns:
@@ -114,30 +137,36 @@ class TestVolatilityAndReturns:
 class TestPortfolioRiskSummary:
     def test_summary_rows_columns_and_csv(self, tmp_path):
         stock_data = pd.concat([
-            _bhavcopy_rows("AAA", FIXTURE_RETURNS),
-            _bhavcopy_rows("BBB", [0.001, -0.001, 0.002, -0.002]),
+            _bhavcopy_rows("AAA", [0.0] * 20, day_range=2.0),   # ATR 2, close 100
+            _bhavcopy_rows("BBB", [0.0] * 20, day_range=2.0),
         ], ignore_index=True)
         technicals = pd.DataFrame({
             "symbol": ["AAA", "BBB"],
             "current_price": [100.0, 100.0],
-            "nearest_support": [99.0, 80.0],
+            "nearest_support": [99.0, 93.0],
         })
         out_csv = tmp_path / "portfolio_risk_summary.csv"
 
         risk = generate_portfolio_risk_summary(stock_data, technicals, symbols=["AAA", "BBB"],
-                                               output_csv_path=out_csv)
+                                               output_csv_path=out_csv, previous_stops={"BBB": 95.0})
 
         assert list(risk.columns) == RISK_SUMMARY_COLUMNS
         assert out_csv.exists() and len(pd.read_csv(out_csv)) == 2
         aaa, bbb = risk.iloc[0], risk.iloc[1]
+        assert aaa["weight_pct"] == bbb["weight_pct"] == 50.0  # equal-weight placeholder
+        assert (aaa["atr_14"], aaa["atr_pct"]) == (2.0, 2.0)
+        # AAA: support 1% below price is ignored; stop = 100 - 3 x 2
+        assert (aaa["stop_loss_method"], aaa["stop_loss_price"], aaa["stop_loss_pct_below_current"]) == ("atr", 94.0, 6.0)
+        # BBB: support 93 would give 92.5, but the previous review's 95 is higher and is kept
+        assert (bbb["stop_loss_method"], bbb["stop_loss_price"]) == ("trailed", 95.0)
+
+    def test_volatility_and_return_columns(self):
+        stock_data = _bhavcopy_rows("AAA", FIXTURE_RETURNS)
+        technicals = pd.DataFrame({"symbol": ["AAA"], "current_price": [100.0], "nearest_support": [90.0]})
+        aaa = generate_portfolio_risk_summary(stock_data, technicals, symbols=["AAA"], output_csv_path=None).iloc[0]
         assert aaa["annualized_volatility_pct"] == pytest.approx(33.05, abs=0.01)
         assert aaa["historical_expected_return_pct"] == pytest.approx(126.0)
-        assert aaa["weight_pct"] == bbb["weight_pct"] == 50.0  # equal-weight placeholder
-        # AAA: support 99 (1% below) beats a ~34% volatility cap
-        assert (aaa["stop_loss_method"], aaa["stop_loss_price"], aaa["stop_loss_pct_below_current"]) == ("support", 99.0, 1.0)
-        # BBB: low volatility -> cap sits within a few % of price, tighter than support at 80
-        assert bbb["stop_loss_method"] == "volatility_cap"
-        assert 80.0 < bbb["stop_loss_price"] < 100.0
+        assert aaa["stop_loss_method"] == "unavailable"  # 4 sessions: too few for ATR(14)
 
     def test_locked_portfolio_is_equal_weighted(self):
         risk = generate_portfolio_risk_summary(pd.DataFrame(), pd.DataFrame(), output_csv_path=None)
