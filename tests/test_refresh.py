@@ -62,3 +62,76 @@ def test_tri_failure_is_a_warning_not_a_failed_refresh(tmp_path):
         result = run_refresh(date(2026, 10, 3), on_output=lambda line: None)
     assert result["status"] == "ok" and len(result["steps"]) == 6
     assert len(result["warnings"]) == 1 and refresh_data.TRI_STEP in result["warnings"][0]
+
+
+NOW = datetime(2026, 9, 25, 20, 40, 0, tzinfo=IST)
+
+
+class TestRefreshState:
+    def test_running_with_recent_heartbeat(self):
+        m = {"status": "running", "heartbeat": "2026-09-25T20:39:30+05:30"}
+        assert refresh_data.refresh_state(m, NOW) == "running"
+
+    def test_running_without_heartbeat_for_over_a_minute_is_stalled(self):
+        m = {"status": "running", "heartbeat": "2026-09-25T20:34:00+05:30"}
+        assert refresh_data.refresh_state(m, NOW) == "stalled"
+
+    def test_finished_states_and_none(self):
+        assert refresh_data.refresh_state({"status": "ok"}, NOW) == "ok"
+        assert refresh_data.refresh_state({"status": "failed"}, NOW) == "failed"
+        assert refresh_data.refresh_state(None, NOW) is None
+
+
+class TestProgressSummary:
+    NAMES = ["A", "B", "C"]
+
+    def test_estimate_from_last_refresh_durations(self):
+        m = {"total_steps": 3, "step_names": self.NAMES, "expected_seconds": {"A": 20, "B": 60, "C": 20},
+             "steps": [{"name": "A", "returncode": 0, "seconds": 18}], "current_step": 2,
+             "current_step_name": "B", "current_step_started": "2026-09-25T20:39:30+05:30"}
+        p = refresh_data.progress_summary(m, NOW)
+        assert (p["step"], p["total"], p["step_name"], p["step_elapsed"]) == (2, 3, "B", 30)
+        assert p["fraction"] == pytest.approx((20 + 30) / 100)
+        assert p["remaining_seconds"] == pytest.approx(30 + 20) and not p["overrunning"]
+
+    def test_overrunning_step_never_shows_negative_time_or_100_percent(self):
+        m = {"total_steps": 3, "step_names": self.NAMES, "expected_seconds": {"A": 20, "B": 10, "C": 20},
+             "steps": [{"name": "A", "returncode": 0, "seconds": 18}], "current_step": 2,
+             "current_step_name": "B", "current_step_started": "2026-09-25T20:30:00+05:30"}
+        p = refresh_data.progress_summary(m, NOW)
+        assert p["remaining_seconds"] == 20 and p["fraction"] < 1 and p["overrunning"]
+
+    def test_without_history_counts_completed_steps(self):
+        m = {"total_steps": 4, "step_names": ["A", "B", "C", "D"], "expected_seconds": {},
+             "steps": [{"name": "A", "returncode": 0, "seconds": 5}], "current_step": 2, "current_step_name": "B",
+             "current_step_started": "2026-09-25T20:39:55+05:30"}
+        p = refresh_data.progress_summary(m, NOW)
+        assert p["fraction"] == 0.25 and p["remaining_seconds"] is None
+
+
+def test_manifest_records_progress_and_next_estimate(tmp_path):
+    path = tmp_path / "m.json"
+    seen = []
+
+    def popen(*args, **kwargs):
+        seen.append(refresh_data.load_manifest(path))  # what the dashboard would read mid-step
+        return _Proc(0)
+    with patch.object(refresh_data, "MANIFEST_PATH", path), patch("refresh_data.subprocess.Popen", side_effect=popen):
+        result = run_refresh(date(2026, 10, 3), on_output=lambda line: None)
+    assert [m["current_step"] for m in seen] == list(range(1, 7)) and all("heartbeat" in m for m in seen)
+    assert seen[0]["status"] == "running" and seen[0]["total_steps"] == 6
+    assert result["status"] == "ok" and "finished" in result
+    # The next refresh estimates its time from this one's step durations
+    assert refresh_data._expected_seconds(result) == {s["name"]: s["seconds"] for s in result["steps"]}
+
+
+def test_interrupted_refresh_is_marked_failed_not_left_running(tmp_path):
+    path = tmp_path / "m.json"
+
+    def popen(*args, **kwargs):
+        raise KeyboardInterrupt
+    with patch.object(refresh_data, "MANIFEST_PATH", path), patch("refresh_data.subprocess.Popen", side_effect=popen):
+        with pytest.raises(KeyboardInterrupt):
+            run_refresh(date(2026, 10, 3), on_output=lambda line: None)
+    saved = refresh_data.load_manifest(path)
+    assert saved["status"] == "failed" and saved["failed_step"] == refresh_data.TRI_STEP and "finished" in saved

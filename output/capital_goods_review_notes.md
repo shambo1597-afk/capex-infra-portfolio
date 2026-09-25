@@ -1,8 +1,8 @@
 # Nifty Capital Goods review table: notes
 
 `capital_goods_full_review_table.csv` lists every Nifty Capital Goods constituent (52 rows,
-none excluded), with live fundamentals and technicals as of 24-Sep-2026 (price window
-25-Sep-2025 to 24-Sep-2026). It is sorted by `fundamentals_passed_count` (descending),
+none excluded), with live fundamentals and technicals as of 25-Sep-2026 (price window
+25-Sep-2025 to 25-Sep-2026). It is sorted by `fundamentals_passed_count` (descending),
 then `sector_rank` (ascending).
 
 ## Two relative strength measures
@@ -12,7 +12,7 @@ cumulative return minus the Nifty 500 price index's (NSE official closes), in pe
 Capital Goods as a theme deserves capital at all, versus simply holding the index.
 **`rs_score_vs_sector_avg`** measures which Capital Goods stock is best positioned relative to its
 Capital Goods peers: the same 63-session return minus the equal-weighted average return of all
-52 constituents (-2.63% over this window). It is the relevant measure once the
+52 constituents (-1.69% over this window). It is the relevant measure once the
 decision to hold Capital Goods exposure has been made, per the project's sector-rotation requirement.
 
 `sector_rank` ranks `rs_score_vs_sector_avg` from 1 (best) to 52 (worst); the spreads

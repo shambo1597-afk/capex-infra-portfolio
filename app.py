@@ -40,7 +40,14 @@ from config import (
 from fetch_data import TRI_REDOWNLOAD_INSTRUCTIONS, TriStaleness, assess_tri_staleness, load_benchmark_tri
 from fundamentals import get_fundamentals_summary
 from rrg import CONVICTION_HIGH, CONVICTION_LOW, CONVICTION_MODERATE, conviction_tier
-from refresh_data import latest_expected_session, load_manifest, run_refresh
+from refresh_data import (
+    latest_expected_session,
+    load_manifest,
+    progress_summary,
+    read_log_tail,
+    refresh_state,
+    start_background_refresh,
+)
 from sector_screen import review_table_path
 
 # -----------------------------------------------------------------------------
@@ -479,68 +486,96 @@ missing_symbols = sorted(set(LOCKED_PORTFOLIO_SYMBOLS) - set(portfolio_df["symbo
 # DATA FRESHNESS & REFRESH (always visible under the header)
 # -----------------------------------------------------------------------------
 
+def _fmt_duration(seconds) -> str:
+    seconds = int(round(seconds or 0))
+    return f"{seconds // 60} min {seconds % 60:02d} s" if seconds >= 60 else f"{seconds} s"
+
+
+@st.fragment(run_every=3)
 def render_data_freshness() -> None:
-    """How current the dashboard's data is, a stale warning, and a one-click full refresh."""
+    """
+    How current the data is, plus the refresh control and live progress. Re-runs every 3 seconds
+    (only this section), so a refresh started here, in another tab, or before a reload is tracked
+    until it finishes; the whole page then reloads with the new data.
+    """
     price_date = pd.Timestamp(ohlcv_df["DATE1"].max()).date() if not ohlcv_df.empty else None
     fund_dates = pd.concat([pd.read_csv(review_table_path(s), usecols=["fundamentals_as_of"])
                             for s in SECTOR_SCREENS if review_table_path(s).exists()], ignore_index=True)
     fund_date = pd.to_datetime(fund_dates["fundamentals_as_of"]).max().date() if not fund_dates.empty else None
     tri_last = pd.Timestamp(tri_df["Date"].max()).date() if not tri_df.empty else None
     manifest = load_manifest()
+    state = refresh_state(manifest)
+
+    # A refresh finished since this page loaded its data (here or in another tab): reload everything
+    finished = (manifest or {}).get("finished") if state in ("ok", "failed") else None
+    if "refresh_seen" not in st.session_state:
+        st.session_state["refresh_seen"] = finished
+    elif finished and finished != st.session_state["refresh_seen"]:
+        st.session_state["refresh_seen"] = finished
+        st.session_state["refresh_completed_here"] = finished  # keep the success banner for this refresh
+        st.cache_data.clear()
+        st.rerun(scope="app")
+
     expected = latest_expected_session()
     behind = int(np.busday_count(price_date + timedelta(days=1), expected + timedelta(days=1))) \
         if price_date and expected > price_date else 0
 
     info_col, button_col = st.columns([5, 1.3])
     with info_col:
-        last_run = ""
-        if manifest and manifest.get("finished"):
-            last_run = f" &bull; Last refresh: {pd.Timestamp(manifest['finished']):%d-%b-%Y %H:%M} IST"
         st.markdown(
             f"<div style='font-size:0.85rem;padding-top:0.45rem;'><strong>Data as of</strong> &bull; "
             f"Prices through <strong>{price_date:%d-%b-%Y}</strong> &bull; "
             f"Fundamentals fetched <strong>{fund_date:%d-%b-%Y}</strong> &bull; "
-            f"Nifty 500 TRI through <strong>{tri_last:%d-%b-%Y}</strong>{last_run}</div>"
+            f"Nifty 500 TRI through <strong>{tri_last:%d-%b-%Y}</strong></div>"
             if price_date and fund_date and tri_last else "<div>Some pipeline outputs are missing: click Refresh all data.</div>",
             unsafe_allow_html=True,
         )
-    running = bool(manifest and manifest.get("status") == "running"
-                   and pd.Timestamp.now(tz="Asia/Kolkata") - pd.Timestamp(manifest["started"]) < pd.Timedelta(minutes=45))
     with button_col:
-        clicked = st.button("Refresh all data", disabled=running, width="stretch",
-                            help="Re-downloads NSE prices and Screener.in fundamentals and rebuilds every table "
-                                 "and chart, and appends new Nifty 500 TRI sessions from niftyindices.com "
-                                 "(about 5-10 minutes; needs internet).")
+        if st.button("Refresh all data", disabled=state == "running", width="stretch",
+                     help="Re-downloads NSE prices, Screener.in fundamentals and new Nifty 500 TRI sessions, "
+                          "then rebuilds every table and chart (about 5-10 minutes; needs internet). It runs in "
+                          "the background: you can keep using or close this page."):
+            start_background_refresh()
+            manifest = load_manifest()
+            state = refresh_state(manifest)
 
-    if running:
-        st.info(f"A data refresh started at {pd.Timestamp(manifest['started']):%H:%M} IST is still running.")
-    elif manifest and manifest.get("status") == "failed":
-        st.error(f"The last data refresh failed at step: {manifest.get('failed_step')}. Some tables may be from "
-                 "different runs; click Refresh all data to try again.")
-    elif manifest and manifest.get("warnings"):
-        for warning in manifest["warnings"]:
+    if state == "running":
+        prog = progress_summary(manifest)
+        if prog["remaining_seconds"] is None:
+            eta = "time left unknown until one refresh has completed"
+        elif prog["overrunning"]:
+            eta = (f"this step is taking longer than last time (the website may be slow or retrying); "
+                   f"about {_fmt_duration(prog['remaining_seconds'])} for the steps after it")
+        else:
+            eta = f"about {_fmt_duration(prog['remaining_seconds'])} left (estimate from the last refresh)"
+        st.progress(prog["fraction"], text=(
+            f"Refreshing data: step {prog['step']} of {prog['total']} ({prog['step_name']}), "
+            f"{_fmt_duration(prog['step_elapsed'])} in this step; {eta}. The page updates by itself when it is done."))
+        with st.expander("Show live log"):
+            st.code("\n".join(read_log_tail(20)) or "Starting...", language=None)
+    elif state == "stalled":
+        st.error(f"The refresh started at {pd.Timestamp(manifest['started']):%H:%M} IST stopped responding "
+                 f"(no progress for over a minute) and will not finish; the app or computer was probably closed "
+                 f"or restarted. Click Refresh all data to run it again.")
+    elif state == "failed":
+        st.error(f"The last data refresh failed at step: {manifest.get('failed_step')} "
+                 f"(finished {pd.Timestamp(manifest['finished']):%d-%b %H:%M} IST). Some tables may be from different "
+                 "runs; click Refresh all data to try again.")
+        with st.expander("Show error details"):
+            st.code("\n".join(manifest.get("error_tail") or read_log_tail(20)), language=None)
+    elif state == "ok":
+        took = sum(step["seconds"] for step in manifest.get("steps", []))
+        message = (f"Last refresh completed {pd.Timestamp(manifest['finished']):%d-%b-%Y %H:%M} IST: "
+                   f"all {len(manifest.get('steps', []))} steps OK in {_fmt_duration(took)}.")
+        if st.session_state.get("refresh_completed_here") == manifest.get("finished"):
+            st.success("Refresh complete. " + message + " The tables below now show the new data.")
+        else:
+            st.caption(message)
+        for warning in manifest.get("warnings", []):
             st.warning(f"Last refresh: {warning}")
-    if not running and behind > 0:
+    if state != "running" and behind > 0:
         st.warning(f"Prices are {behind} trading day{'s' if behind > 1 else ''} old (latest expected session: "
                    f"{expected:%d-%b-%Y}; exchange holidays are not modelled). Click Refresh all data to update.")
-
-    if clicked:
-        with st.status("Refreshing all data (about 5-10 minutes)...", expanded=True) as status:
-            log_box = st.empty()
-            lines: list = []
-
-            def show(line: str) -> None:
-                lines.append(line)
-                log_box.code("\n".join(lines[-25:]), language=None)
-
-            result = run_refresh(on_output=show)
-            if result["status"] == "ok":
-                status.update(label="Data refreshed.", state="complete")
-            else:
-                status.update(label=f"Refresh failed at: {result.get('failed_step')}", state="error")
-        st.cache_data.clear()
-        if result["status"] == "ok":
-            st.rerun()
 
 
 render_data_freshness()

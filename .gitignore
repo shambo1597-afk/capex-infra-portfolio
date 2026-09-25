@@ -46,3 +46,5 @@ data/raw_bhavcopy/
 
 # Local backup / cloned folder
 capex-infra-portfolio/
+output/refresh_log.txt
+output/refresh_manifest.json.tmp

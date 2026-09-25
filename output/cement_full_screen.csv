@@ -1,17 +1,17 @@
 symbol,company_name,index,price_sessions,current_price,passed_technical_screen,technical_fail_reason,rs_score,adx,plus_di,minus_di,trend_direction,rsi,fundamentals_as_of,fundamentals_status,pledged_as_of,market_cap,pass_market_cap,roce,pass_roce,opm,pass_opm,operating_cash_flow,pass_operating_cash_flow,debt_to_equity,pass_debt_to_equity,pledged_pct,pass_pledged_pct,passed_fundamental_screen,failed_criteria,passes_both_screens
-ULTRACEMCO,UltraTech Cement Ltd.,Nifty Cement,247,11056.0,False,RS <= +2 pp; trend Bearish,-1.34,22.29,18.29,20.73,Bearish (Downtrend),44.65,,,,,,,,,,,,,,,,,,False
-GRASIM,Grasim Industries Ltd.,Nifty Cement,247,3166.5,False,trend Bearish,3.7,21.04,14.2,21.68,Bearish (Downtrend),42.61,,,,,,,,,,,,,,,,,,False
-AMBUJACEM,Ambuja Cements Ltd.,Nifty Cement,247,384.1,False,RS <= +2 pp; trend Bearish,-6.93,25.87,14.37,28.66,Bearish (Downtrend),36.25,,,,,,,,,,,,,,,,,,False
-SHREECEM,Shree Cement Ltd.,Nifty Cement,247,22350.0,False,RS <= +2 pp; trend Bearish,-10.73,34.26,19.83,30.12,Bearish (Downtrend),37.12,,,,,,,,,,,,,,,,,,False
-JKCEMENT,J.K. Cement Ltd.,Nifty Cement,247,5184.5,False,RS <= +2 pp,-4.61,31.53,19.5,18.95,Bullish (Uptrend),55.17,,,,,,,,,,,,,,,,,,False
-DALBHARAT,Dalmia Bharat Ltd.,Nifty Cement,247,1721.2,False,trend Bearish,2.47,19.78,19.07,23.17,Bearish (Downtrend),42.16,,,,,,,,,,,,,,,,,,False
-ACC,ACC Ltd.,Nifty Cement,247,1236.1,False,RS <= +2 pp; trend Bearish,-5.18,16.99,22.61,24.17,Bearish (Downtrend),38.39,,,,,,,,,,,,,,,,,,False
-RAMCOCEM,The Ramco Cements Ltd.,Nifty Cement,247,872.1,False,RS <= +2 pp; trend Bearish,-2.69,13.22,16.24,17.72,Bearish (Downtrend),44.7,,,,,,,,,,,,,,,,,,False
-JSWCEMENT,JSW Cement Ltd.,Nifty Cement,247,115.71,False,RS <= +2 pp; trend Bearish,-10.93,36.03,13.41,26.07,Bearish (Downtrend),29.87,,,,,,,,,,,,,,,,,,False
-NUVOCO,Nuvoco Vistas Corporation Ltd.,Nifty Cement,247,335.0,True,,11.83,15.2,28.97,20.68,Bullish (Uptrend),52.19,2026-09-25,OK,,11968.0,True,6.99,False,16.45,True,1485.0,True,0.53,True,0.0,True,False,ROCE > 8%,False
-INDIACEM,India Cements Ltd.,Nifty Cement,247,330.1,False,RS <= +2 pp; trend Bearish,-11.58,27.59,16.86,29.26,Bearish (Downtrend),29.58,,,,,,,,,,,,,,,,,,False
-JKLAKSHMI,JK Lakshmi Cement Ltd.,Nifty Cement,247,509.45,False,RS <= +2 pp,-11.89,19.49,21.1,18.74,Bullish (Uptrend),40.09,,,,,,,,,,,,,,,,,,False
-STARCEMENT,Star Cement Ltd.,Nifty Cement,247,187.24,False,RS <= +2 pp; trend Bearish,-8.69,25.01,17.44,27.78,Bearish (Downtrend),41.97,,,,,,,,,,,,,,,,,,False
-BIRLACORPN,Birla Corporation Ltd.,Nifty Cement,247,840.9,False,RS <= +2 pp; trend Bearish,-13.81,34.31,16.87,23.01,Bearish (Downtrend),44.15,,,,,,,,,,,,,,,,,,False
-PRSMJOHNSN,Prism Johnson Ltd.,Nifty Cement,247,115.24,False,RS <= +2 pp,0.15,41.38,28.43,10.83,Bullish (Uptrend),57.29,,,,,,,,,,,,,,,,,,False
-ORIENTCEM,Orient Cement Ltd.,Nifty Cement,247,122.32,False,RS <= +2 pp; trend Bearish,-6.23,11.25,15.05,19.33,Bearish (Downtrend),36.96,,,,,,,,,,,,,,,,,,False
+ULTRACEMCO,UltraTech Cement Ltd.,Nifty Cement,248,11155.0,False,RS <= +2 pp; trend Bearish,0.13,21.33,17.23,20.6,Bearish (Downtrend),48.12,,,,,,,,,,,,,,,,,,False
+GRASIM,Grasim Industries Ltd.,Nifty Cement,248,3191.0,False,trend Bearish,5.32,20.76,14.38,20.33,Bearish (Downtrend),45.66,,,,,,,,,,,,,,,,,,False
+AMBUJACEM,Ambuja Cements Ltd.,Nifty Cement,248,383.8,False,RS <= +2 pp; trend Bearish,-7.81,26.5,13.65,28.09,Bearish (Downtrend),36.05,,,,,,,,,,,,,,,,,,False
+SHREECEM,Shree Cement Ltd.,Nifty Cement,248,22520.0,False,RS <= +2 pp; trend Bearish,-8.72,33.29,19.01,28.87,Bearish (Downtrend),39.85,,,,,,,,,,,,,,,,,,False
+JKCEMENT,J.K. Cement Ltd.,Nifty Cement,248,5000.0,False,RS <= +2 pp,-4.28,29.38,17.66,17.17,Bullish (Uptrend),44.96,,,,,,,,,,,,,,,,,,False
+DALBHARAT,Dalmia Bharat Ltd.,Nifty Cement,248,1700.2,False,RS <= +2 pp; trend Bearish,1.71,19.69,17.35,25.27,Bearish (Downtrend),39.23,,,,,,,,,,,,,,,,,,False
+ACC,ACC Ltd.,Nifty Cement,248,1236.4,False,RS <= +2 pp; trend Bearish,-5.55,16.01,21.95,23.45,Bearish (Downtrend),38.51,,,,,,,,,,,,,,,,,,False
+RAMCOCEM,The Ramco Cements Ltd.,Nifty Cement,248,867.55,False,RS <= +2 pp; trend Bearish,-4.96,13.15,15.31,19.55,Bearish (Downtrend),42.96,,,,,,,,,,,,,,,,,,False
+JSWCEMENT,JSW Cement Ltd.,Nifty Cement,248,115.47,False,RS <= +2 pp; trend Bearish,-11.31,36.52,12.1,30.34,Bearish (Downtrend),29.39,,,,,,,,,,,,,,,,,,False
+NUVOCO,Nuvoco Vistas Corporation Ltd.,Nifty Cement,248,335.45,True,,12.01,14.91,27.47,21.95,Bullish (Uptrend),52.47,2026-09-25,OK,,11981.0,True,6.99,False,16.45,True,1485.0,True,0.53,True,0.0,True,False,ROCE > 8%,False
+INDIACEM,India Cements Ltd.,Nifty Cement,248,323.1,False,RS <= +2 pp; trend Bearish,-12.72,28.31,14.99,33.07,Bearish (Downtrend),26.52,,,,,,,,,,,,,,,,,,False
+JKLAKSHMI,JK Lakshmi Cement Ltd.,Nifty Cement,248,510.35,False,RS <= +2 pp,-13.63,18.42,20.24,18.51,Bullish (Uptrend),40.82,,,,,,,,,,,,,,,,,,False
+STARCEMENT,Star Cement Ltd.,Nifty Cement,248,186.61,False,RS <= +2 pp; trend Bearish,-8.79,25.16,16.57,28.94,Bearish (Downtrend),41.12,,,,,,,,,,,,,,,,,,False
+BIRLACORPN,Birla Corporation Ltd.,Nifty Cement,248,850.3,False,RS <= +2 pp; trend Bearish,-12.18,32.59,17.44,21.44,Bearish (Downtrend),48.09,,,,,,,,,,,,,,,,,,False
+PRSMJOHNSN,Prism Johnson Ltd.,Nifty Cement,248,116.31,False,RS <= +2 pp,0.67,41.72,27.75,10.23,Bullish (Uptrend),60.04,,,,,,,,,,,,,,,,,,False
+ORIENTCEM,Orient Cement Ltd.,Nifty Cement,248,122.16,False,RS <= +2 pp; trend Bearish,-6.97,11.68,14.3,20.26,Bearish (Downtrend),36.65,,,,,,,,,,,,,,,,,,False
