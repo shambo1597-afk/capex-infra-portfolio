@@ -184,6 +184,7 @@ IAPFDOF/
 │   ├── test_indicators.py        # Unit tests for Wilder's smoothing, RSI, ADX, RS, S/R
 │   ├── test_pipeline.py          # Integration tests for Bhavcopy parsing, aliases, benchmarks
 │   ├── test_rrg.py               # RS-Momentum, RRG quadrants, DI-gap and OPM-exception flags
+│   ├── test_output_integrity.py  # Committed outputs cover the current universe and agree with each other
 │   ├── test_stoploss.py          # Unit tests for volatility, ATR and the trailing ATR stop-loss
 │   └── test_tri_staleness.py     # Unit tests for the TRI CSV staleness check
 ├── config.py                     # Universe definitions, URLs, headers, symbol alias mapping
@@ -395,7 +396,7 @@ Run the full automated unit test suite with `pytest`:
 pytest tests/ -v
 ```
 
-The 170 tests cover, among other things:
+The 176 tests cover, among other things:
 - Exact convergence of Wilder's smoothing against recursive mathematical definitions.
 - Boundary conditions for RSI ($RSI = 100$ in monotonic gains, $RSI = 0$ in monotonic losses).
 - Directional movement calculations and trend indicators for ADX.
