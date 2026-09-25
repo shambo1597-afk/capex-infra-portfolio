@@ -17,7 +17,7 @@ import time
 from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -679,191 +679,9 @@ def fetch_benchmark_tri_automated(start_date: str, end_date: str) -> pd.DataFram
 
     Falls back to the local manual CSV (load_benchmark_tri) on any failure.
     """
-    import tempfile
-
     logger.info("Attempting automated browser retrieval of Nifty 500 TRI from niftyindices.com...")
     try:
-        from playwright.sync_api import sync_playwright
-
-        start_dt = pd.Timestamp(start_date).date()  # accepts str, date or datetime
-        end_dt = pd.Timestamp(end_date).date()
-        if start_dt > end_dt:
-            raise ValueError(f"start_date {start_dt} is after end_date {end_dt}")
-
-        # Split into windows the portal accepts (<= 365 days each)
-        windows = []
-        chunk_start = start_dt
-        while chunk_start <= end_dt:
-            chunk_end = min(chunk_start + timedelta(days=TRI_MAX_WINDOW_DAYS), end_dt)
-            windows.append((chunk_start, chunk_end))
-            chunk_start = chunk_end + timedelta(days=1)
-
-        with sync_playwright() as p, tempfile.TemporaryDirectory() as tmp_dir:
-            # Full Chromium build (new headless), not the headless shell Akamai blocks
-            browser = p.chromium.launch(
-                headless=True,
-                channel="chromium",
-                args=["--disable-blink-features=AutomationControlled"],
-            )
-            chunk_frames = {}  # (start, end) window -> DataFrame, or None when the window has no data
-            try:
-                probe = browser.new_page()
-                user_agent = str(probe.evaluate("navigator.userAgent")).replace("HeadlessChrome", "Chrome")
-                probe.close()
-
-                for attempt in range(1, TRI_SESSION_ATTEMPTS + 1):
-                    context = browser.new_context(
-                        user_agent=user_agent,
-                        viewport={"width": 1366, "height": 900},
-                        locale="en-IN",
-                        timezone_id="Asia/Kolkata",
-                        accept_downloads=True,
-                    )
-                    blocked_urls = []  # Akamai 403/429s seen in this session, on any request
-                    try:
-                        page = context.new_page()
-                        page.set_default_timeout(30000)
-                        page.on("dialog", lambda dialog: (
-                            logger.warning("niftyindices.com alert: %s", dialog.message), dialog.accept()))
-                        page.on("response", lambda r: blocked_urls.append(r.url)
-                                if r.status in (403, 429) and "niftyindices.com" in r.url else None)
-
-                        # 1. Navigate. Akamai rejects some sessions outright (403), stalls others,
-                        #    or passes the document but blocks its scripts; all count as rejections.
-                        try:
-                            response = page.goto(TRI_HISTORICAL_URL, wait_until="domcontentloaded", timeout=45000)
-                            status = response.status if response else None
-                            if status != 200:
-                                raise _TriSessionRejected(f"page returned HTTP {status}")
-                            page.wait_for_selector("#HistoricalMenu", state="attached", timeout=15000)
-                            page.wait_for_load_state("load", timeout=45000)
-                            page.wait_for_function(
-                                "() => !!(window.jQuery && window.jQuery.fn && window.jQuery.fn.datepicker)",
-                                timeout=20000)
-                        except _TriSessionRejected:
-                            raise
-                        except Exception as nav_err:
-                            raise _TriSessionRejected(
-                                f"{type(nav_err).__name__}: {str(nav_err).splitlines()[0]}") from nav_err
-                        page.wait_for_timeout(TRI_UI_PAUSE_MS)
-
-                        # 2. Open the custom report-type menu and choose 'Total returns Index Values'
-                        #    (a jQuery btn-select widget, not a <select>: the click target is the parent anchor)
-                        page.locator("a.btn-select:has(#HistoricalMenu)").click()
-                        tri_option = page.locator("#maindd li.form5")
-                        try:
-                            tri_option.wait_for(state="visible", timeout=5000)
-                            tri_option.click()
-                        except Exception:
-                            # Menu animation did not open; fire the site's own <li> click handler instead
-                            page.evaluate("$('#maindd li.form5').trigger('click')")
-                        page.locator("#TotalReturnindexvalue").wait_for(state="visible", timeout=15000)
-                        page.wait_for_timeout(TRI_UI_PAUSE_MS)
-
-                        # 3-5. Native <select> cascade: Equity -> Broad Market Indices -> NIFTY 500
-                        page.wait_for_selector("#ddlHistoricalreturntypee option[value='Equity']", state="attached", timeout=15000)
-                        page.select_option("#ddlHistoricalreturntypee", value="Equity")
-                        page.wait_for_timeout(TRI_UI_PAUSE_MS)
-
-                        subindex_select = page.locator("#ddlHistoricalreturntypeeSubindex")
-                        page.wait_for_selector("#ddlHistoricalreturntypeeSubindex option:nth-child(2)", state="attached", timeout=15000)
-                        sub_labels = [o.strip() for o in subindex_select.locator("option").all_inner_texts()]
-                        broad_label = next((o for o in sub_labels if "broad" in o.lower()), "Broad Market Indices")
-                        subindex_select.select_option(label=broad_label)
-                        page.wait_for_timeout(TRI_UI_PAUSE_MS)
-
-                        index_select = page.locator("#ddlHistoricalreturntypeeindex")
-                        page.wait_for_selector("#ddlHistoricalreturntypeeindex option:nth-child(2)", state="attached", timeout=15000)
-                        index_select.select_option(label="NIFTY 500")
-                        page.wait_for_timeout(TRI_UI_PAUSE_MS)
-
-                        for win_start, win_end in windows:
-                            if (win_start, win_end) in chunk_frames:
-                                continue  # captured by an earlier session
-
-                            # 6. Set dates as JS Date objects (the widget's own format is mm/dd/yy;
-                            #    passing 'dd-Mon-yyyy' strings is silently misparsed)
-                            page.evaluate(
-                                """([s, e]) => {
-                                    $('#datepickerFromtotalindex').datepicker('setDate', new Date(s[0], s[1] - 1, s[2]));
-                                    $('#datepickerTototalindex').datepicker('setDate', new Date(e[0], e[1] - 1, e[2]));
-                                }""",
-                                [[win_start.year, win_start.month, win_start.day],
-                                 [win_end.year, win_end.month, win_end.day]],
-                            )
-                            page.wait_for_timeout(TRI_UI_PAUSE_MS)
-
-                            # 7-8. Submit and wait for the data call to return
-                            with page.expect_response(lambda r: TRI_ENDPOINT_FRAGMENT in r.url, timeout=45000) as resp_info:
-                                page.locator("#submit_totalindexhistorical").click()
-                            api_response = resp_info.value
-                            if api_response.status in (403, 429):
-                                # Akamai flagged the session mid-flow
-                                raise _TriSessionRejected(f"data endpoint returned HTTP {api_response.status}")
-                            if api_response.status != 200:
-                                raise RuntimeError(f"TRI data endpoint returned HTTP {api_response.status}")
-                            try:
-                                records = api_response.json()
-                            except Exception:
-                                records = None
-                            if isinstance(records, list) and not records:
-                                logger.info("No TRI records for %s to %s; skipping window.", win_start, win_end)
-                                chunk_frames[(win_start, win_end)] = None
-                                continue
-
-                            page.locator("#exportTotalindex").wait_for(state="visible", timeout=15000)
-                            page.wait_for_function(
-                                "document.querySelectorAll('#historytotalindexexport tbody tr').length > 0",
-                                timeout=15000)
-
-                            # 9. Capture the client-side generated CSV via expect_download
-                            with page.expect_download(timeout=15000) as download_info:
-                                page.locator("#exportTotalindex").click()
-                            chunk_path = Path(tmp_dir) / f"tri_{win_start:%Y%m%d}_{win_end:%Y%m%d}.csv"
-                            download_info.value.save_as(str(chunk_path))
-                            chunk_frames[(win_start, win_end)] = pd.read_csv(chunk_path)
-                            logger.info("Captured TRI CSV for %s to %s (%d rows).",
-                                        win_start, win_end, len(chunk_frames[(win_start, win_end)]))
-                        break  # every window captured
-                    except Exception as err:
-                        # Akamai can block any request mid-flow (e.g. the dropdown-population
-                        # calls, surfacing only as a site 'Error Occurred' alert and a timeout).
-                        # Failures in a session that saw such blocks are retryable; anything
-                        # else is a genuine breakage and goes straight to the fallback.
-                        if isinstance(err, _TriSessionRejected):
-                            rejection = err
-                        elif blocked_urls:
-                            rejection = _TriSessionRejected(
-                                f"{type(err).__name__} after blocked request(s): {blocked_urls[0]}")
-                        else:
-                            raise
-                        logger.info("niftyindices.com session %d/%d rejected by bot protection (%s).",
-                                    attempt, TRI_SESSION_ATTEMPTS, rejection)
-                        if attempt == TRI_SESSION_ATTEMPTS:
-                            raise RuntimeError(
-                                f"niftyindices.com rejected {TRI_SESSION_ATTEMPTS} browser sessions "
-                                f"(Akamai bot protection); last: {rejection}") from rejection
-                        time.sleep(TRI_SESSION_BACKOFF_SECONDS * attempt)
-                    finally:
-                        context.close()
-            finally:
-                browser.close()
-
-            frames = [f for f in chunk_frames.values() if f is not None]
-            if not frames:
-                raise ValueError("No records extracted from niftyindices.com automated TRI response.")
-
-            # Parse through the same routine as the manual CSV so both paths share one contract
-            combined_path = Path(tmp_dir) / "tri_combined.csv"
-            pd.concat(frames, ignore_index=True).to_csv(combined_path, index=False)
-            df = load_benchmark_tri(combined_path, warn_if_stale=False)
-
-        if df.empty:
-            raise ValueError("Automated TRI CSV could not be parsed into the expected schema.")
-        df = df.drop_duplicates(subset=["Date"], keep="last").reset_index(drop=True)
-        logger.info("Automated TRI retrieval successful: %d daily sessions acquired.", len(df))
-        return df
-
+        return _fetch_tri_via_browser(start_date, end_date)
     except Exception as exc:
         logger.warning(
             "Automated benchmark TRI fetching failed (%s). Falling back to local manual CSV at '%s'.",
@@ -872,6 +690,194 @@ def fetch_benchmark_tri_automated(start_date: str, end_date: str) -> pd.DataFram
             exc_info=True
         )
         return load_benchmark_tri(DEFAULT_TRI_CSV_PATH, as_of=end_date)
+
+
+def _fetch_tri_via_browser(start_date, end_date) -> pd.DataFrame:
+    """The browser retrieval behind fetch_benchmark_tri_automated(); raises on any failure
+    instead of falling back, so callers that must know whether fresh data arrived can tell."""
+    import tempfile
+
+    from playwright.sync_api import sync_playwright
+
+    start_dt = pd.Timestamp(start_date).date()  # accepts str, date or datetime
+    end_dt = pd.Timestamp(end_date).date()
+    if start_dt > end_dt:
+        raise ValueError(f"start_date {start_dt} is after end_date {end_dt}")
+
+    # Split into windows the portal accepts (<= 365 days each)
+    windows = []
+    chunk_start = start_dt
+    while chunk_start <= end_dt:
+        chunk_end = min(chunk_start + timedelta(days=TRI_MAX_WINDOW_DAYS), end_dt)
+        windows.append((chunk_start, chunk_end))
+        chunk_start = chunk_end + timedelta(days=1)
+
+    with sync_playwright() as p, tempfile.TemporaryDirectory() as tmp_dir:
+        # Full Chromium build (new headless), not the headless shell Akamai blocks
+        browser = p.chromium.launch(
+            headless=True,
+            channel="chromium",
+            args=["--disable-blink-features=AutomationControlled"],
+        )
+        chunk_frames = {}  # (start, end) window -> DataFrame, or None when the window has no data
+        try:
+            probe = browser.new_page()
+            user_agent = str(probe.evaluate("navigator.userAgent")).replace("HeadlessChrome", "Chrome")
+            probe.close()
+
+            for attempt in range(1, TRI_SESSION_ATTEMPTS + 1):
+                context = browser.new_context(
+                    user_agent=user_agent,
+                    viewport={"width": 1366, "height": 900},
+                    locale="en-IN",
+                    timezone_id="Asia/Kolkata",
+                    accept_downloads=True,
+                )
+                blocked_urls = []  # Akamai 403/429s seen in this session, on any request
+                try:
+                    page = context.new_page()
+                    page.set_default_timeout(30000)
+                    page.on("dialog", lambda dialog: (
+                        logger.warning("niftyindices.com alert: %s", dialog.message), dialog.accept()))
+                    page.on("response", lambda r: blocked_urls.append(r.url)
+                            if r.status in (403, 429) and "niftyindices.com" in r.url else None)
+
+                    # 1. Navigate. Akamai rejects some sessions outright (403), stalls others,
+                    #    or passes the document but blocks its scripts; all count as rejections.
+                    try:
+                        response = page.goto(TRI_HISTORICAL_URL, wait_until="domcontentloaded", timeout=45000)
+                        status = response.status if response else None
+                        if status != 200:
+                            raise _TriSessionRejected(f"page returned HTTP {status}")
+                        page.wait_for_selector("#HistoricalMenu", state="attached", timeout=15000)
+                        page.wait_for_load_state("load", timeout=45000)
+                        page.wait_for_function(
+                            "() => !!(window.jQuery && window.jQuery.fn && window.jQuery.fn.datepicker)",
+                            timeout=20000)
+                    except _TriSessionRejected:
+                        raise
+                    except Exception as nav_err:
+                        raise _TriSessionRejected(
+                            f"{type(nav_err).__name__}: {str(nav_err).splitlines()[0]}") from nav_err
+                    page.wait_for_timeout(TRI_UI_PAUSE_MS)
+
+                    # 2. Open the custom report-type menu and choose 'Total returns Index Values'
+                    #    (a jQuery btn-select widget, not a <select>: the click target is the parent anchor)
+                    page.locator("a.btn-select:has(#HistoricalMenu)").click()
+                    tri_option = page.locator("#maindd li.form5")
+                    try:
+                        tri_option.wait_for(state="visible", timeout=5000)
+                        tri_option.click()
+                    except Exception:
+                        # Menu animation did not open; fire the site's own <li> click handler instead
+                        page.evaluate("$('#maindd li.form5').trigger('click')")
+                    page.locator("#TotalReturnindexvalue").wait_for(state="visible", timeout=15000)
+                    page.wait_for_timeout(TRI_UI_PAUSE_MS)
+
+                    # 3-5. Native <select> cascade: Equity -> Broad Market Indices -> NIFTY 500
+                    page.wait_for_selector("#ddlHistoricalreturntypee option[value='Equity']", state="attached", timeout=15000)
+                    page.select_option("#ddlHistoricalreturntypee", value="Equity")
+                    page.wait_for_timeout(TRI_UI_PAUSE_MS)
+
+                    subindex_select = page.locator("#ddlHistoricalreturntypeeSubindex")
+                    page.wait_for_selector("#ddlHistoricalreturntypeeSubindex option:nth-child(2)", state="attached", timeout=15000)
+                    sub_labels = [o.strip() for o in subindex_select.locator("option").all_inner_texts()]
+                    broad_label = next((o for o in sub_labels if "broad" in o.lower()), "Broad Market Indices")
+                    subindex_select.select_option(label=broad_label)
+                    page.wait_for_timeout(TRI_UI_PAUSE_MS)
+
+                    index_select = page.locator("#ddlHistoricalreturntypeeindex")
+                    page.wait_for_selector("#ddlHistoricalreturntypeeindex option:nth-child(2)", state="attached", timeout=15000)
+                    index_select.select_option(label="NIFTY 500")
+                    page.wait_for_timeout(TRI_UI_PAUSE_MS)
+
+                    for win_start, win_end in windows:
+                        if (win_start, win_end) in chunk_frames:
+                            continue  # captured by an earlier session
+
+                        # 6. Set dates as JS Date objects (the widget's own format is mm/dd/yy;
+                        #    passing 'dd-Mon-yyyy' strings is silently misparsed)
+                        page.evaluate(
+                            """([s, e]) => {
+                                $('#datepickerFromtotalindex').datepicker('setDate', new Date(s[0], s[1] - 1, s[2]));
+                                $('#datepickerTototalindex').datepicker('setDate', new Date(e[0], e[1] - 1, e[2]));
+                            }""",
+                            [[win_start.year, win_start.month, win_start.day],
+                             [win_end.year, win_end.month, win_end.day]],
+                        )
+                        page.wait_for_timeout(TRI_UI_PAUSE_MS)
+
+                        # 7-8. Submit and wait for the data call to return
+                        with page.expect_response(lambda r: TRI_ENDPOINT_FRAGMENT in r.url, timeout=45000) as resp_info:
+                            page.locator("#submit_totalindexhistorical").click()
+                        api_response = resp_info.value
+                        if api_response.status in (403, 429):
+                            # Akamai flagged the session mid-flow
+                            raise _TriSessionRejected(f"data endpoint returned HTTP {api_response.status}")
+                        if api_response.status != 200:
+                            raise RuntimeError(f"TRI data endpoint returned HTTP {api_response.status}")
+                        try:
+                            records = api_response.json()
+                        except Exception:
+                            records = None
+                        if isinstance(records, list) and not records:
+                            logger.info("No TRI records for %s to %s; skipping window.", win_start, win_end)
+                            chunk_frames[(win_start, win_end)] = None
+                            continue
+
+                        page.locator("#exportTotalindex").wait_for(state="visible", timeout=15000)
+                        page.wait_for_function(
+                            "document.querySelectorAll('#historytotalindexexport tbody tr').length > 0",
+                            timeout=15000)
+
+                        # 9. Capture the client-side generated CSV via expect_download
+                        with page.expect_download(timeout=15000) as download_info:
+                            page.locator("#exportTotalindex").click()
+                        chunk_path = Path(tmp_dir) / f"tri_{win_start:%Y%m%d}_{win_end:%Y%m%d}.csv"
+                        download_info.value.save_as(str(chunk_path))
+                        chunk_frames[(win_start, win_end)] = pd.read_csv(chunk_path)
+                        logger.info("Captured TRI CSV for %s to %s (%d rows).",
+                                    win_start, win_end, len(chunk_frames[(win_start, win_end)]))
+                    break  # every window captured
+                except Exception as err:
+                    # Akamai can block any request mid-flow (e.g. the dropdown-population
+                    # calls, surfacing only as a site 'Error Occurred' alert and a timeout).
+                    # Failures in a session that saw such blocks are retryable; anything
+                    # else is a genuine breakage and goes straight to the fallback.
+                    if isinstance(err, _TriSessionRejected):
+                        rejection = err
+                    elif blocked_urls:
+                        rejection = _TriSessionRejected(
+                            f"{type(err).__name__} after blocked request(s): {blocked_urls[0]}")
+                    else:
+                        raise
+                    logger.info("niftyindices.com session %d/%d rejected by bot protection (%s).",
+                                attempt, TRI_SESSION_ATTEMPTS, rejection)
+                    if attempt == TRI_SESSION_ATTEMPTS:
+                        raise RuntimeError(
+                            f"niftyindices.com rejected {TRI_SESSION_ATTEMPTS} browser sessions "
+                            f"(Akamai bot protection); last: {rejection}") from rejection
+                    time.sleep(TRI_SESSION_BACKOFF_SECONDS * attempt)
+                finally:
+                    context.close()
+        finally:
+            browser.close()
+
+        frames = [f for f in chunk_frames.values() if f is not None]
+        if not frames:
+            raise ValueError("No records extracted from niftyindices.com automated TRI response.")
+
+        # Parse through the same routine as the manual CSV so both paths share one contract
+        combined_path = Path(tmp_dir) / "tri_combined.csv"
+        pd.concat(frames, ignore_index=True).to_csv(combined_path, index=False)
+        df = load_benchmark_tri(combined_path, warn_if_stale=False)
+
+    if df.empty:
+        raise ValueError("Automated TRI CSV could not be parsed into the expected schema.")
+    df = df.drop_duplicates(subset=["Date"], keep="last").reset_index(drop=True)
+    logger.info("Automated TRI retrieval successful: %d daily sessions acquired.", len(df))
+    return df
+
 
 
 def get_one_year_date_range(end_date: Optional[date] = None) -> Tuple[date, date]:
@@ -883,3 +889,70 @@ def get_one_year_date_range(end_date: Optional[date] = None) -> Tuple[date, date
     """
     end = pd.Timestamp(end_date).date() if end_date is not None else date.today()
     return end - timedelta(days=365), end
+
+
+def update_tri_csv(end_date: Optional[date] = None, csv_path: Optional[Path] = None,
+                   fetch: Callable[[date, date], pd.DataFrame] = None) -> Tuple[int, Optional[date]]:
+    """
+    Append the latest Nifty 500 TRI sessions from niftyindices.com to the local TRI CSV (the file
+    the pipeline and dashboard read), keeping its official manual-download format.
+
+    Fetches from a week before the CSV's last date to end_date. Overlapping sessions must agree
+    with the stored values (within 0.01%); if they do not, nothing is written, since a mismatch
+    means the source changed or the parse is wrong. Raises on any failure and leaves the CSV
+    untouched; the file is replaced atomically.
+
+    Returns:
+        (sessions_added, last_date_in_csv)
+    """
+    csv_path = Path(csv_path or DEFAULT_TRI_CSV_PATH)
+    end = pd.Timestamp(end_date).date() if end_date is not None else date.today()
+    fetch = fetch or _fetch_tri_via_browser
+    existing = load_benchmark_tri(csv_path, warn_if_stale=False) if csv_path.exists() else pd.DataFrame()
+    last = existing["Date"].max().date() if not existing.empty else None
+    start = (last - timedelta(days=7)) if last else end - timedelta(days=365)
+    if last and last >= end:
+        return 0, last
+
+    fetched = fetch(start, end)
+    if fetched is None or fetched.empty:
+        raise ValueError("niftyindices.com returned no TRI sessions")
+    fetched = fetched.copy()
+    fetched["Date"] = pd.to_datetime(fetched["Date"]).dt.tz_localize(None)
+
+    if not existing.empty:
+        overlap = existing.merge(fetched, on="Date", suffixes=("_old", "_new"))
+        for col in ["Total Returns Index", "Net Total Return Index"]:
+            rel = ((overlap[f"{col}_new"] - overlap[f"{col}_old"]).abs() / overlap[f"{col}_old"])
+            if (rel > 1e-4).any():
+                bad = overlap.loc[rel > 1e-4, "Date"].dt.date.tolist()
+                raise ValueError(f"Fetched {col} disagrees with the stored CSV on {bad}; CSV left unchanged")
+
+    merged = (pd.concat([existing, fetched], ignore_index=True)
+              .drop_duplicates(subset=["Date"], keep="first").sort_values("Date").reset_index(drop=True))
+    added = len(merged) - len(existing)
+    if added == 0:
+        return 0, last  # nothing new (e.g. today's value not published yet): leave the file as is
+    out = pd.DataFrame({
+        "IndexName": merged["IndexName"].fillna("NIFTY 500") if "IndexName" in merged else "NIFTY 500",
+        "Date": merged["Date"].dt.strftime("%d-%b-%Y"),
+        "Total Returns Index": merged["Total Returns Index"].round(2),
+        "Net Total Return Index": merged["Net Total Return Index"].round(2),
+    })
+    tmp = csv_path.with_suffix(".csv.tmp")
+    out.to_csv(tmp, index=False, float_format="%.2f")  # two decimals, as in the official download
+    tmp.replace(csv_path)
+    new_last = merged["Date"].max().date()
+    logger.info("TRI CSV updated: %d session(s) added, now through %s.", added, new_last)
+    return added, new_last
+
+
+if __name__ == "__main__":
+    import sys
+
+    if sys.argv[1:2] == ["--update-tri"]:
+        # python fetch_data.py --update-tri [YYYY-MM-DD]: append new TRI sessions to the local CSV
+        logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+        target = date.fromisoformat(sys.argv[2]) if len(sys.argv) > 2 else None
+        n, through = update_tri_csv(target)
+        print(f"Nifty 500 TRI: {n} new session(s); CSV now through {through}")

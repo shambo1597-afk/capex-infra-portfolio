@@ -345,6 +345,13 @@ def load_tri_benchmark(file_mtime: float) -> pd.DataFrame:
     return load_benchmark_tri(warn_if_stale=False)
 
 
+TRI_UI_INSTRUCTIONS = (
+    "Click <strong>Refresh all data</strong> at the top: it fetches the new sessions from niftyindices.com. "
+    "If that site's bot protection blocks the refresh (the header then shows a warning), try again later or "
+    + TRI_REDOWNLOAD_INSTRUCTIONS[0].lower() + TRI_REDOWNLOAD_INSTRUCTIONS[1:]
+)
+
+
 def render_tri_staleness_banner(tri: pd.DataFrame, staleness: Optional[TriStaleness]) -> None:
     """Show a warning banner when the TRI benchmark is missing or trails the analysis end date."""
     if tri.empty:
@@ -352,7 +359,7 @@ def render_tri_staleness_banner(tri: pd.DataFrame, staleness: Optional[TriStalen
             f"""
             <div class="caveat-box">
                 <strong>TRI benchmark data unavailable.</strong> No Nifty 500 TRI CSV could be loaded.
-                {TRI_REDOWNLOAD_INSTRUCTIONS}
+                {TRI_UI_INSTRUCTIONS}
             </div>
             """,
             unsafe_allow_html=True,
@@ -363,7 +370,7 @@ def render_tri_staleness_banner(tri: pd.DataFrame, staleness: Optional[TriStalen
             <div class="caveat-box">
                 <strong>TRI benchmark data is stale.</strong> Last available date:
                 {staleness.last_date:%d-%b-%Y}. This is {staleness.trading_days_behind} trading days behind
-                the analysis end date ({staleness.reference_date:%d-%b-%Y}). {TRI_REDOWNLOAD_INSTRUCTIONS}
+                the analysis end date ({staleness.reference_date:%d-%b-%Y}). {TRI_UI_INSTRUCTIONS}
             </div>
             """,
             unsafe_allow_html=True,
@@ -478,6 +485,7 @@ def render_data_freshness() -> None:
     fund_dates = pd.concat([pd.read_csv(review_table_path(s), usecols=["fundamentals_as_of"])
                             for s in SECTOR_SCREENS if review_table_path(s).exists()], ignore_index=True)
     fund_date = pd.to_datetime(fund_dates["fundamentals_as_of"]).max().date() if not fund_dates.empty else None
+    tri_last = pd.Timestamp(tri_df["Date"].max()).date() if not tri_df.empty else None
     manifest = load_manifest()
     expected = latest_expected_session()
     behind = int(np.busday_count(price_date + timedelta(days=1), expected + timedelta(days=1))) \
@@ -491,8 +499,9 @@ def render_data_freshness() -> None:
         st.markdown(
             f"<div style='font-size:0.85rem;padding-top:0.45rem;'><strong>Data as of</strong> &bull; "
             f"Prices through <strong>{price_date:%d-%b-%Y}</strong> &bull; "
-            f"Fundamentals fetched <strong>{fund_date:%d-%b-%Y}</strong>{last_run}</div>"
-            if price_date and fund_date else "<div>No pipeline outputs found.</div>",
+            f"Fundamentals fetched <strong>{fund_date:%d-%b-%Y}</strong> &bull; "
+            f"Nifty 500 TRI through <strong>{tri_last:%d-%b-%Y}</strong>{last_run}</div>"
+            if price_date and fund_date and tri_last else "<div>Some pipeline outputs are missing: click Refresh all data.</div>",
             unsafe_allow_html=True,
         )
     running = bool(manifest and manifest.get("status") == "running"
@@ -500,14 +509,18 @@ def render_data_freshness() -> None:
     with button_col:
         clicked = st.button("Refresh all data", disabled=running, width="stretch",
                             help="Re-downloads NSE prices and Screener.in fundamentals and rebuilds every table "
-                                 "and chart (about 5-10 minutes; needs internet).")
+                                 "and chart, and appends new Nifty 500 TRI sessions from niftyindices.com "
+                                 "(about 5-10 minutes; needs internet).")
 
     if running:
         st.info(f"A data refresh started at {pd.Timestamp(manifest['started']):%H:%M} IST is still running.")
     elif manifest and manifest.get("status") == "failed":
         st.error(f"The last data refresh failed at step: {manifest.get('failed_step')}. Some tables may be from "
                  "different runs; click Refresh all data to try again.")
-    elif behind > 0:
+    elif manifest and manifest.get("warnings"):
+        for warning in manifest["warnings"]:
+            st.warning(f"Last refresh: {warning}")
+    if not running and behind > 0:
         st.warning(f"Prices are {behind} trading day{'s' if behind > 1 else ''} old (latest expected session: "
                    f"{expected:%d-%b-%Y}; exchange holidays are not modelled). Click Refresh all data to update.")
 

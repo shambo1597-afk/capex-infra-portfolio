@@ -4,12 +4,16 @@ Refresh every output the dashboard reads, in dependency order, for one pinned en
     python refresh_data.py                 # end date = today (India time)
     python refresh_data.py --as-of 2026-10-03
 
-Steps (each a separate process, stopping at the first failure):
+Steps (each a separate process):
+  0. fetch_data.py --update-tri       Nifty 500 TRI from niftyindices.com appended to the local CSV
+                                      (optional: bot protection can block it; a failure is recorded
+                                      as a warning and the refresh continues with the existing CSV)
   1. main.py                          prices (NSE Bhavcopy), technical summary, risk summary
   2. sector_screen.py                 technical-first screens (live fundamentals for passers)
   3. sector_screen.py --review        review tables (live fundamentals, RRG) and RRG plots
   4. sector_screen.py --locked-check  run-up / results-date check of the locked stocks
   5. sector_screen.py --tenth-sweep   candidate sweep over the rest of the universe
+Steps 1-5 are required: the refresh stops at the first failure among them.
 
 Every step uses the same end date, so all files describe the same price window. The outcome is
 written to output/refresh_manifest.json, which the dashboard shows (including a failed step,
@@ -31,11 +35,15 @@ MANIFEST_PATH = OUTPUT_DIR / "refresh_manifest.json"
 IST = ZoneInfo("Asia/Kolkata")
 
 
+TRI_STEP = "Nifty 500 TRI (niftyindices.com)"
+
+
 def refresh_steps(as_of: date) -> List[Tuple[str, List[str]]]:
     end = as_of.isoformat()
     start = (as_of - timedelta(days=365)).isoformat()
     py = sys.executable
     return [
+        (TRI_STEP, [py, "fetch_data.py", "--update-tri", end]),
         ("Prices, technicals and risk summary", [py, "main.py", "--start-date", start, "--end-date", end]),
         ("Technical-first sector screens", [py, "sector_screen.py", "--as-of", end]),
         ("Review tables, RRG and plots", [py, "sector_screen.py", "--review", "--as-of", end]),
@@ -62,6 +70,10 @@ def run_refresh(as_of: Optional[date] = None, on_output: Callable[[str], None] =
         proc.wait()
         step = {"name": name, "returncode": proc.returncode, "seconds": round(time.time() - t0)}
         manifest["steps"].append(step)
+        if proc.returncode != 0 and name == TRI_STEP:
+            manifest.setdefault("warnings", []).append(
+                f"{name} failed; the dashboard keeps the existing TRI file. Last output: {tail[-1] if tail else ''}")
+            continue
         if proc.returncode != 0:
             manifest.update(status="failed", failed_step=name, error_tail=tail)
             break

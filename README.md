@@ -239,7 +239,7 @@ streamlit run app.py
 
 The web dashboard loads instantly from the existing CSV outputs already in the repository (`output/portfolio_technical_summary.csv` and `output/portfolio_historical_ohlcv.csv`) without requiring network re-fetching.
 
-**Keeping the dashboard current.** Under the header the dashboard shows the price date, the fundamentals date and the last refresh time, warns when prices are older than the latest published NSE session, and has a **Refresh all data** button that runs `refresh_data.py` (all pipeline steps for one end date, about 5-10 minutes, needs internet). The same refresh can be run from a terminal with `python refresh_data.py`.
+**Keeping the dashboard current.** Under the header the dashboard shows the price date, the fundamentals date and the last refresh time, shows how current the Nifty 500 TRI is, warns when prices are older than the latest published NSE session, and has a **Refresh all data** button that runs `refresh_data.py`: it appends new TRI sessions from niftyindices.com (`fetch_data.py --update-tri`; if the site's bot protection blocks it, the refresh continues and the header shows a warning) and then runs all pipeline steps for one end date (about 5-10 minutes, needs internet). The same refresh can be run from a terminal with `python refresh_data.py`.
 
 ### Dashboard Architecture (5 Tabs)
 1. **Portfolio Overview:** the 8 locked stocks grouped by sector, one row each with the RRG conviction badge and every field the brief requires: volatility, expected return (historical average, placeholder pending CAPM), weight (placeholder pending final weight assignment), stop-loss with its method, ADX, RS vs Nifty 500, RSI and support/resistance; followed by the screen exceptions.
@@ -398,7 +398,7 @@ Run the full automated unit test suite with `pytest`:
 pytest tests/ -v
 ```
 
-The 183 tests cover, among other things:
+The 189 tests cover, among other things:
 - Exact convergence of Wilder's smoothing against recursive mathematical definitions.
 - Boundary conditions for RSI ($RSI = 100$ in monotonic gains, $RSI = 0$ in monotonic losses).
 - Directional movement calculations and trend indicators for ADX.

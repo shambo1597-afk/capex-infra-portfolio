@@ -1,7 +1,12 @@
 {
   "as_of": "2026-09-25",
-  "started": "2026-09-25T14:02:01+05:30",
+  "started": "2026-09-25T14:16:51+05:30",
   "steps": [
+    {
+      "name": "Nifty 500 TRI (niftyindices.com)",
+      "returncode": 0,
+      "seconds": 19
+    },
     {
       "name": "Prices, technicals and risk summary",
       "returncode": 0,
@@ -10,24 +15,24 @@
     {
       "name": "Technical-first sector screens",
       "returncode": 0,
-      "seconds": 57
+      "seconds": 47
     },
     {
       "name": "Review tables, RRG and plots",
       "returncode": 0,
-      "seconds": 220
+      "seconds": 213
     },
     {
       "name": "Locked-portfolio run-up check",
       "returncode": 0,
-      "seconds": 11
+      "seconds": 12
     },
     {
       "name": "Candidate sweep",
       "returncode": 0,
-      "seconds": 10
+      "seconds": 29
     }
   ],
   "status": "ok",
-  "finished": "2026-09-25T14:07:13+05:30"
+  "finished": "2026-09-25T14:22:24+05:30"
 }

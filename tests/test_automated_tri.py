@@ -6,6 +6,8 @@ Author: Antigravity / SAPM & Derivatives Coursework (IIM Bodh Gaya)
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from datetime import date
+
 import pandas as pd
 import pytest
 
@@ -244,3 +246,69 @@ class TestAutomatedTRI:
         assert mock_browser.new_context.call_count == 1
         assert any("Automated benchmark TRI fetching failed" in r.message for r in caplog.records)
         assert isinstance(df, pd.DataFrame)
+
+
+class TestUpdateTriCsv:
+    """update_tri_csv appends new sessions in the manual-download format, or changes nothing."""
+
+    CSV = ("IndexName,Date,Total Returns Index,Net Total Return Index\n"
+           "NIFTY 500,21-Sep-2026,36500.00,33500.00\n"
+           "NIFTY 500,22-Sep-2026,36666.48,33708.29\n")
+
+    @staticmethod
+    def _fetched(rows):
+        return pd.DataFrame(rows, columns=["IndexName", "Date", "Total Returns Index", "Net Total Return Index"]) \
+            .assign(Date=lambda d: pd.to_datetime(d["Date"]))
+
+    def test_appends_new_sessions_in_manual_format(self, tmp_path):
+        from fetch_data import update_tri_csv
+        path = tmp_path / "tri.csv"
+        path.write_text(self.CSV)
+        fetched = self._fetched([("NIFTY 500", "2026-09-22", 36666.48, 33708.29),   # overlap, agrees
+                                 ("NIFTY 500", "2026-09-23", 36893.30, 33916.77),
+                                 ("NIFTY 500", "2026-09-24", 36278.13, 33351.20)])
+        calls = []
+        added, last = update_tri_csv(date(2026, 9, 24), csv_path=path,
+                                     fetch=lambda s, e: calls.append((s, e)) or fetched)
+        assert (added, last) == (2, date(2026, 9, 24))
+        assert calls == [(date(2026, 9, 15), date(2026, 9, 24))]  # a week of overlap before the last date
+        lines = path.read_text().strip().splitlines()
+        assert lines[0] == "IndexName,Date,Total Returns Index,Net Total Return Index"
+        assert lines[-1] == "NIFTY 500,24-Sep-2026,36278.13,33351.20"  # trailing zero kept
+        assert len(load_benchmark_tri(path, warn_if_stale=False)) == 4
+
+    def test_disagreeing_overlap_leaves_csv_untouched(self, tmp_path):
+        from fetch_data import update_tri_csv
+        path = tmp_path / "tri.csv"
+        path.write_text(self.CSV)
+        fetched = self._fetched([("NIFTY 500", "2026-09-22", 37000.00, 33708.29),
+                                 ("NIFTY 500", "2026-09-23", 36893.30, 33916.77)])
+        with pytest.raises(ValueError, match="disagrees"):
+            update_tri_csv(date(2026, 9, 24), csv_path=path, fetch=lambda s, e: fetched)
+        assert path.read_text() == self.CSV
+
+    def test_no_new_sessions_leaves_file_byte_identical(self, tmp_path):
+        from fetch_data import update_tri_csv
+        path = tmp_path / "tri.csv"
+        path.write_text(self.CSV)
+        fetched = self._fetched([("NIFTY 500", "2026-09-22", 36666.48, 33708.29)])
+        assert update_tri_csv(date(2026, 9, 25), csv_path=path, fetch=lambda s, e: fetched) == (0, date(2026, 9, 22))
+        assert path.read_text() == self.CSV
+
+    def test_already_current_does_not_fetch(self, tmp_path):
+        from fetch_data import update_tri_csv
+        path = tmp_path / "tri.csv"
+        path.write_text(self.CSV)
+        assert update_tri_csv(date(2026, 9, 22), csv_path=path,
+                              fetch=lambda s, e: pytest.fail("should not fetch")) == (0, date(2026, 9, 22))
+
+    def test_fetch_failure_propagates_and_leaves_csv_untouched(self, tmp_path):
+        from fetch_data import update_tri_csv
+        path = tmp_path / "tri.csv"
+        path.write_text(self.CSV)
+
+        def blocked(s, e):
+            raise RuntimeError("niftyindices.com rejected 4 browser sessions")
+        with pytest.raises(RuntimeError):
+            update_tri_csv(date(2026, 9, 24), csv_path=path, fetch=blocked)
+        assert path.read_text() == self.CSV
