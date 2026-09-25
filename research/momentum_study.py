@@ -11,15 +11,15 @@ PRE-REGISTERED DESIGN (fixed before any results were seen, to avoid mining the d
   Dates      A rebalance every 21 sessions (about monthly) once 252 sessions of history exist.
   Periods    In-sample (IS): rebalances in 2021-2023. Out-of-sample (OOS): 2024 onwards.
              A pattern counts only if it has the same sign and a meaningful size in both.
-  Signals    Only the brief's four indicators:
+  Signals    The brief's four required indicators:
              - RS vs Nifty 500 over 21 / 63 / 126 / 189 / 252 sessions, and 126 sessions
                excluding the latest 21 ("skip the last month", the classic momentum variant)
              - burst: share of the 63-session RS earned in the last 10 sessions (> 50%)
              - ADX / DI: trend strength and direction (ADX > 25 with +DI > -DI)
              - RSI: overbought (> 70)
              - Support / resistance: within 2% of the 20-session high (at resistance / breakout)
-  Extended   Signals OUTSIDE the brief's four (research only: using one for selection needs the
-  signals    professor's approval). Each has a documented reason to predict returns:
+  Extended   Additional signals. The brief requires the four above but does not limit the method;
+  signals    what counts is the return on the Rs 1 crore. Each has a documented reason to predict returns:
              - high_52w: price / 52-week high (George & Hwang 2004: stocks near their 52-week
                high keep outperforming)
              - vol_63: 63-session volatility (low-volatility anomaly: lower risk, better risk-adjusted)
@@ -136,7 +136,7 @@ def build_panel(bench: pd.Series, close: pd.DataFrame, high: pd.DataFrame, low: 
     fwd = (close.shift(-HORIZON) / close - 1).sub(bench.shift(-HORIZON) / bench - 1, axis=0) * 100
     signals["dist_20d_high"] = (close / high.rolling(20, min_periods=15).max() - 1) * 100
 
-    # Extended signals (outside the brief's four)
+    # Extended signals (beyond the brief's four required ones)
     daily = close.pct_change(fill_method=None)
     signals["high_52w"] = close / high.rolling(252, min_periods=200).max()
     signals["vol_63"] = daily.rolling(63, min_periods=50).std() * np.sqrt(252) * 100
@@ -255,7 +255,7 @@ def main() -> None:
 
     extended = ["high_52w", "vol_63", "rs_126_per_vol", "above_ma200", "deliv_trend", "turnover_trend",
                 "sector_rs_126", "rs_126_vs_sector", "composite", "adx", "di_gap", "rsi", "dist_20d_high"]
-    lines += ["## 1b. Other signals (the brief's ADX/RSI/S-R as rankings, and extended signals outside the brief)", ""]
+    lines += ["## 1b. Other signals (the brief's ADX/RSI/S-R as rankings, and additional signals)", ""]
     for period, g in [("All", panel)] + list(panel.groupby("period")):
         rows = {s: rank_signal(g, s) for s in extended}
         lines += [f"### {period}", "", fmt_table(rows), ""]
