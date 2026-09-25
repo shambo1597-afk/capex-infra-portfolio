@@ -4,8 +4,9 @@ Sector Screen: technical screen first, then fundamental safety screen.
 Implements the project brief's order ("Technical analysis, then financial analysis") identically
 for each sector:
 
-1. Universe: the official Nifty sector index constituents plus the named Nifty Infrastructure
-   additions (config.sector_universe / NIFTY_INFRA_SECTOR_ADDITIONS); no other additions.
+1. Universe: the official Nifty sector index constituents plus the named theme additions
+   (config.sector_universe / THEME_ADDITIONS): stocks whose business fits the sector, each with a
+   business-focus note.
 2. Technical screen on every constituent, using the existing indicator pipeline
    (analysis.evaluate_stock_technicals) on the complete NSE Bhavcopy history:
    passes when RS vs Nifty 500 (63 sessions) > +2 pp AND trend direction (+DI vs -DI) is Bullish.
@@ -42,6 +43,7 @@ from config import (
     LOCKED_PORTFOLIO_SYMBOLS,
     OUTPUT_DIR,
     RRG_MOMENTUM_DAYS,
+    RRG_MOMENTUM_SMOOTHING_DAYS,
     RUNUP_RECENT_DAYS,
     SECTOR_SCREENS,
     TECHNICAL_RS_LOOKBACK_DAYS,
@@ -72,7 +74,7 @@ def load_constituents(csv_path: Path) -> pd.DataFrame:
 def load_sector_universe(sector: str) -> pd.DataFrame:
     """
     Every stock screened for a sector (config.sector_universe): the official index constituents
-    plus any named Nifty Infrastructure additions, with columns Symbol, Company Name, Index.
+    plus the named theme additions (config.THEME_ADDITIONS), with columns Symbol, Company Name, Index.
     """
     rows = sector_universe(sector)
     return pd.DataFrame({"Symbol": [r["symbol"] for r in rows], "Company Name": [r["name"] for r in rows],
@@ -217,7 +219,8 @@ def build_review_table(
 
     rows = []
     stock_returns: Dict[str, float] = {}
-    stock_returns_prev: Dict[str, float] = {}
+    # {offset: {symbol: 63-session return for the window ending `offset` sessions ago}}
+    offset_returns: Dict[int, Dict[str, float]] = {}
     for _, member in constituents.iterrows():
         symbol = member["Symbol"]
         record = records.get(symbol, {"status": "Data Unavailable"})
@@ -229,8 +232,10 @@ def build_review_table(
         # The stock's own 63-session return, exactly as used for rs_score_vs_nifty500
         _, stock_return_pct, _ = compute_relative_strength(sym_prices, benchmark, lookback_days=TECHNICAL_RS_LOOKBACK_DAYS)
         stock_returns[symbol] = stock_return_pct
-        _, rs_prev, rs_momentum, stock_returns_prev[symbol] = compute_rs_momentum(
-            sym_prices, benchmark, TECHNICAL_RS_LOOKBACK_DAYS, RRG_MOMENTUM_DAYS)
+        _, rs_prev, rs_momentum, returns_by_offset = compute_rs_momentum(
+            sym_prices, benchmark, TECHNICAL_RS_LOOKBACK_DAYS, RRG_MOMENTUM_DAYS, RRG_MOMENTUM_SMOOTHING_DAYS)
+        for offset, ret in returns_by_offset.items():
+            offset_returns.setdefault(offset, {})[symbol] = ret
         rs_10d, _, recent_pct = compute_recent_rs_contribution(
             sym_prices, benchmark, RUNUP_RECENT_DAYS, TECHNICAL_RS_LOOKBACK_DAYS)
         rows.append({
@@ -255,7 +260,7 @@ def build_review_table(
             "nearest_resistance": tech["nearest_resistance"],
             "technically_attractive": attractive,
             "price_sessions": int(sym_prices["DATE1"].nunique()) if not sym_prices.empty else 0,
-            "rs_score_vs_nifty500_prev": rs_prev,
+            "rs_score_vs_nifty500_prev_avg": rs_prev,
             "rs_momentum_vs_nifty500": rs_momentum,
             "rs_last_10d": rs_10d,
             "recent_10day_contribution_pct": recent_pct,
@@ -269,10 +274,21 @@ def build_review_table(
     table["sector_rank"] = table["rs_score_vs_sector_avg"].rank(ascending=False, method="min").astype("Int64")
     table.attrs["sector_avg_return_pct"] = sector_avg
 
-    # Same spread with the window ending RRG_MOMENTUM_DAYS sessions earlier -> momentum vs sector
-    sector_rs_prev, _ = compute_sector_relative_strength(stock_returns_prev)
-    prev = table["symbol"].map(sector_rs_prev)
-    table["rs_momentum_vs_sector"] = (table["symbol"].map(sector_rs) - prev).round(2)
+    # Momentum vs sector, smoothed exactly like the vs-Nifty-500 one: the sector spread is recomputed
+    # for each window end, then the average of the latest RRG_MOMENTUM_SMOOTHING_DAYS minus the
+    # average of the same number of days RRG_MOMENTUM_DAYS sessions earlier
+    spreads = {k: compute_sector_relative_strength(rets)[0] for k, rets in offset_returns.items()}
+    now_k = range(RRG_MOMENTUM_SMOOTHING_DAYS)
+    prev_k = range(RRG_MOMENTUM_DAYS, RRG_MOMENTUM_DAYS + RRG_MOMENTUM_SMOOTHING_DAYS)
+
+    def _sector_momentum(symbol: str) -> float:
+        vals_now = [spreads.get(k, {}).get(symbol, float("nan")) for k in now_k]
+        vals_prev = [spreads.get(k, {}).get(symbol, float("nan")) for k in prev_k]
+        if any(pd.isna(v) for v in vals_now + vals_prev):
+            return float("nan")
+        return round(sum(vals_now) / len(vals_now) - sum(vals_prev) / len(vals_prev), 2)
+
+    table["rs_momentum_vs_sector"] = table["symbol"].map(_sector_momentum)
 
     table = add_evaluation_columns(table, criteria)
     return table.sort_values(["fundamentals_passed_count", "sector_rank"],
@@ -376,7 +392,7 @@ sum to approximately zero by construction.
 ## Full evaluation standard (applied to every row)
 
 - **RRG (Relative Rotation Graph).** x = RS (pp, {TECHNICAL_RS_LOOKBACK_DAYS} sessions); y = RS-Momentum = that RS today
-  minus the same {TECHNICAL_RS_LOOKBACK_DAYS}-session RS ending {RRG_MOMENTUM_DAYS} sessions earlier (pp). Both axes are
+  averaged over the last {RRG_MOMENTUM_SMOOTHING_DAYS} sessions, minus the same average {RRG_MOMENTUM_DAYS} sessions earlier (pp). Both axes are
   plain percentage-point spreads, not the proprietary JdK RS-Ratio index. Quadrants at (0, 0):
   LEADING (RS > 0, momentum > 0), WEAKENING (RS > 0, momentum <= 0), LAGGING (RS <= 0,
   momentum <= 0), IMPROVING (RS <= 0, momentum > 0). Computed against the Nifty 500

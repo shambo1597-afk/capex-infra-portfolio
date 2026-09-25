@@ -21,7 +21,7 @@ sum to approximately zero by construction.
 ## Full evaluation standard (applied to every row)
 
 - **RRG (Relative Rotation Graph).** x = RS (pp, 63 sessions); y = RS-Momentum = that RS today
-  minus the same 63-session RS ending 10 sessions earlier (pp). Both axes are
+  averaged over the last 5 sessions, minus the same average 10 sessions earlier (pp). Both axes are
   plain percentage-point spreads, not the proprietary JdK RS-Ratio index. Quadrants at (0, 0):
   LEADING (RS > 0, momentum > 0), WEAKENING (RS > 0, momentum <= 0), LAGGING (RS <= 0,
   momentum <= 0), IMPROVING (RS <= 0, momentum > 0). Computed against the Nifty 500

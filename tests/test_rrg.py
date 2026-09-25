@@ -2,6 +2,7 @@
 Unit tests for the Relative Rotation Graph (RRG) columns and the full evaluation standard.
 """
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -35,8 +36,8 @@ class TestRsMomentum:
         # Flat for 64 sessions, then +1% a day for 10: the window ending 10 sessions ago is flat
         closes = [100.0] * 64 + [100.0 * 1.01 ** i for i in range(1, 11)]
         stock, bench = _series(closes)
-        rs_now, rs_prev, momentum, ret_prev = compute_rs_momentum(stock, bench, 63, 10)
-        assert rs_prev == pytest.approx(0.0) and ret_prev == pytest.approx(0.0)
+        rs_now, rs_prev, momentum, returns = compute_rs_momentum(stock, bench, 63, 10)
+        assert rs_prev == pytest.approx(0.0) and returns[10] == pytest.approx(0.0)
         assert rs_now == pytest.approx((1.01 ** 10 - 1) * 100, abs=0.01)
         assert momentum == pytest.approx(rs_now - rs_prev, abs=0.01)
 
@@ -56,7 +57,35 @@ class TestRsMomentum:
 
     def test_insufficient_history_is_nan(self):
         stock, bench = _series([100.0] * 70)
-        assert all(pd.isna(v) for v in compute_rs_momentum(stock, bench, 63, 10))
+        assert all(pd.isna(v) for v in compute_rs_momentum(stock, bench, 63, 10)[:3])
+        # 63 + 10 + 5 sessions are needed once smoothing reaches back 14 sessions
+        stock, bench = _series([100.0] * 77)
+        assert all(pd.isna(v) for v in compute_rs_momentum(stock, bench, 63, 10, smoothing_days=5)[:3])
+
+    def test_smoothed_momentum_averages_five_window_ends_at_each_end(self):
+        closes = [100.0 + 3 * np.sin(i / 4) + 0.1 * i for i in range(100)]
+        stock, bench = _series(closes)
+
+        def rs_ending(k):
+            n = len(stock) - k
+            return compute_relative_strength(stock.iloc[:n], bench.iloc[:n], lookback_days=63)[0]
+        rs_now, rs_prev, momentum, returns = compute_rs_momentum(stock, bench, 63, 10, smoothing_days=5)
+        expected_prev = np.mean([rs_ending(k) for k in range(10, 15)])
+        expected_mom = np.mean([rs_ending(k) for k in range(5)]) - expected_prev
+        assert rs_now == pytest.approx(rs_ending(0))          # x-axis stays the unsmoothed RS today
+        assert rs_prev == pytest.approx(expected_prev, abs=0.01)
+        assert momentum == pytest.approx(expected_mom, abs=0.01)
+        assert sorted(returns) == [0, 1, 2, 3, 4, 10, 11, 12, 13, 14]
+
+    def test_smoothing_suppresses_a_one_day_blip(self):
+        # Relative strength deteriorating steadily (accelerating decline), then one strong up-day:
+        # the unsmoothed momentum flips positive on that single session; the smoothed one stays negative
+        base = [100.0 - 0.002 * i * i for i in range(90)]
+        closes = base + [base[-1] - 0.002 * 180 + 3.0]
+        stock, bench = _series(closes)
+        raw = compute_rs_momentum(stock, bench, 63, 10, smoothing_days=1)[2]
+        smooth = compute_rs_momentum(stock, bench, 63, 10, smoothing_days=5)[2]
+        assert raw > 0 > smooth
 
 
 class TestQuadrant:

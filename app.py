@@ -36,6 +36,7 @@ from config import (
     DI_GAP_THIN_THRESHOLD,
     HIGH_TURNOVER_ROCE_MIN,
     RRG_MOMENTUM_DAYS,
+    RRG_MOMENTUM_SMOOTHING_DAYS,
 )
 from fetch_data import TRI_REDOWNLOAD_INSTRUCTIONS, TriStaleness, assess_tri_staleness, load_benchmark_tri
 from fundamentals import get_fundamentals_summary
@@ -860,8 +861,8 @@ with tab_technicals:
     # RRG scatter plots (static PNGs written by rrg.py / sector_screen.py --review)
     st.markdown("#### Relative Rotation Graphs")
     st.caption(
-        f"x = {TECHNICAL_RS_LOOKBACK_DAYS}-session RS (pp); y = RS-Momentum = RS today minus the same RS "
-        f"{RRG_MOMENTUM_DAYS} sessions earlier (pp). "
+        f"x = {TECHNICAL_RS_LOOKBACK_DAYS}-session RS (pp); y = RS-Momentum = RS averaged over the last "
+        f"{RRG_MOMENTUM_SMOOTHING_DAYS} sessions minus the same average {RRG_MOMENTUM_DAYS} sessions earlier (pp). "
         "Locked stocks are ringed and bold. Regenerate with `python rrg.py --as-of <date>` after a pipeline run."
     )
     rrg_left, rrg_right = st.columns(2)

@@ -413,48 +413,75 @@ def compute_recent_rs_contribution(
     return rs_recent, rs_full, round(rs_recent / rs_full * 100.0, 1)
 
 
+def compute_rs_at_offsets(
+    stock_df: pd.DataFrame,
+    benchmark_df: pd.DataFrame,
+    lookback_days: int,
+    offsets,
+) -> Dict[int, Tuple[float, float]]:
+    """
+    The lookback-session RS spread and the stock's own return for windows ending `offset` paired
+    sessions before the latest one (offset 0 = today), as {offset: (rs_pp, stock_return_pct)}.
+    NaN pairs where the history is too short for that window.
+    """
+    nan = (np.nan, np.nan)
+    offsets = list(offsets)
+    if stock_df.empty or benchmark_df.empty:
+        return {k: nan for k in offsets}
+    stock_dates = pd.to_datetime(stock_df["DATE1"]).dt.tz_localize(None)
+    bench_dates = pd.to_datetime(benchmark_df["Date"]).dt.tz_localize(None)
+    paired = np.sort(np.intersect1d(stock_dates[stock_df["CLOSE_PRICE"].notna()].unique(),
+                                    bench_dates[benchmark_df["Close"].notna()].unique()))
+    out = {}
+    for k in offsets:
+        if len(paired) < lookback_days + k + 1:
+            out[k] = nan
+            continue
+        cutoff = pd.Timestamp(paired[-1 - k])
+        rs, stock_ret, _ = compute_relative_strength(
+            stock_df[stock_dates <= cutoff], benchmark_df[bench_dates <= cutoff], lookback_days=lookback_days)
+        out[k] = (rs, stock_ret)
+    return out
+
+
 def compute_rs_momentum(
     stock_df: pd.DataFrame,
     benchmark_df: pd.DataFrame,
     lookback_days: int = 63,
     momentum_days: int = 10,
-) -> Tuple[float, float, float, float]:
+    smoothing_days: int = 1,
+) -> Tuple[float, float, float, Dict[int, float]]:
     """
-    RS-Momentum for a Relative Rotation Graph: the rate of change of the RS spread.
+    RS-Momentum for a Relative Rotation Graph: the rate of change of the RS spread, smoothed.
 
-        RS_now  = RS vs benchmark over the `lookback_days` sessions ending today        (pp)
-        RS_prev = the same 63-session RS, window ending `momentum_days` sessions earlier (pp)
-        RS_momentum = RS_now - RS_prev                                                   (pp)
+        RS(k)       = RS vs benchmark over the `lookback_days` sessions ending k sessions ago (pp)
+        RS_avg_now  = mean of RS(0) .. RS(smoothing_days - 1)
+        RS_avg_prev = mean of RS(momentum_days) .. RS(momentum_days + smoothing_days - 1)
+        RS_momentum = RS_avg_now - RS_avg_prev                                            (pp)
 
-    Positive momentum means the RS spread widened over the last `momentum_days` sessions
-    (relative strength improving), negative that it narrowed. Unlike the run-up share
+    Positive momentum means relative strength improved over the last `momentum_days` sessions.
+    Averaging a few days at each end (smoothing_days, e.g. 5) stops a single session from
+    flipping the sign: with smoothing_days=1 this is the plain RS(0) - RS(momentum_days), which
+    changed a stock's RRG tier on about 17% of days. Unlike the run-up share
     (compute_recent_rs_contribution), it is defined for negative RS too, which the IMPROVING and
-    LAGGING quadrants need. Sessions are the stock/benchmark paired dates, as in
-    compute_relative_strength().
+    LAGGING quadrants need.
 
     Returns:
-        Tuple[float, float, float, float]:
-            (RS_now, RS_prev, RS_momentum, stock_return_prev_pct); NaN when there is too little history.
+        (RS_now, RS_avg_prev, RS_momentum, {offset: stock_return_pct}) where RS_now is the
+        unsmoothed RS today (the RRG x-axis) and the returns cover every offset used, for the
+        same calculation against a sector average. NaNs when there is too little history.
     """
-    nan4 = (np.nan, np.nan, np.nan, np.nan)
-    if stock_df.empty or benchmark_df.empty:
-        return nan4
-    stock_dates = pd.to_datetime(stock_df.dropna(subset=["CLOSE_PRICE"])["DATE1"]).dt.tz_localize(None)
-    bench_dates = pd.to_datetime(benchmark_df.dropna(subset=["Close"])["Date"]).dt.tz_localize(None)
-    paired = np.sort(np.intersect1d(stock_dates.unique(), bench_dates.unique()))
-    if len(paired) < lookback_days + momentum_days + 1:
-        return nan4
-    cutoff = pd.Timestamp(paired[-1 - momentum_days])
-
-    rs_now, _, _ = compute_relative_strength(stock_df, benchmark_df, lookback_days=lookback_days)
-    rs_prev, stock_ret_prev, _ = compute_relative_strength(
-        stock_df[pd.to_datetime(stock_df["DATE1"]).dt.tz_localize(None) <= cutoff],
-        benchmark_df[pd.to_datetime(benchmark_df["Date"]).dt.tz_localize(None) <= cutoff],
-        lookback_days=lookback_days,
-    )
-    if np.isnan(rs_now) or np.isnan(rs_prev):
-        return nan4
-    return rs_now, rs_prev, round(rs_now - rs_prev, 2), stock_ret_prev
+    now_offsets = list(range(smoothing_days))
+    prev_offsets = list(range(momentum_days, momentum_days + smoothing_days))
+    points = compute_rs_at_offsets(stock_df, benchmark_df, lookback_days, now_offsets + prev_offsets)
+    returns = {k: v[1] for k, v in points.items()}
+    now_vals = [points[k][0] for k in now_offsets]
+    prev_vals = [points[k][0] for k in prev_offsets]
+    if any(np.isnan(v) for v in now_vals + prev_vals):
+        return np.nan, np.nan, np.nan, returns
+    rs_now = points[0][0]
+    rs_prev = float(np.mean(prev_vals))
+    return rs_now, round(rs_prev, 2), round(float(np.mean(now_vals)) - rs_prev, 2), returns
 
 
 # -----------------------------------------------------------------------------

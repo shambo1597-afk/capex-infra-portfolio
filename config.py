@@ -31,8 +31,8 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Official Nifty sector index constituent files, downloaded from niftyindices.com
 # (https://www.niftyindices.com/IndexConstituent/ind_nifty<Name>_list.csv) on 24-Sep-2026.
-# These files, plus the named Nifty Infrastructure additions below, are the single source of
-# truth for the three sector universes.
+# These files, plus the named THEME_ADDITIONS below, are the single source of truth for the
+# three sector universes.
 INDEX_CONSTITUENTS_DIR = DATA_DIR / "index_constituents"
 SECTOR_CONSTITUENT_FILES = {
     "Cement": INDEX_CONSTITUENTS_DIR / "ind_niftyCement_list.csv",
@@ -56,17 +56,26 @@ def _read_constituents(csv_path: Path, index_name: str) -> List[Dict[str, str]]:
 _CONSTITUENTS = {sector: _read_constituents(path, f"Nifty {sector}")
                  for sector, path in SECTOR_CONSTITUENT_FILES.items()}
 
-# Nifty Infrastructure constituents added to a sector universe. The full index is NOT adopted
-# (it spans ports, aviation, oil & gas, telecom, healthcare, realty and hotels); of its 30
-# constituents, 12 are already in the three sector universes and only these two others have a
-# primary business in Cement, Capital Goods/EPC or Power. Each is screened with that sector's
-# thresholds and ranked against its universe; see BUSINESS_FOCUS_NOTES before selecting one.
-NIFTY_INFRA_SECTOR_ADDITIONS = {
-    "Capital Goods": ["LT", "BHARATFORG"],
+# THEME ADDITIONS: stocks outside the three official sector indices that join a sector universe
+# because their primary business fits the theme (Cement, Capital Goods/EPC or Power). Rule: the
+# business must fit the sector (checked by hand), and every addition carries a BUSINESS_FOCUS_NOTES
+# entry recording that check. Each addition is screened with its sector's thresholds and ranked
+# against that sector's universe, exactly like the index constituents.
+#   source "Nifty Infrastructure": taken from that index's official file (name from the file);
+#     of its 30 constituents, 12 are already in the sector universes and only LT and BHARATFORG
+#     fit the theme (the rest are ports, aviation, oil & gas, telecom, healthcare, realty, hotels).
+#   source "Theme addition": not in any index used here; the company name is given below.
+THEME_ADDITIONS = {
+    "Capital Goods": [
+        {"symbol": "LT", "source": "Nifty Infrastructure"},
+        {"symbol": "BHARATFORG", "source": "Nifty Infrastructure"},
+        {"symbol": "QPOWER", "source": "Theme addition", "name": "Quality Power Electrical Equipments Ltd."},
+        {"symbol": "RRKABEL", "source": "Theme addition", "name": "R R Kabel Ltd."},
+    ],
 }
 
-# Business-focus review notes (conglomerate / classification concerns), shown in the review
-# tables' business_focus_note column. They are flags for a manual decision, not exclusions.
+# Business-focus review notes (theme fit, conglomerate / classification concerns), shown in the
+# review tables' business_focus_note column. They are flags for a manual decision, not exclusions.
 BUSINESS_FOCUS_NOTES = {
     "LT": (
         "CONGLOMERATE CONCERN - manual review. NSE industry: Construction. Core business is EPC "
@@ -80,6 +89,17 @@ BUSINESS_FOCUS_NOTES = {
         "auto subsidiaries) as well as industrial, defence and aerospace customers. Verify the auto vs "
         "non-auto revenue split before treating it as a capital-goods name."
     ),
+    "QPOWER": (
+        "THEME ADDITION (not in an official Nifty sector index). Focused electrical-equipment maker for "
+        "power grids and transmission (reactors, transformers and related grid components), the same "
+        "line of business as VOLTAMP. Small company, listed in 2025; verify the export share and any "
+        "acquisitions in the annual report."
+    ),
+    "RRKABEL": (
+        "THEME ADDITION (not in an official Nifty sector index). Wires and cables make up most of "
+        "revenue, with a smaller consumer-electricals segment (fans, lighting, switches); the same core "
+        "business as FINCABLES, KEI and POLYCAB in the Nifty Capital Goods index. Verify the segment split."
+    ),
     "GRASIM": (
         "CONGLOMERATE CONCERN (same treatment as NAVA). Consolidated results include UltraTech (cement) "
         "but also VSF and chemicals, paints, B2B e-commerce and financial services (Aditya Birla Capital)."
@@ -87,16 +107,22 @@ BUSINESS_FOCUS_NOTES = {
 }
 
 
-def _add_infra_constituents() -> None:
+def _add_theme_constituents() -> None:
     infra = {r["symbol"]: r for r in _read_constituents(NIFTY_INFRA_CONSTITUENTS_FILE, "Nifty Infrastructure")}
-    for sector, symbols in NIFTY_INFRA_SECTOR_ADDITIONS.items():
+    for sector, additions in THEME_ADDITIONS.items():
         present = {r["symbol"] for rows in _CONSTITUENTS.values() for r in rows}
-        for symbol in symbols:
-            if symbol in infra and symbol not in present:
-                _CONSTITUENTS[sector].append(infra[symbol])
+        for add in additions:
+            symbol = add["symbol"]
+            if symbol in present:
+                continue
+            if add["source"] == "Nifty Infrastructure":
+                if symbol in infra:
+                    _CONSTITUENTS[sector].append(infra[symbol])
+            else:
+                _CONSTITUENTS[sector].append({"symbol": symbol, "name": add["name"], "index": add["source"]})
 
 
-_add_infra_constituents()
+_add_theme_constituents()
 
 CEMENT_STOCKS = [r["symbol"] for r in _CONSTITUENTS["Cement"]]
 CAPITAL_GOODS_EPC_STOCKS = [r["symbol"] for r in _CONSTITUENTS["Capital Goods"]]
@@ -104,8 +130,8 @@ POWER_SECTOR_STOCKS = [r["symbol"] for r in _CONSTITUENTS["Power"]]
 
 
 def sector_universe(sector: str) -> List[Dict[str, str]]:
-    """Every stock screened for a sector: its official index constituents plus any Nifty
-    Infrastructure additions, as rows {symbol, name, index}."""
+    """Every stock screened for a sector: its official index constituents plus its theme
+    additions (THEME_ADDITIONS), as rows {symbol, name, index}."""
     return list(_CONSTITUENTS.get(sector, []))
 
 
@@ -318,8 +344,12 @@ TECHNICAL_RS_MARGIN_PP = 2.0
 # RELATIVE ROTATION GRAPH & TREND-QUALITY CHECKS (see rrg.py)
 # -----------------------------------------------------------------------------
 
-# RS-Momentum = 63-session RS today minus the 63-session RS this many sessions ago (pp)
+# RS-Momentum = 63-session RS now minus the 63-session RS this many sessions earlier (pp)...
 RRG_MOMENTUM_DAYS = 10
+# ...with the RS averaged over this many sessions at each end. Unsmoothed (1), one session's
+# move flipped a stock's RRG tier on ~17% of days (WELCORP and FINCABLES fell from High to Low
+# on 25-Sep-2026 and back); a 5-session average halves the flip rate while staying responsive.
+RRG_MOMENTUM_SMOOTHING_DAYS = 5
 
 # |+DI - -DI| below this is a thin, borderline trend whichever way it points: the direction
 # label can flip on a single bar (e.g. JKCEMENT +DI 19.50 vs -DI 18.95)

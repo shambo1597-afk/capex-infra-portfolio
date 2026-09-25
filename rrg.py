@@ -4,8 +4,9 @@ Relative Rotation Graph (RRG) classification and plots.
 Two axes per stock, both in percentage points (not the proprietary JdK RS-Ratio index):
   x  RS:          63-session return minus the benchmark's (rs_score_vs_nifty500, or
                   rs_score_vs_sector_avg against the equal-weighted sector average)
-  y  RS-Momentum: that RS today minus the same 63-session RS ending RRG_MOMENTUM_DAYS (10)
-                  sessions earlier (indicators.compute_rs_momentum); positive = the spread widened
+  y  RS-Momentum: that RS averaged over the last RRG_MOMENTUM_SMOOTHING_DAYS (5) sessions minus
+                  the same average RRG_MOMENTUM_DAYS (10) sessions earlier
+                  (indicators.compute_rs_momentum); positive = relative strength improving
 
 Quadrants (centred at 0, 0):
   LEADING    RS > 0,  momentum > 0   strong and getting stronger
@@ -31,6 +32,7 @@ from config import (  # noqa: E402
     LOCKED_PORTFOLIO_SYMBOLS,
     OUTPUT_DIR,
     RRG_MOMENTUM_DAYS,
+    RRG_MOMENTUM_SMOOTHING_DAYS,
     SECTOR_SCREENS,
     TECHNICAL_RS_LOOKBACK_DAYS,
 )
@@ -95,7 +97,8 @@ def plot_rrg(
     label_symbols: Optional[Iterable[str]] = None,
     highlight_symbols: Iterable[str] = (),
     x_label: str = "RS (pp)",
-    y_label: str = f"RS-Momentum (pp change over {RRG_MOMENTUM_DAYS} sessions)",
+    y_label: str = (f"RS-Momentum (pp change over {RRG_MOMENTUM_DAYS} sessions, "
+                    f"{RRG_MOMENTUM_SMOOTHING_DAYS}-session average)"),
 ) -> Path:
     """
     Scatter one point per stock, coloured and shaped by quadrant. `label_symbols` (default: all)
