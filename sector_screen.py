@@ -50,6 +50,7 @@ from config import (
     TECHNICAL_RS_MARGIN_PP,
     sector_universe,
 )
+from corporate_actions import adjust_for_corporate_actions
 from fetch_data import NSEBhavcopyFetcher, fetch_benchmark_nifty500, get_one_year_date_range
 from fundamentals import evaluate_fundamental_screen, fetch_results_calendar, get_fundamentals_summary
 from indicators import (
@@ -176,7 +177,8 @@ def run_sector_screens(
     all_symbols = sorted({sym for df in constituents.values() for sym in df["Symbol"]})
 
     start, end = get_one_year_date_range(as_of)
-    prices = NSEBhavcopyFetcher().fetch_date_range(start, end, all_symbols, use_cache=use_price_cache)
+    prices = adjust_for_corporate_actions(
+        NSEBhavcopyFetcher().fetch_date_range(start, end, all_symbols, use_cache=use_price_cache))
     benchmark = fetch_benchmark_nifty500(start_date=start.isoformat(), end_date=end.isoformat())
     if benchmark.empty:
         raise RuntimeError("Nifty 500 benchmark unavailable; RS cannot be computed.")
@@ -345,7 +347,8 @@ def run_review_table(sector: str, output_csv: Path, as_of: Optional[date] = None
     cfg = SECTOR_SCREENS[sector]
     constituents = load_sector_universe(sector)
     start, end = get_one_year_date_range(as_of)
-    prices = NSEBhavcopyFetcher().fetch_date_range(start, end, constituents["Symbol"].tolist(), use_cache=True)
+    prices = adjust_for_corporate_actions(
+        NSEBhavcopyFetcher().fetch_date_range(start, end, constituents["Symbol"].tolist(), use_cache=True))
     benchmark = fetch_benchmark_nifty500(start_date=start.isoformat(), end_date=end.isoformat())
     if benchmark.empty:
         raise RuntimeError("Nifty 500 benchmark unavailable; RS cannot be computed.")
@@ -445,7 +448,8 @@ def compute_runup_and_catalyst_info(
     """
     today = today or date.today()
     start, end = get_one_year_date_range(as_of)
-    prices = NSEBhavcopyFetcher().fetch_date_range(start, end, list(symbols), use_cache=True)
+    prices = adjust_for_corporate_actions(
+        NSEBhavcopyFetcher().fetch_date_range(start, end, list(symbols), use_cache=True))
     benchmark = fetch_benchmark_nifty500(start_date=start.isoformat(), end_date=end.isoformat())
     rows = []
     for symbol in symbols:

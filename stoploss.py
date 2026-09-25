@@ -48,7 +48,8 @@ def compute_daily_returns(stock_df: pd.DataFrame, lookback: int = RISK_LOOKBACK_
     for the previous trading session. Unlike close-to-close differences between rows, this
     stays a true one-day return when sessions are missing from the local history (a gap
     would otherwise fold a multi-day move into a single "daily" return and inflate
-    volatility), and PREV_CLOSE is adjusted by NSE for corporate actions such as splits.
+    volatility). NSE does not adjust PREV_CLOSE for splits / bonuses; the pipeline scales prices with
+    corporate_actions.adjust_for_corporate_actions() before they reach this function.
     If PREV_CLOSE is unavailable, falls back to row-to-row close changes.
 
     Parameters:
@@ -120,7 +121,7 @@ def compute_atr(stock_df: pd.DataFrame, period: int = STOP_LOSS_ATR_PERIOD) -> O
     |Low - PrevClose|), in price units.
 
     PrevClose is the exchange's PREV_CLOSE (a true one-session reference even when sessions
-    are missing locally, and adjusted for corporate actions); falls back to the prior row's
+    are missing locally; split/bonus-adjusted upstream by corporate_actions); falls back to the prior row's
     close when the column is absent.
 
     Returns:

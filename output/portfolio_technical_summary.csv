@@ -21,10 +21,10 @@ APLAPOLLO,Capital Goods,2214.7,57.13,28.58,Bullish (Uptrend),25.62,2107.6,2235.2
 APARINDS,Capital Goods,17776.0,53.73,28.73,Bullish (Uptrend),12.92,16199.0,18132.0
 ASHOKLEY,Capital Goods,159.08,40.54,20.63,Bearish (Downtrend),2.82,158.59,162.0
 ASTRAMICRO,Capital Goods,1622.4,44.8,16.5,Bearish (Downtrend),-4.35,1610.0,1694.0
-ASTRAL,Capital Goods,1399.0,39.65,21.86,Bearish (Downtrend),3.99,1397.0,1428.0
-BEML,Capital Goods,2036.5,53.04,25.75,Bullish (Uptrend),20.87,1972.5,2037.1
+ASTRAL,Capital Goods,1399.0,39.65,21.86,Bearish (Downtrend),3.99,1397.0,1415.2
+BEML,Capital Goods,2036.5,53.04,25.75,Bullish (Uptrend),20.87,2033.0,2037.1
 BDL,Capital Goods,1140.0,32.13,26.61,Bearish (Downtrend),-12.89,1131.2,1313.2
-BEL,Capital Goods,393.55,43.21,13.8,Bearish (Downtrend),-2.66,392.45,409.0
+BEL,Capital Goods,393.55,43.21,13.8,Bearish (Downtrend),-2.66,389.55,410.7
 BHEL,Capital Goods,418.95,47.68,19.37,Bearish (Downtrend),2.98,408.15,420.95
 CGPOWER,Capital Goods,886.0,48.85,13.5,Bearish (Downtrend),-5.62,883.05,886.8
 CARBORUNIV,Capital Goods,1278.5,69.39,29.12,Bullish (Uptrend),8.99,1068.5,1306.9
@@ -55,7 +55,7 @@ ENRIN,Capital Goods,3313.0,55.9,14.94,Bullish (Uptrend),-5.83,3265.0,3328.6
 SIEMENS,Capital Goods,3877.0,48.13,15.94,Bearish (Downtrend),10.23,3875.3,3885.0
 SUPREMEIND,Capital Goods,3550.0,53.7,15.85,Bullish (Uptrend),12.87,3547.2,3568.0
 SUZLON,Capital Goods,40.8,24.42,39.21,Bearish (Downtrend),-26.96,40.55,43.54
-TDPOWERSYS,Capital Goods,751.55,39.62,28.42,Bearish (Downtrend),-37.32,719.0,767.95
+TDPOWERSYS,Capital Goods,751.55,53.0,28.54,Bullish (Uptrend),23.63,717.2,765.0
 TMCV,Capital Goods,441.5,46.96,17.41,Bullish (Uptrend),6.07,437.5,446.8
 THERMAX,Capital Goods,3447.2,28.14,53.17,Bearish (Downtrend),-31.01,3445.1,3586.0
 TIMKEN,Capital Goods,3206.1,50.69,14.09,Bullish (Uptrend),-6.43,3205.0,3291.4
@@ -89,4 +89,4 @@ RTNPOWER,Power,7.0,28.67,25.64,Bearish (Downtrend),-20.58,6.95,8.13
 RPOWER,Power,20.57,30.48,12.81,Bearish (Downtrend),-13.06,20.51,22.9
 SJVN,Power,61.76,28.22,25.44,Bearish (Downtrend),-12.25,61.21,67.51
 TATAPOWER,Power,367.5,49.53,22.8,Bullish (Uptrend),-3.19,365.15,372.35
-TORNTPOWER,Power,1254.6,43.15,19.66,Bearish (Downtrend),-9.8,1243.8,1268.4
+TORNTPOWER,Power,1254.6,43.15,19.66,Bearish (Downtrend),-9.8,1243.8,1255.9

@@ -84,3 +84,10 @@ def test_price_history_is_one_window_without_duplicates():
     ohlcv = pd.read_csv(HISTORICAL_OHLCV_CSV, usecols=["SYMBOL", "DATE1"])
     assert not ohlcv.duplicated().any()
     assert ohlcv.groupby("SYMBOL")["DATE1"].max().nunique() == 1  # every stock ends on the same session
+
+
+def test_committed_price_history_has_no_unexplained_jumps():
+    """Splits / bonuses / demergers are adjusted: no one-day move above 30% remains unexplained."""
+    from corporate_actions import unexplained_jumps
+    ohlcv = pd.read_csv(HISTORICAL_OHLCV_CSV, usecols=["SYMBOL", "DATE1", "PREV_CLOSE", "CLOSE_PRICE"])
+    assert unexplained_jumps(ohlcv).empty

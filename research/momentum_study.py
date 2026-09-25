@@ -4,7 +4,8 @@ relative performance for our Cement / Capital Goods / Power universe?
 
 PRE-REGISTERED DESIGN (fixed before any results were seen, to avoid mining the data for patterns)
   Universe   The current sector universes (config.PORTFOLIO_SYMBOLS), prices from NSE Bhavcopy.
-  Prices     Split/bonus-adjusted by chaining the exchange's CLOSE / PREV_CLOSE daily returns.
+  Prices     Split / bonus / demerger-adjusted with NSE's corporate-action records
+             (corporate_actions.py), then chained CLOSE / PREV_CLOSE daily returns.
   Benchmark  Nifty 500 official daily closes (price index).
   Target     Forward relative strength: stock return minus Nifty 500 return over the next
              63 sessions (about 3 months, the mandate), in percentage points.
@@ -64,6 +65,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from config import PORTFOLIO_SYMBOLS, sector_of  # noqa: E402
+from corporate_actions import adjust_for_corporate_actions  # noqa: E402
 from fetch_data import NSEBhavcopyFetcher  # noqa: E402
 from indicators import compute_adx, compute_rsi  # noqa: E402
 
@@ -102,7 +104,11 @@ def adjusted_panels(raw: pd.DataFrame, dates: pd.DatetimeIndex):
         lows[sym] = pd.Series(g["LOW_PRICE"].values * factor, index=idx)
         deliv[sym] = pd.Series(pd.to_numeric(g["DELIV_PER"], errors="coerce").values, index=idx)
         turnover[sym] = pd.Series(pd.to_numeric(g["TURNOVER_LACS"], errors="coerce").values, index=idx)
-    to_panel = lambda d: pd.DataFrame(d).reindex(dates)  # noqa: E731
+    # A single missing session inside a stock's history (e.g. NSE's archive file for 08-Aug-2022 is
+    # unreadable) is bridged with the previous value so it does not drop the stock from any window
+    # touching that date; the day's price move itself is lost (reported in the results header).
+    to_panel = lambda d: pd.DataFrame(d).reindex(dates).ffill(limit=1).where(  # noqa: E731
+        pd.DataFrame(d).reindex(dates).bfill().notna())
     extra = {"deliv": to_panel(deliv), "turnover": to_panel(turnover)}
     return to_panel(closes), to_panel(highs), to_panel(lows), extra, big_moves
 
@@ -112,7 +118,7 @@ def load_data():
     bench = fetcher.fetch_index_closes(START, END)
     bench["Date"] = pd.to_datetime(bench["Date"])
     bench = bench.drop_duplicates("Date").set_index("Date")["Close"].sort_index()
-    raw = fetcher.fetch_date_range(START, END, PORTFOLIO_SYMBOLS, use_cache=True)
+    raw = adjust_for_corporate_actions(fetcher.fetch_date_range(START, END, PORTFOLIO_SYMBOLS, use_cache=True))
     close, high, low, extra, big_moves = adjusted_panels(raw, bench.index)
     return bench, close, high, low, extra, big_moves
 

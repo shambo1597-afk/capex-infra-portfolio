@@ -144,7 +144,7 @@ Using a 20-day rolling window:
   $$\text{Resistance} = \min(\{H \in \text{Swing Highs} \mid H > P_{\text{current}}\})$$
 
 ### 6. Volatility, Historical Return & ATR Stop-Loss (`stoploss.py`)
-- **Daily returns:** $r_t = \text{Close}_t / \text{PrevClose}_t - 1$ over the trailing 252 sessions, using NSE's `PREV_CLOSE` so every return is a true one-session move even when sessions are missing from the local history (and corporate actions are exchange-adjusted).
+- **Daily returns:** $r_t = \text{Close}_t / \text{PrevClose}_t - 1$ over the trailing 252 sessions, using NSE's `PREV_CLOSE` so every return is a true one-session move even when sessions are missing from the local history. NSE does **not** adjust Bhavcopy prices for splits, bonuses or demergers (a 1-for-10 split shows as a -90% day), so `corporate_actions.py` scales every earlier price by each action's factor, taken from NSE's corporate-action records, before any indicator is computed.
 - **Volatility:** sample standard deviation $\sigma_d$ of daily returns; annualized as $\sigma_d\sqrt{252}$.
 - **Historical expected return (placeholder):** mean daily return $\times 252$. May be replaced by a CAPM-implied return once portfolio beta is computed.
 - **Weight (placeholder):** equal weighting, $100/N$ per stock ($100/8 = 12.5\%$ for the 8 picks), until formal weight assignment within the capping constraints is completed.
@@ -185,6 +185,8 @@ IAPFDOF/
 │   ├── test_pipeline.py          # Integration tests for Bhavcopy parsing, aliases, benchmarks
 │   ├── test_rrg.py               # RS-Momentum, RRG quadrants, DI-gap and OPM-exception flags
 │   ├── test_output_integrity.py  # Committed outputs cover the current universe and agree with each other
+│   ├── test_corporate_actions.py # Split / bonus / demerger parsing and price adjustment
+│   ├── test_refresh.py           # One-click refresh: steps, progress, stalled and failed states
 │   ├── test_stoploss.py          # Unit tests for volatility, ATR and the trailing ATR stop-loss
 │   └── test_tri_staleness.py     # Unit tests for the TRI CSV staleness check
 ├── config.py                     # Universe definitions, URLs, headers, symbol alias mapping
@@ -193,6 +195,8 @@ IAPFDOF/
 ├── indicators.py                 # Pure Pandas/NumPy technical indicator engine
 ├── analysis.py                   # Portfolio evaluator, table formatter, CSV exporter
 ├── stoploss.py                   # Volatility, historical return, ATR and stop-loss calculations
+├── corporate_actions.py          # Split / bonus / demerger price adjustment from NSE corporate-action records
+├── research/momentum_study.py    # Pre-registered 2020-2026 study: which signals predict the next 3 months
 ├── sector_screen.py              # Technical-first, then fundamental, screen of official sector indices
 ├── rrg.py                        # Relative Rotation Graph quadrants and plots
 ├── main.py                       # CLI entry point orchestrating the end-to-end pipeline
@@ -398,7 +402,7 @@ Run the full automated unit test suite with `pytest`:
 pytest tests/ -v
 ```
 
-The 199 tests cover, among other things:
+The 215 tests cover, among other things:
 - Exact convergence of Wilder's smoothing against recursive mathematical definitions.
 - Boundary conditions for RSI ($RSI = 100$ in monotonic gains, $RSI = 0$ in monotonic losses).
 - Directional movement calculations and trend indicators for ADX.

@@ -47,6 +47,7 @@ from config import (
     SUMMARY_OUTPUT_CSV,
     TECHNICAL_RS_LOOKBACK_DAYS,
 )
+from corporate_actions import adjust_for_corporate_actions
 from fetch_data import (
     NSEBhavcopyFetcher,
     fetch_benchmark_nifty500,
@@ -211,6 +212,9 @@ def run_pipeline() -> int:
             target_symbols=PORTFOLIO_SYMBOLS,
             use_cache=not args.force_refresh
         )
+        # Bhavcopy prices are not adjusted for splits / bonuses / demergers: scale earlier prices
+        # so returns, RS, volatility, ATR and ADX are continuous across ex-dates
+        stock_df = adjust_for_corporate_actions(stock_df)
 
         if not stock_df.empty:
             # Save processed data for rapid access and pipeline persistence
