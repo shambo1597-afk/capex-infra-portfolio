@@ -320,7 +320,7 @@ def generate_portfolio_risk_summary(
     if symbols is None:
         symbols = LOCKED_PORTFOLIO_SYMBOLS
 
-    # PLACEHOLDER: equal weighting across the locked stocks (100 / N, e.g. 100 / 9 = 11.11% for the 9 picks). To be
+    # PLACEHOLDER: equal weighting across the locked stocks (100 / N, e.g. 100 / 8 = 12.5% for the 8 picks). To be
     # replaced once formal weight assignment, respecting the project's minimum and maximum
     # weight-capping constraints, is completed.
     equal_weight_pct = round(100.0 / len(symbols), 2) if symbols else None

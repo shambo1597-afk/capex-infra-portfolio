@@ -171,5 +171,5 @@ class TestPortfolioRiskSummary:
     def test_locked_portfolio_is_equal_weighted(self):
         risk = generate_portfolio_risk_summary(pd.DataFrame(), pd.DataFrame(), output_csv_path=None)
         assert risk["symbol"].tolist() == LOCKED_PORTFOLIO_SYMBOLS
-        assert (risk["weight_pct"] == round(100 / len(LOCKED_PORTFOLIO_SYMBOLS), 2)).all()  # 11.11% for 9
+        assert (risk["weight_pct"] == round(100 / len(LOCKED_PORTFOLIO_SYMBOLS), 2)).all()  # 12.5% for 8
         assert (risk["stop_loss_method"] == "unavailable").all()  # no data: no stop, no crash

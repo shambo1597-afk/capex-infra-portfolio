@@ -67,14 +67,16 @@ def sector_of(symbol: str) -> str:
 
 # -----------------------------------------------------------------------------
 # LOCKED PORTFOLIO
-# The final picks: each passed the technical screen (RS vs Nifty 500 > +2 pp and Bullish
-# trend) and the sector fundamental safety screen (see sector_screen.py and the
-# output/*_full_review_table.csv files). Names and sectors come from the constituent files.
+# The final 8 picks, chosen from the technical and fundamental screens (sector_screen.py,
+# output/*_full_review_table.csv) and the RRG analysis (rrg.py). Not every pick passes every
+# screen: JKCEMENT and TATAPOWER have RS vs Nifty 500 below +2 pp, and APLAPOLLO fails only
+# the OPM criterion (flagged high-turnover, held after manual review). The dashboard lists
+# these exceptions from the review tables. Names and sectors come from the constituent files.
 # -----------------------------------------------------------------------------
 
 LOCKED_PORTFOLIO_SYMBOLS = [
-    "JKCEMENT", "JKLAKSHMI",                                       # Cement
-    "VOLTAMP", "FINCABLES", "ELGIEQUIP", "APARINDS", "WELCORP",    # Capital Goods
+    "JKCEMENT",                                                    # Cement
+    "VOLTAMP", "FINCABLES", "APARINDS", "WELCORP", "APLAPOLLO",    # Capital Goods
     "ACMESOLAR", "TATAPOWER",                                      # Power
 ]
 

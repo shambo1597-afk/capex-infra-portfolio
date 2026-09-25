@@ -77,13 +77,17 @@ A production-grade, mathematically transparent data pipeline and quantitative sc
 
 **Universes.** The three sector universes are the official Nifty sector index constituent files in `data/index_constituents/` (niftyindices.com, downloaded 24-Sep-2026): Nifty Cement (16), Nifty Capital Goods (50) and Nifty Power (21), 87 stocks in total. `config.py` reads them at import time, so the universe lists, each symbol's sector and each company's name all come from these files; nothing is hand-typed.
 
-**Locked portfolio (9 stocks, `config.LOCKED_PORTFOLIO`).** Each pick passed the technical screen (RS vs Nifty 500 > +2 pp and a Bullish trend) and its sector's fundamental safety screen (see Sector Screen and `output/*_full_review_table.csv`).
+**Locked portfolio (8 stocks, `config.LOCKED_PORTFOLIO`).** Chosen from the technical and fundamental screens (`output/*_full_review_table.csv`) and the Relative Rotation Graph analysis (`rrg.py`).
 
 | Sector | Stocks | Symbols |
 | :--- | :---: | :--- |
-| **Cement** | 2 | `JKCEMENT`, `JKLAKSHMI` |
-| **Capital Goods** | 5 | `VOLTAMP`, `FINCABLES`, `ELGIEQUIP`, `APARINDS`, `WELCORP` |
+| **Cement** | 1 | `JKCEMENT` |
+| **Capital Goods** | 5 | `VOLTAMP`, `FINCABLES`, `APARINDS`, `WELCORP`, `APLAPOLLO` |
 | **Power** | 2 | `ACMESOLAR`, `TATAPOWER` |
+
+Screen exceptions (shown on the dashboard, generated from the review tables): `JKCEMENT` and `TATAPOWER` have RS vs Nifty 500 below the +2 pp technical margin; `APLAPOLLO` fails only the Capital Goods OPM criterion (7.98% vs > 8%) and is held after a manual business-model review, as flagged by `high_turnover_business_flag`.
+
+**Conviction tier** (dashboard badge, `rrg.conviction_tier`): **High** = LEADING vs both the Nifty 500 and the sector average; **Moderate** = LEADING in one view only, or IMPROVING in either; **Low (sector-coverage hold)** = WEAKENING or LAGGING in both views.
 
 `config.LOCKED_PORTFOLIO` is the single definition used by the pipeline's risk summary, the dashboard, and `sector_screen.py` (`--locked-check`, and the exclusion list for `--tenth-sweep`).
 
@@ -143,7 +147,7 @@ Using a 20-day rolling window:
 - **Daily returns:** $r_t = \text{Close}_t / \text{PrevClose}_t - 1$ over the trailing 252 sessions, using NSE's `PREV_CLOSE` so every return is a true one-session move even when sessions are missing from the local history (and corporate actions are exchange-adjusted).
 - **Volatility:** sample standard deviation $\sigma_d$ of daily returns; annualized as $\sigma_d\sqrt{252}$.
 - **Historical expected return (placeholder):** mean daily return $\times 252$. May be replaced by a CAPM-implied return once portfolio beta is computed.
-- **Weight (placeholder):** equal weighting, $100/N$ per stock ($100/9 = 11.11\%$ for the 9 picks), until formal weight assignment within the capping constraints is completed.
+- **Weight (placeholder):** equal weighting, $100/N$ per stock ($100/8 = 12.5\%$ for the 8 picks), until formal weight assignment within the capping constraints is completed.
 - **ATR:** $\text{TR}_t = \max(H_t - L_t,\ |H_t - \text{PrevClose}_t|,\ |L_t - \text{PrevClose}_t|)$, Wilder-smoothed over 14 sessions.
 - **Stop-loss (3-month mandate):** sized for about one month and trailed at monthly reviews, rather than sized for the whole quarter. A 63-session volatility stop would sit roughly 19-41% below price for these stocks, a bigger loss than a 3-month tactical trade is expected to earn.
   1. *Base stop:* $P - 3 \times \text{ATR}_{14}$. Three ATRs is close to a one-month, one-standard-deviation move (JKCEMENT: 3 ATR = 8.5% vs $\sigma_{annual}\sqrt{21/252}$ = 9.4%), so the stop sits just outside ordinary noise.
@@ -235,9 +239,9 @@ streamlit run app.py
 The web dashboard loads instantly from the existing CSV outputs already in the repository (`output/portfolio_technical_summary.csv` and `output/portfolio_historical_ohlcv.csv`) without requiring network re-fetching.
 
 ### Dashboard Architecture (5 Tabs)
-1. **Portfolio Overview:** Dense, institutional summary metrics and sector-grouped constituent tables for the locked portfolio (`Cement`, `Capital Goods`, `Power`); counts and sector breakdown are read from `config.LOCKED_PORTFOLIO`.
+1. **Portfolio Overview:** the 8 locked stocks grouped by sector, one row each with the RRG conviction badge and every field the brief requires: volatility, expected return (historical average, placeholder pending CAPM), weight (placeholder pending final weight assignment), stop-loss with its method, ADX, RS vs Nifty 500, RSI and support/resistance; followed by the screen exceptions.
 2. **Fundamentals:** Fundamentals of the locked picks (Market Cap, Price, ROCE, 3-Yr Avg ROCE, ROE, Debt/Equity, Operating Cash Flow, OPM, Interest Coverage, Pledged %, 3-Yr Sales and Profit Growth) plus each sector's safety-screen thresholds, read from `config.SECTOR_SCREENS`, scraped directly from Screener.in company pages by `fundamentals.py` and cached under `data/fundamentals_cache/`.
-3. **Technicals:** Full technical summary table with subtle green/red trend direction tinting, a separate **Risk, Sizing & Stop-Loss** section (volatility, placeholder expected return and weight, ATR, stop-loss and its method), and an interactive 1-year OHLCV line chart with horizontal Support and Resistance reference levels.
+3. **Technicals:** technical table for the locked stocks (RSI, ADX, trend, DI gap, RS, both RRG quadrants, conviction tier, support/resistance), the embedded RRG plots (combined vs Nifty 500, and a per-sector selector), a separate **Risk, Sizing & Stop-Loss** section (volatility, placeholder expected return and weight, ATR, stop-loss and its method), and an interactive 1-year OHLCV line chart with horizontal Support and Resistance reference levels.
 4. **Risk & Hedging:** *(Module in Progress)* Beta regression, explained/unexplained risk decomposition, and hedge ratio analysis.
 5. **Performance:** *(Module in Progress)* Sharpe ratio, Treynor ratio, XIRR, and Capital Market Line (scheduled for 28th September snapshot).
 
@@ -376,7 +380,7 @@ It also saves `output/portfolio_risk_summary.csv`, one row per locked portfolio 
 | `symbol`, `sector`, `current_price` | String / Float (INR) | As above. |
 | `annualized_volatility_pct` | Float (%) | Sample std. dev. of daily returns x sqrt(252). |
 | `historical_expected_return_pct` | Float (%) | **Placeholder:** mean daily return x 252 (may become CAPM-implied). |
-| `weight_pct` | Float (%) | **Placeholder:** equal weight (100/N; 11.11% for 9 stocks) pending formal weight assignment. |
+| `weight_pct` | Float (%) | **Placeholder:** equal weight (100/N; 12.5% for 8 stocks) pending formal weight assignment. |
 | `atr_14`, `atr_pct` | Float (INR / %) | 14-session Wilder ATR, in rupees and as % of price. |
 | `stop_loss_price` | Float (INR) | Price - 3 ATR, or just below a support level up to 1 ATR beyond that; trailed across reviews. |
 | `stop_loss_pct_below_current` | Float (%) | Distance of the stop below the current price. |
@@ -391,7 +395,7 @@ Run the full automated unit test suite with `pytest`:
 pytest tests/ -v
 ```
 
-The 157 tests cover, among other things:
+The 169 tests cover, among other things:
 - Exact convergence of Wilder's smoothing against recursive mathematical definitions.
 - Boundary conditions for RSI ($RSI = 100$ in monotonic gains, $RSI = 0$ in monotonic losses).
 - Directional movement calculations and trend indicators for ADX.

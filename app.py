@@ -22,6 +22,7 @@ from config import (
     HISTORICAL_OHLCV_CSV,
     LOCKED_PORTFOLIO,
     LOCKED_PORTFOLIO_SYMBOLS,
+    OUTPUT_DIR,
     SECTOR_SCREENS,
     RISK_SUMMARY_OUTPUT_CSV,
     STOP_LOSS_ATR_MULTIPLE,
@@ -30,6 +31,8 @@ from config import (
 )
 from fetch_data import TRI_REDOWNLOAD_INSTRUCTIONS, TriStaleness, assess_tri_staleness, load_benchmark_tri
 from fundamentals import get_fundamentals_summary
+from rrg import CONVICTION_HIGH, CONVICTION_LOW, CONVICTION_MODERATE, conviction_tier
+from sector_screen import review_table_path
 
 # -----------------------------------------------------------------------------
 # PAGE CONFIGURATION & THEME STYLING
@@ -112,6 +115,43 @@ st.markdown(
         border: 1px solid rgba(5, 150, 105, 0.25);
     }
     
+    /* Conviction tier badges (RRG): colour plus a text label, never colour alone */
+    .tier {
+        display: inline-block;
+        padding: 0.15rem 0.55rem;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        white-space: nowrap;
+        border: 1px solid transparent;
+    }
+    .tier-high { background: rgba(22, 163, 74, 0.14); color: #166534; border-color: rgba(22, 163, 74, 0.35); }
+    .tier-moderate { background: rgba(217, 119, 6, 0.14); color: #92400E; border-color: rgba(217, 119, 6, 0.35); }
+    .tier-low { background: rgba(220, 38, 38, 0.12); color: #991B1B; border-color: rgba(220, 38, 38, 0.35); }
+    .tier-none { background: rgba(128, 128, 128, 0.12); color: inherit; }
+    @media (prefers-color-scheme: dark) {
+        .tier-high { color: #86EFAC; }
+        .tier-moderate { color: #FCD34D; }
+        .tier-low { color: #FCA5A5; }
+    }
+
+    /* Per-stock portfolio table (one row per stock, scrolls sideways on narrow screens) */
+    .pf-wrap { overflow-x: auto; margin: 0.3rem 0 0.6rem 0; }
+    .pf-table { border-collapse: collapse; width: 100%; font-size: 0.8rem; }
+    .pf-table th {
+        text-align: right; font-weight: 600; font-size: 0.7rem; color: #64748B;
+        padding: 0.35rem 0.5rem; border-bottom: 1px solid rgba(128, 128, 128, 0.35);
+        vertical-align: bottom; line-height: 1.25;
+    }
+    .pf-table td {
+        text-align: right; padding: 0.45rem 0.5rem; white-space: nowrap;
+        border-bottom: 1px solid rgba(128, 128, 128, 0.15); font-variant-numeric: tabular-nums;
+    }
+    .pf-table th:first-child, .pf-table td:first-child,
+    .pf-table th:nth-child(2), .pf-table td:nth-child(2) { text-align: left; }
+    .pf-table .sub { display: block; font-size: 0.68rem; color: #94A3B8; font-weight: 400; }
+    .pf-table .ph { color: #2563EB; font-weight: 600; }
+
     /* Caveat Callout Box */
     .caveat-box {
         background-color: rgba(245, 158, 11, 0.08);
@@ -261,6 +301,29 @@ def load_risk_summary(file_mtime: float) -> pd.DataFrame:
     return pd.read_csv(risk_path)
 
 
+RRG_COLUMNS = ["rs_momentum_vs_nifty500", "rrg_quadrant_vs_nifty500", "rs_score_vs_sector_avg",
+               "rs_momentum_vs_sector", "rrg_quadrant_vs_sector", "di_gap", "thin_trend_flag",
+               "fundamentals_failed", "high_turnover_business_flag", "technically_attractive"]
+
+
+@st.cache_data(show_spinner=False)
+def load_rrg_data(file_mtimes: tuple) -> pd.DataFrame:
+    """
+    RRG quadrants (vs Nifty 500 and vs sector average), DI gap and fundamental-screen failures
+    for the locked stocks, read from the three per-sector review tables, plus the conviction
+    tier (rrg.conviction_tier). file_mtimes is only a cache key (see _file_mtime).
+    """
+    frames = [pd.read_csv(review_table_path(sector)) for sector in SECTOR_SCREENS
+              if review_table_path(sector).exists()]
+    if not frames:
+        return pd.DataFrame(columns=["symbol", *RRG_COLUMNS, "conviction_tier"])
+    df = pd.concat(frames, ignore_index=True)
+    df = df[df["symbol"].isin(LOCKED_PORTFOLIO_SYMBOLS)][["symbol", *RRG_COLUMNS]].copy()
+    df["conviction_tier"] = [conviction_tier(a, b) for a, b in
+                             zip(df["rrg_quadrant_vs_nifty500"], df["rrg_quadrant_vs_sector"])]
+    return df.reset_index(drop=True)
+
+
 @st.cache_data(show_spinner=False)
 def load_tri_benchmark(file_mtime: float) -> pd.DataFrame:
     """
@@ -309,6 +372,61 @@ def load_fundamentals_summary(force_refresh: bool = False) -> pd.DataFrame:
 
 
 # -----------------------------------------------------------------------------
+# PORTFOLIO TABLE RENDERING
+# -----------------------------------------------------------------------------
+
+TIER_CLASSES = {CONVICTION_HIGH: "tier-high", CONVICTION_MODERATE: "tier-moderate", CONVICTION_LOW: "tier-low"}
+TIER_LABELS = {CONVICTION_HIGH: "High conviction", CONVICTION_MODERATE: "Moderate conviction",
+               CONVICTION_LOW: "Low: sector-coverage hold"}
+STOP_METHOD_LABELS = {"atr": f"{STOP_LOSS_ATR_MULTIPLE:g} x ATR", "support": "Below support",
+                      "trailed": "Trailed (prev. stop)", "breached": "BREACHED"}
+
+
+def tier_badge(tier) -> str:
+    if tier is None or pd.isna(tier):
+        return '<span class="tier tier-none">Unclassified</span>'
+    return f'<span class="tier {TIER_CLASSES[tier]}">{TIER_LABELS[tier]}</span>'
+
+
+def _fmt(value, spec: str, prefix: str = "", suffix: str = "") -> str:
+    return "—" if value is None or pd.isna(value) else f"{prefix}{value:{spec}}{suffix}"
+
+
+def portfolio_table_html(df: pd.DataFrame) -> str:
+    """One row per stock: conviction tier plus the eight fields the brief requires."""
+    header = (
+        "<tr><th>Stock</th><th>Conviction (RRG)</th><th>Price (₹)</th>"
+        "<th>Volatility<span class='sub'>annualised</span></th>"
+        "<th>Expected return<span class='sub ph'>Historical average (placeholder pending CAPM)</span></th>"
+        "<th>Weight<span class='sub ph'>Placeholder pending final weight assignment</span></th>"
+        "<th>Stop-loss (₹)<span class='sub'>% below · method</span></th>"
+        "<th>ADX (14)</th><th>RS vs Nifty 500<span class='sub'>63 sessions</span></th><th>RSI (14)</th>"
+        "<th>Support / Resistance (₹)</th></tr>"
+    )
+    rows = []
+    for _, r in df.iterrows():
+        resistance = "ATH / blue sky" if pd.isna(r.get("nearest_resistance")) else _fmt(r["nearest_resistance"], ",.2f")
+        method = STOP_METHOD_LABELS.get(r.get("stop_loss_method"), "Unavailable")
+        rows.append(
+            "<tr>"
+            f"<td><strong>{r['symbol']}</strong><span class='sub'>{r['display_name']}</span></td>"
+            f"<td>{tier_badge(r.get('conviction_tier'))}</td>"
+            f"<td>{_fmt(r['current_price'], ',.2f')}</td>"
+            f"<td>{_fmt(r.get('annualized_volatility_pct'), '.2f', suffix='%')}</td>"
+            f"<td class='ph'>{_fmt(r.get('historical_expected_return_pct'), '+.2f', suffix='%')}</td>"
+            f"<td class='ph'>{_fmt(r.get('weight_pct'), '.2f', suffix='%')}</td>"
+            f"<td>{_fmt(r.get('stop_loss_price'), ',.2f')}"
+            f"<span class='sub'>{_fmt(r.get('stop_loss_pct_below_current'), '.2f', suffix='%')} · {method}</span></td>"
+            f"<td>{_fmt(r['latest_adx'], '.2f')}</td>"
+            f"<td>{_fmt(r['rs_score_vs_nifty500'], '+.2f', suffix=' pp')}</td>"
+            f"<td>{_fmt(r['latest_rsi'], '.2f')}</td>"
+            f"<td>{_fmt(r['nearest_support'], ',.2f')} / {resistance}</td>"
+            "</tr>"
+        )
+    return f"<div class='pf-wrap'><table class='pf-table'><thead>{header}</thead><tbody>{''.join(rows)}</tbody></table></div>"
+
+
+# -----------------------------------------------------------------------------
 # APPLICATION HEADER
 # -----------------------------------------------------------------------------
 
@@ -330,6 +448,15 @@ summary_df = load_summary_data(_file_mtime(SUMMARY_OUTPUT_CSV))
 ohlcv_df = load_historical_ohlcv(_file_mtime(HISTORICAL_OHLCV_CSV))
 tri_df = load_tri_benchmark(_file_mtime(DEFAULT_TRI_CSV_PATH))
 risk_df = load_risk_summary(_file_mtime(RISK_SUMMARY_OUTPUT_CSV))
+rrg_df = load_rrg_data(tuple(_file_mtime(review_table_path(sector)) for sector in SECTOR_SCREENS))
+
+# One row per locked stock: technicals + risk/sizing/stop-loss + RRG, in LOCKED_PORTFOLIO order
+portfolio_df = summary_df.copy()
+if not risk_df.empty:
+    portfolio_df = portfolio_df.merge(
+        risk_df.drop(columns=["sector", "current_price"], errors="ignore"), on="symbol", how="left")
+portfolio_df = portfolio_df.merge(rrg_df, on="symbol", how="left")
+missing_symbols = sorted(set(LOCKED_PORTFOLIO_SYMBOLS) - set(portfolio_df["symbol"]))
 
 # TRI must cover the period the last pipeline run analysed (its latest price date)
 _last_price_date = ohlcv_df["DATE1"].max() if not ohlcv_df.empty else pd.NaT
@@ -403,51 +530,67 @@ with tab_overview:
 
     st.write("")
 
-    # 2. Sector-Grouped Table Display
+    # 2. Conviction tier summary
+    tier_counts = portfolio_df["conviction_tier"].value_counts()
+    st.markdown(
+        " &nbsp; ".join(
+            f'{tier_badge(t)} <span style="font-size:0.8rem;">{tier_counts.get(t, 0)} stock(s)</span>'
+            for t in (CONVICTION_HIGH, CONVICTION_MODERATE, CONVICTION_LOW)
+        ),
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "Conviction tier from the Relative Rotation Graph: **High** = LEADING vs both the Nifty 500 and the "
+        "equal-weighted sector average; **Moderate** = LEADING in one view only, or IMPROVING in either; "
+        "**Low (sector-coverage hold)** = WEAKENING or LAGGING in both views."
+    )
+    if missing_symbols:
+        st.warning(f"No pipeline data for {', '.join(missing_symbols)}. Run `python main.py` to refresh the outputs.")
+
+    # 3. Sector-grouped, one row per stock with every field the brief requires
     st.markdown("### Portfolio Constituents by Sector")
     st.caption(
-        "Current market prices and nearest technical support/resistance levels derived from authentic "
-        "daily NSE Bhavcopy exchange files. Weights and P&L are deliberately omitted pending capital allocation."
+        "Prices, technicals and risk figures from daily NSE Bhavcopy files (last pipeline run). "
+        f"Stop-loss: price - {STOP_LOSS_ATR_MULTIPLE:g} x ATR({STOP_LOSS_ATR_PERIOD}), moved just below a support level "
+        "up to 1 ATR beyond it; the method column shows which applied. Fields marked in blue are placeholders."
     )
 
-    sectors = list(SECTOR_SCREENS)
     sector_badge_classes = {
         "Cement": "badge-cement",
         "Capital Goods": "badge-capital-goods",
         "Power": "badge-power",
     }
-
-    # Display clean sector cards / sections
-    for sec in sectors:
-        sec_df = summary_df[summary_df["sector"] == sec].copy()
-        badge_cls = sector_badge_classes.get(sec, "badge-cement")
-
+    for sec in SECTOR_SCREENS:
+        sec_df = portfolio_df[portfolio_df["sector"] == sec]
+        if sec_df.empty:
+            continue
         st.markdown(
             f"""
-            <div style="margin-top: 1.2rem; margin-bottom: 0.4rem;">
-                <span class="{badge_cls}">{sec.upper()} SECTOR ({len(sec_df)} STOCKS)</span>
+            <div style="margin-top: 1.2rem; margin-bottom: 0.2rem;">
+                <span class="{sector_badge_classes.get(sec, 'badge-cement')}">{sec.upper()} ({len(sec_df)} STOCK{'S' if len(sec_df) != 1 else ''})</span>
             </div>
             """,
             unsafe_allow_html=True,
         )
+        st.markdown(portfolio_table_html(sec_df), unsafe_allow_html=True)
 
-        # Build clean display table
-        display_sec_df = pd.DataFrame({
-            "Symbol": sec_df["symbol"],
-            "Company Name": sec_df["display_name"],
-            "Sector": sec_df["sector"],
-            "Current Price (₹)": sec_df["current_price"].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) else "—"),
-            "Nearest Support (₹)": sec_df["nearest_support"].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) else "—"),
-            "Nearest Resistance (₹)": sec_df["nearest_resistance"].apply(
-                lambda x: "ATH / Blue Sky" if pd.isna(x) or x is None else f"₹{x:,.2f}"
-            ),
-        })
-
-        st.dataframe(
-            display_sec_df,
-            hide_index=True,
-            width="stretch",
-        )
+    # 4. Screen exceptions: locked stocks that do not pass every screen (from the review tables)
+    exceptions = []
+    for _, r in portfolio_df.iterrows():
+        if r.get("technically_attractive") == False:  # noqa: E712
+            exceptions.append(
+                f"**{r['symbol']}** does not pass the technical screen (RS vs Nifty 500 "
+                f"{r['rs_score_vs_nifty500']:+.2f} pp, needs > +2 pp; trend {str(r['trend_direction']).split(' (')[0]}); "
+                f"conviction tier: {r.get('conviction_tier') or 'Unclassified'}.")
+        failed = r.get("fundamentals_failed")
+        if isinstance(failed, str) and failed.strip():
+            note = (" Flagged by the OPM-exception check (fails only OPM, ROCE above 20%) and held after a "
+                    "manual business-model review." if r.get("high_turnover_business_flag") == True else "")  # noqa: E712
+            exceptions.append(f"**{r['symbol']}** fails the {r['sector']} fundamental screen: {failed}.{note}")
+    if exceptions:
+        st.markdown("#### Screen exceptions")
+        st.caption("Locked stocks that do not pass every screen, stated so the selection can be defended.")
+        st.markdown("\n".join(f"- {e}" for e in exceptions))
 
 
 # =============================================================================
@@ -460,6 +603,23 @@ with tab_fundamentals:
         "and cached locally in data/fundamentals_cache/. Evaluates core financial health, capital productivity, leverage, "
         "and cash flow resilience across the locked portfolio constituents."
     )
+
+    # Locked stocks that do not pass every criterion of their sector's safety screen (review tables)
+    screen_exceptions = portfolio_df[portfolio_df["fundamentals_failed"].notna()
+                                     & (portfolio_df["fundamentals_failed"].astype(str).str.strip() != "")]
+    for _, exc in screen_exceptions.iterrows():
+        reason = (" It is held after a manual business-model review: the OPM-exception check flagged it "
+                  "(fails only OPM, ROCE above 20%), a high-turnover business for which OPM is the wrong yardstick."
+                  if exc.get("high_turnover_business_flag") == True else "")  # noqa: E712
+        st.markdown(
+            f"""
+            <div class="caveat-box">
+                <strong>Screen exception: {exc['symbol']}</strong> fails <em>{exc['fundamentals_failed']}</em>
+                on the {exc['sector']} safety screen.{reason}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     fund_raw_df = load_fundamentals_summary()
 
@@ -502,7 +662,7 @@ with tab_fundamentals:
                     "ROE (%)": f"{row['roe']:.2f}%" if pd.notna(row.get("roe")) else "Data Unavailable",
                     "Debt / Equity": f"{row['debt_to_equity']:.2f}" if pd.notna(row.get("debt_to_equity")) else "Data Unavailable",
                     "Operating Cash Flow (₹ Cr)": f"₹{row['operating_cash_flow']:,.0f} Cr" if pd.notna(row.get("operating_cash_flow")) else "Data Unavailable",
-                    "OPM (%)": f"{row['opm']:.1f}%" if pd.notna(row.get("opm")) else "Data Unavailable",
+                    "OPM (%)": f"{row['opm']:.2f}%" if pd.notna(row.get("opm")) else "Data Unavailable",
                     "Interest Coverage (x)": f"{row['interest_coverage']:.2f}" if pd.notna(row.get("interest_coverage")) else "Data Unavailable",
                     "Pledged (%)": f"{row['pledged_pct']:.2f}%" if pd.notna(row.get("pledged_pct")) else "Data Unavailable",
                     "3-Yr Sales Growth (%)": f"{row['sales_growth_3yr']:+.1f}%" if pd.notna(row.get("sales_growth_3yr")) else "Data Unavailable",
@@ -515,9 +675,10 @@ with tab_fundamentals:
     st.write("")
     st.markdown("#### Fundamental Safety Screen (current-year, per sector)")
     st.caption(
-        "Stocks are screened technically first (RS vs Nifty 500 > +2 pp and a Bullish trend), then must pass "
-        "their sector's fundamental safety screen below. Every threshold is strict; a metric that cannot be "
-        "read counts as a failure. Full per-sector results: output/*_full_review_table.csv."
+        "The universe is screened technically (RS vs Nifty 500 > +2 pp and a Bullish trend) and against its "
+        "sector's fundamental safety screen below. Every threshold is strict; a metric that cannot be read counts "
+        "as a failure. Locked stocks that miss a screen are listed as exceptions on the Portfolio Overview tab. "
+        "Full per-sector results: output/*_full_review_table.csv."
     )
     for f_col, (sec, spec) in zip(st.columns(len(SECTOR_SCREENS)), SECTOR_SCREENS.items()):
         with f_col:
@@ -537,16 +698,21 @@ with tab_technicals:
 
     # 1. Full Technical Summary Table with subtle trend_direction color tinting
     tech_table_df = pd.DataFrame({
-        "Symbol": summary_df["symbol"],
-        "Name": summary_df["display_name"],
-        "Sector": summary_df["sector"],
-        "Current Price (₹)": summary_df["current_price"].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) else "—"),
-        "RSI (14)": summary_df["latest_rsi"].apply(lambda x: f"{x:.2f}" if pd.notna(x) else "—"),
-        "ADX (14)": summary_df["latest_adx"].apply(lambda x: f"{x:.2f}" if pd.notna(x) else "—"),
-        "Trend Direction": summary_df["trend_direction"],
-        "RS Spread vs N500": summary_df["rs_score_vs_nifty500"].apply(lambda x: f"{x:+.2f} pp" if pd.notna(x) else "—"),
-        "Support (₹)": summary_df["nearest_support"].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) else "—"),
-        "Resistance (₹)": summary_df["nearest_resistance"].apply(
+        "Symbol": portfolio_df["symbol"],
+        "Name": portfolio_df["display_name"],
+        "Sector": portfolio_df["sector"],
+        "Current Price (₹)": portfolio_df["current_price"].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) else "—"),
+        "RSI (14)": portfolio_df["latest_rsi"].apply(lambda x: f"{x:.2f}" if pd.notna(x) else "—"),
+        "ADX (14)": portfolio_df["latest_adx"].apply(lambda x: f"{x:.2f}" if pd.notna(x) else "—"),
+        "Trend Direction": portfolio_df["trend_direction"],
+        "DI Gap (+DI − −DI)": portfolio_df["di_gap"].apply(
+            lambda x: "—" if pd.isna(x) else f"{x:+.2f}" + (" (thin)" if abs(x) < 2 else "")),
+        "RS Spread vs N500": portfolio_df["rs_score_vs_nifty500"].apply(lambda x: f"{x:+.2f} pp" if pd.notna(x) else "—"),
+        "RRG vs Nifty 500": portfolio_df["rrg_quadrant_vs_nifty500"].fillna("—"),
+        "RRG vs Sector": portfolio_df["rrg_quadrant_vs_sector"].fillna("—"),
+        "Conviction": portfolio_df["conviction_tier"].fillna("Unclassified"),
+        "Support (₹)": portfolio_df["nearest_support"].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) else "—"),
+        "Resistance (₹)": portfolio_df["nearest_resistance"].apply(
             lambda x: "ATH / Blue Sky" if pd.isna(x) or x is None else f"₹{x:,.2f}"
         ),
     })
@@ -567,6 +733,28 @@ with tab_technicals:
         styled_table = getattr(tech_table_df.style, "applymap")(color_trend, subset=["Trend Direction"])
     st.dataframe(styled_table, hide_index=True, width="stretch")
 
+    # RRG scatter plots (static PNGs written by rrg.py / sector_screen.py --review)
+    st.markdown("#### Relative Rotation Graphs")
+    st.caption(
+        "x = 63-session RS (pp); y = RS-Momentum = RS today minus the same RS 10 sessions earlier (pp). "
+        "Locked stocks are ringed and bold. Regenerate with `python rrg.py --as-of <date>` after a pipeline run."
+    )
+    rrg_left, rrg_right = st.columns(2)
+    with rrg_left:
+        combined_png = OUTPUT_DIR / "rrg_all_vs_nifty500.png"
+        if combined_png.exists():
+            st.image(str(combined_png), caption="All 87 stocks vs Nifty 500", width="stretch")
+        else:
+            st.info("output/rrg_all_vs_nifty500.png not found. Run `python rrg.py --as-of <date>`.")
+    with rrg_right:
+        rrg_sector = st.selectbox("Sector RRG (vs equal-weighted sector average):", list(SECTOR_SCREENS),
+                                  index=1, key="rrg_sector")
+        sector_png = OUTPUT_DIR / f"rrg_{rrg_sector.lower().replace(' ', '_')}_vs_sector.png"
+        if sector_png.exists():
+            st.image(str(sector_png), caption=f"Nifty {rrg_sector} vs sector average", width="stretch")
+        else:
+            st.info(f"{sector_png.name} not found. Run `python rrg.py --as-of <date>`.")
+
     st.write("")
     st.markdown("---")
 
@@ -585,8 +773,8 @@ with tab_technicals:
             f"""
             <span class="placeholder-badge" style="margin-bottom: 0;">Placeholder &mdash; pending finalization</span>
             <span style="font-size: 0.82rem;">
-                <strong>Hist. Expected Return</strong> is a simple historical average (a CAPM-implied return may
-                replace it once portfolio beta is computed). <strong>Weight</strong> is equal weighting
+                <strong>Expected return</strong> is a historical average (placeholder pending CAPM, once portfolio
+                beta is computed). <strong>Weight</strong> is a placeholder pending final weight assignment: equal weighting
                 ({100 / len(LOCKED_PORTFOLIO_SYMBOLS):.2f}% each across {len(LOCKED_PORTFOLIO_SYMBOLS)} stocks)
                 until formal weight assignment within the capping constraints is completed.
             </span>
@@ -597,21 +785,20 @@ with tab_technicals:
         if risk_df.empty:
             st.info("Risk summary not found. Run `python main.py` to generate output/portfolio_risk_summary.csv.")
         else:
-            method_labels = {"atr": f"{STOP_LOSS_ATR_MULTIPLE:g} x ATR", "support": "Below support",
-                             "trailed": "Trailed (previous stop)", "breached": "BREACHED"}
             risk_table_df = pd.DataFrame({
                 "Symbol": risk_df["symbol"],
                 "Sector": risk_df["sector"],
                 "Current Price (₹)": risk_df["current_price"].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) else "—"),
                 "Ann. Volatility (%)": risk_df["annualized_volatility_pct"].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
-                "Hist. Expected Return (%) · Placeholder": risk_df["historical_expected_return_pct"].apply(
-                    lambda x: f"{x:+.2f}%" if pd.notna(x) else "—"),
-                "Weight (%) · Placeholder": risk_df["weight_pct"].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
+                "Expected Return: Historical average (placeholder pending CAPM)": risk_df[
+                    "historical_expected_return_pct"].apply(lambda x: f"{x:+.2f}%" if pd.notna(x) else "—"),
+                "Weight: Placeholder pending final weight assignment": risk_df["weight_pct"].apply(
+                    lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
                 f"ATR({STOP_LOSS_ATR_PERIOD}) (%)": risk_df["atr_pct"].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
                 "Stop-Loss (₹)": risk_df["stop_loss_price"].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) else "—"),
                 "Stop Below Price (%)": risk_df["stop_loss_pct_below_current"].apply(
                     lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
-                "Stop Method": risk_df["stop_loss_method"].map(lambda m: method_labels.get(m, "Unavailable")),
+                "Stop Method": risk_df["stop_loss_method"].map(lambda m: STOP_METHOD_LABELS.get(m, "Unavailable")),
             })
             st.dataframe(risk_table_df, hide_index=True, width="stretch")
 

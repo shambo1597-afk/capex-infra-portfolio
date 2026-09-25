@@ -43,8 +43,8 @@ class TestUniverseConfiguration:
         assert sector_of("NOT_A_SYMBOL") == "Other"
 
     def test_locked_portfolio(self):
-        expected_locked = ["JKCEMENT", "JKLAKSHMI", "VOLTAMP", "FINCABLES", "ELGIEQUIP",
-                           "APARINDS", "WELCORP", "ACMESOLAR", "TATAPOWER"]
+        expected_locked = ["JKCEMENT", "VOLTAMP", "FINCABLES", "APARINDS", "WELCORP",
+                           "APLAPOLLO", "ACMESOLAR", "TATAPOWER"]
         assert LOCKED_PORTFOLIO_SYMBOLS == expected_locked
         assert list(LOCKED_PORTFOLIO) == expected_locked
         # Every pick belongs to one of the three official universes, with name/sector from the files
@@ -52,7 +52,7 @@ class TestUniverseConfiguration:
             assert sym in PORTFOLIO_SYMBOLS
             assert info["sector"] == sector_of(sym) and info["name"] == SYMBOL_NAME[sym]
         sectors = [info["sector"] for info in LOCKED_PORTFOLIO.values()]
-        assert (sectors.count("Cement"), sectors.count("Capital Goods"), sectors.count("Power")) == (2, 5, 2)
+        assert (sectors.count("Cement"), sectors.count("Capital Goods"), sectors.count("Power")) == (1, 5, 2)
 
     def test_sector_screen_picks_are_the_locked_portfolio(self):
         from sector_screen import CURRENT_PICKS

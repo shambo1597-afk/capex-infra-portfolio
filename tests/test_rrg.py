@@ -7,7 +7,19 @@ import pytest
 
 from config import SECTOR_SCREENS
 from indicators import compute_relative_strength, compute_rs_momentum
-from rrg import IMPROVING, LAGGING, LEADING, WEAKENING, classify_quadrant, plot_rrg
+from config import LOCKED_PORTFOLIO_SYMBOLS
+from rrg import (
+    CONVICTION_HIGH,
+    CONVICTION_LOW,
+    CONVICTION_MODERATE,
+    IMPROVING,
+    LAGGING,
+    LEADING,
+    WEAKENING,
+    classify_quadrant,
+    conviction_tier,
+    plot_rrg,
+)
 from sector_screen import add_evaluation_columns, review_table_path
 
 
@@ -136,3 +148,36 @@ def test_plot_rrg_writes_png(tmp_path):
     df["q"] = [classify_quadrant(x, y) for x, y in zip(df["x"], df["y"])]
     out = plot_rrg(df, "x", "y", "q", "Test", tmp_path / "rrg.png", highlight_symbols=["A"])
     assert out.exists() and out.stat().st_size > 10_000
+
+
+class TestConvictionTier:
+    @pytest.mark.parametrize("vs_market, vs_sector, tier", [
+        (LEADING, LEADING, CONVICTION_HIGH),
+        (LEADING, WEAKENING, CONVICTION_MODERATE),     # leading in one view only
+        (WEAKENING, LEADING, CONVICTION_MODERATE),
+        (IMPROVING, LEADING, CONVICTION_MODERATE),
+        (IMPROVING, LAGGING, CONVICTION_MODERATE),     # improving in either view
+        (WEAKENING, IMPROVING, CONVICTION_MODERATE),
+        (WEAKENING, WEAKENING, CONVICTION_LOW),
+        (LAGGING, WEAKENING, CONVICTION_LOW),
+        (LAGGING, LAGGING, CONVICTION_LOW),
+    ])
+    def test_rules(self, vs_market, vs_sector, tier):
+        assert conviction_tier(vs_market, vs_sector) == tier
+
+    def test_every_quadrant_pair_gets_exactly_one_tier(self):
+        quadrants = [LEADING, WEAKENING, LAGGING, IMPROVING]
+        tiers = {conviction_tier(a, b) for a in quadrants for b in quadrants}
+        assert tiers == {CONVICTION_HIGH, CONVICTION_MODERATE, CONVICTION_LOW}
+
+    def test_missing_quadrant(self):
+        assert conviction_tier(None, LEADING) is None and conviction_tier(LEADING, float("nan")) is None
+
+
+def test_every_locked_stock_has_rrg_data_in_the_committed_review_tables():
+    """The dashboard's conviction tiers need both quadrants for each locked stock (incl. APLAPOLLO)."""
+    table = pd.concat([pd.read_csv(review_table_path(s)) for s in SECTOR_SCREENS], ignore_index=True)
+    locked = table[table["symbol"].isin(LOCKED_PORTFOLIO_SYMBOLS)].set_index("symbol")
+    assert sorted(locked.index) == sorted(LOCKED_PORTFOLIO_SYMBOLS)
+    assert locked[["rrg_quadrant_vs_nifty500", "rrg_quadrant_vs_sector"]].notna().all().all()
+    assert (locked["fundamentals_status"] == "OK").all() and (locked["price_sessions"] >= 240).all()
