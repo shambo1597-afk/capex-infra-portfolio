@@ -43,7 +43,9 @@ from config import (
     RISK_SUMMARY_OUTPUT_CSV,
     STOP_LOSS_ATR_MULTIPLE,
     STOP_LOSS_ATR_PERIOD,
+    STOP_LOSS_SUPPORT_BAND_ATR,
     SUMMARY_OUTPUT_CSV,
+    TECHNICAL_RS_LOOKBACK_DAYS,
 )
 from fetch_data import (
     NSEBhavcopyFetcher,
@@ -226,10 +228,10 @@ def run_pipeline() -> int:
     print("\n>>> [Step 3/4] Computing Technical Indicators & Relative Strength...")
     print("     [+] RSI: 14-period Wilder's smoothing (exponential, exact)")
     print("     [+] ADX: 14-period Wilder's method with +DI and -DI directional strength")
-    print("     [+] Relative Strength: 63-day cumulative return spread vs Nifty 500 (pp)")
+    print(f"     [+] Relative Strength: {TECHNICAL_RS_LOOKBACK_DAYS}-day cumulative return spread vs Nifty 500 (pp)")
     print("     [+] Support / Resistance: 20-day rolling swing highs & lows")
     print(f"     [+] Stop-loss: price - {STOP_LOSS_ATR_MULTIPLE:g} x ATR({STOP_LOSS_ATR_PERIOD}), "
-          "moved just below a support level up to 1 ATR beyond it"
+          f"moved just below a support level up to {STOP_LOSS_SUPPORT_BAND_ATR:g} ATR beyond it"
           + (f"; trailed from {args.trail_stops}" if args.trail_stops else ""))
 
     summary_df = generate_portfolio_summary(

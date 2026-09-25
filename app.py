@@ -28,7 +28,13 @@ from config import (
     RISK_SUMMARY_OUTPUT_CSV,
     STOP_LOSS_ATR_MULTIPLE,
     STOP_LOSS_ATR_PERIOD,
+    STOP_LOSS_SUPPORT_BAND_ATR,
     SUMMARY_OUTPUT_CSV,
+    TECHNICAL_RS_LOOKBACK_DAYS,
+    TECHNICAL_RS_MARGIN_PP,
+    DI_GAP_THIN_THRESHOLD,
+    HIGH_TURNOVER_ROCE_MIN,
+    RRG_MOMENTUM_DAYS,
 )
 from fetch_data import TRI_REDOWNLOAD_INSTRUCTIONS, TriStaleness, assess_tri_staleness, load_benchmark_tri
 from fundamentals import get_fundamentals_summary
@@ -401,7 +407,7 @@ def portfolio_table_html(df: pd.DataFrame) -> str:
         "<th>Expected return<span class='sub ph'>Historical average (placeholder pending CAPM)</span></th>"
         "<th>Weight<span class='sub ph'>Placeholder pending final weight assignment</span></th>"
         "<th>Stop-loss (₹)<span class='sub'>% below · method</span></th>"
-        "<th>ADX (14)</th><th>RS vs Nifty 500<span class='sub'>63 sessions</span></th><th>RSI (14)</th>"
+        f"<th>ADX (14)</th><th>RS vs Nifty 500<span class='sub'>{TECHNICAL_RS_LOOKBACK_DAYS} sessions</span></th><th>RSI (14)</th>"
         "<th>Support / Resistance (₹)</th></tr>"
     )
     rows = []
@@ -553,7 +559,8 @@ with tab_overview:
     st.caption(
         "Prices, technicals and risk figures from daily NSE Bhavcopy files (last pipeline run). "
         f"Stop-loss: price - {STOP_LOSS_ATR_MULTIPLE:g} x ATR({STOP_LOSS_ATR_PERIOD}), moved just below a support level "
-        "up to 1 ATR beyond it; the method column shows which applied. Fields marked in blue are placeholders."
+        f"up to {STOP_LOSS_SUPPORT_BAND_ATR:g} ATR beyond it; the method column shows which applied. "
+        "Fields marked in blue are placeholders."
     )
 
     sector_badge_classes = {
@@ -581,11 +588,11 @@ with tab_overview:
         if r.get("technically_attractive") == False:  # noqa: E712
             exceptions.append(
                 f"**{r['symbol']}** does not pass the technical screen (RS vs Nifty 500 "
-                f"{r['rs_score_vs_nifty500']:+.2f} pp, needs > +2 pp; trend {str(r['trend_direction']).split(' (')[0]}); "
+                f"{r['rs_score_vs_nifty500']:+.2f} pp, needs > {TECHNICAL_RS_MARGIN_PP:+g} pp; trend {str(r['trend_direction']).split(' (')[0]}); "
                 f"conviction tier: {r.get('conviction_tier') or 'Unclassified'}.")
         failed = r.get("fundamentals_failed")
         if isinstance(failed, str) and failed.strip():
-            note = (" Flagged by the OPM-exception check (fails only OPM, ROCE above 20%) and held after a "
+            note = (f" Flagged by the OPM-exception check (fails only OPM, ROCE above {HIGH_TURNOVER_ROCE_MIN:g}%) and held after a "
                     "manual business-model review." if r.get("high_turnover_business_flag") == True else "")  # noqa: E712
             exceptions.append(f"**{r['symbol']}** fails the {r['sector']} fundamental screen: {failed}.{note}")
     if exceptions:
@@ -610,7 +617,7 @@ with tab_fundamentals:
                                      & (portfolio_df["fundamentals_failed"].astype(str).str.strip() != "")]
     for _, exc in screen_exceptions.iterrows():
         reason = (" It is held after a manual business-model review: the OPM-exception check flagged it "
-                  "(fails only OPM, ROCE above 20%), a high-turnover business for which OPM is the wrong yardstick."
+                  f"(fails only OPM, ROCE above {HIGH_TURNOVER_ROCE_MIN:g}%), a high-turnover business for which OPM is the wrong yardstick."
                   if exc.get("high_turnover_business_flag") == True else "")  # noqa: E712
         st.markdown(
             f"""
@@ -676,7 +683,7 @@ with tab_fundamentals:
     st.write("")
     st.markdown("#### Fundamental Safety Screen (current-year, per sector)")
     st.caption(
-        "The universe is screened technically (RS vs Nifty 500 > +2 pp and a Bullish trend) and against its "
+        f"The universe is screened technically (RS vs Nifty 500 > {TECHNICAL_RS_MARGIN_PP:+g} pp and a Bullish trend) and against its "
         "sector's fundamental safety screen below. Every threshold is strict; a metric that cannot be read counts "
         "as a failure. Locked stocks that miss a screen are listed as exceptions on the Portfolio Overview tab. "
         "Full per-sector results: output/*_full_review_table.csv."
@@ -694,7 +701,7 @@ with tab_technicals:
     st.caption(
         "Technical indicators computed directly with NumPy/Pandas from official NSE Bhavcopy data. "
         "RSI & ADX use J. Welles Wilder's exact 14-period exponential smoothing. "
-        "RS score measures 63-day cumulative percentage-point alpha over the Nifty 500."
+        f"RS score measures {TECHNICAL_RS_LOOKBACK_DAYS}-day cumulative percentage-point alpha over the Nifty 500."
     )
 
     # 1. Full Technical Summary Table with subtle trend_direction color tinting
@@ -707,7 +714,7 @@ with tab_technicals:
         "ADX (14)": portfolio_df["latest_adx"].apply(lambda x: f"{x:.2f}" if pd.notna(x) else "—"),
         "Trend Direction": portfolio_df["trend_direction"],
         "DI Gap (+DI − −DI)": portfolio_df["di_gap"].apply(
-            lambda x: "—" if pd.isna(x) else f"{x:+.2f}" + (" (thin)" if abs(x) < 2 else "")),
+            lambda x: "—" if pd.isna(x) else f"{x:+.2f}" + (" (thin)" if abs(x) < DI_GAP_THIN_THRESHOLD else "")),
         "RS Spread vs N500": portfolio_df["rs_score_vs_nifty500"].apply(lambda x: f"{x:+.2f} pp" if pd.notna(x) else "—"),
         "RRG vs Nifty 500": portfolio_df["rrg_quadrant_vs_nifty500"].fillna("—"),
         "RRG vs Sector": portfolio_df["rrg_quadrant_vs_sector"].fillna("—"),
@@ -737,7 +744,8 @@ with tab_technicals:
     # RRG scatter plots (static PNGs written by rrg.py / sector_screen.py --review)
     st.markdown("#### Relative Rotation Graphs")
     st.caption(
-        "x = 63-session RS (pp); y = RS-Momentum = RS today minus the same RS 10 sessions earlier (pp). "
+        f"x = {TECHNICAL_RS_LOOKBACK_DAYS}-session RS (pp); y = RS-Momentum = RS today minus the same RS "
+        f"{RRG_MOMENTUM_DAYS} sessions earlier (pp). "
         "Locked stocks are ringed and bold. Regenerate with `python rrg.py --as-of <date>` after a pipeline run."
     )
     rrg_left, rrg_right = st.columns(2)
@@ -767,7 +775,7 @@ with tab_technicals:
             "Risk and position-sizing figures, not momentum signals. Volatility and historical return use "
             "~1 year of daily returns (close vs. the exchange's previous close). Stop-loss = price - "
             f"{STOP_LOSS_ATR_MULTIPLE:g} x ATR({STOP_LOSS_ATR_PERIOD}), about a one-month, one-standard-deviation "
-            "move; if a support level sits up to 1 ATR below that, the stop moves just under the support. "
+            f"move; if a support level sits up to {STOP_LOSS_SUPPORT_BAND_ATR:g} ATR below that, the stop moves just under the support. "
             "For the 3-month holding period the stop is sized for one month and trailed up (never down) at "
             "each monthly review (python main.py --trail-stops <previous risk summary CSV>)."
         )

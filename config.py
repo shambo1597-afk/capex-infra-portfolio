@@ -303,6 +303,9 @@ SECTOR_SCREENS = {
 # is Bullish. ADX is reported (tiebreaker) but not a cutoff.
 TECHNICAL_RS_LOOKBACK_DAYS = 63
 
+# Run-up heuristic window: share of the 63-session RS earned in the last this-many sessions
+RUNUP_RECENT_DAYS = 10
+
 # Minimum RS vs Nifty 500 (percentage points) to count as outperforming. A bare zero threshold is
 # too sensitive to single-day noise: RS is a 63-day cumulative spread, and one new trading day's
 # return alone can shift it meaningfully (moving the window end by one session changed RS by up

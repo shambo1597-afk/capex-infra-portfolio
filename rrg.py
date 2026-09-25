@@ -27,7 +27,13 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import pandas as pd  # noqa: E402
 
-from config import LOCKED_PORTFOLIO_SYMBOLS, OUTPUT_DIR, SECTOR_SCREENS  # noqa: E402
+from config import (  # noqa: E402
+    LOCKED_PORTFOLIO_SYMBOLS,
+    OUTPUT_DIR,
+    RRG_MOMENTUM_DAYS,
+    SECTOR_SCREENS,
+    TECHNICAL_RS_LOOKBACK_DAYS,
+)
 
 logger = logging.getLogger("rrg")
 
@@ -89,7 +95,7 @@ def plot_rrg(
     label_symbols: Optional[Iterable[str]] = None,
     highlight_symbols: Iterable[str] = (),
     x_label: str = "RS (pp)",
-    y_label: str = "RS-Momentum (pp change over 10 sessions)",
+    y_label: str = f"RS-Momentum (pp change over {RRG_MOMENTUM_DAYS} sessions)",
 ) -> Path:
     """
     Scatter one point per stock, coloured and shaped by quadrant. `label_symbols` (default: all)
@@ -230,7 +236,7 @@ def plot_all_rrgs(tables: dict, as_of_label: str = "") -> list:
             f"Nifty {sector}: RRG vs equal-weighted sector average{suffix}",
             OUTPUT_DIR / f"rrg_{_slug(sector)}_vs_sector.png",
             label_symbols=label, highlight_symbols=LOCKED_PORTFOLIO_SYMBOLS,
-            x_label="RS vs sector average (pp, 63 sessions)",
+            x_label=f"RS vs sector average (pp, {TECHNICAL_RS_LOOKBACK_DAYS} sessions)",
         ))
 
     combined = pd.concat([t.assign(sector=s) for s, t in tables.items()], ignore_index=True)
@@ -244,7 +250,7 @@ def plot_all_rrgs(tables: dict, as_of_label: str = "") -> list:
         f"Cement, Capital Goods & Power ({len(combined)} stocks): RRG vs Nifty 500{suffix}",
         OUTPUT_DIR / "rrg_all_vs_nifty500.png",
         label_symbols=combined.loc[notable, "symbol"], highlight_symbols=LOCKED_PORTFOLIO_SYMBOLS,
-        x_label="RS vs Nifty 500 (pp, 63 sessions)",
+        x_label=f"RS vs Nifty 500 (pp, {TECHNICAL_RS_LOOKBACK_DAYS} sessions)",
     ))
     return paths
 

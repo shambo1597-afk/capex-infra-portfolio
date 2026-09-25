@@ -21,7 +21,9 @@ from config import (
     RISK_SUMMARY_OUTPUT_CSV,
     STOP_LOSS_ATR_MULTIPLE,
     STOP_LOSS_ATR_PERIOD,
+    STOP_LOSS_SUPPORT_BAND_ATR,
     SUMMARY_OUTPUT_CSV,
+    TECHNICAL_RS_LOOKBACK_DAYS,
     sector_of,
 )
 from indicators import (
@@ -49,7 +51,7 @@ def evaluate_stock_technicals(
     benchmark_df: pd.DataFrame,
     rsi_period: int = 14,
     adx_period: int = 14,
-    rs_lookback: int = 63,
+    rs_lookback: int = TECHNICAL_RS_LOOKBACK_DAYS,
     sr_window: int = 20
 ) -> Dict[str, Union[str, float, None]]:
     """
@@ -70,7 +72,7 @@ def evaluate_stock_technicals(
         benchmark_df (pd.DataFrame): Benchmark daily index series.
         rsi_period (int): Period for Wilder's RSI (default 14).
         adx_period (int): Period for Wilder's ADX (default 14).
-        rs_lookback (int): Trading sessions for RS spread (default 63).
+        rs_lookback (int): Trading sessions for RS spread (default config.TECHNICAL_RS_LOOKBACK_DAYS).
         sr_window (int): Rolling window for support/resistance (default 20).
 
     Returns:
@@ -267,7 +269,7 @@ def print_summary_table(summary_df: pd.DataFrame) -> None:
     print(" Key Takeaways:")
     print(" - RSI > 70: Overbought momentum | RSI < 30: Oversold / Mean-reversion candidate")
     print(" - ADX > 25: Strong directional trend | ADX < 20: Consolidating / Range-bound")
-    print(" - RS Score: Percentage-point excess return over Nifty 500 during the last 63 trading days")
+    print(f" - RS Score: Percentage-point excess return over Nifty 500 during the last {TECHNICAL_RS_LOOKBACK_DAYS} trading days")
     print("=" * 115 + "\n")
 
 
@@ -385,7 +387,7 @@ def print_risk_summary_table(risk_df: pd.DataFrame) -> None:
     print("\n" + "=" * 115)
     print(" LOCKED PORTFOLIO RISK, SIZING & STOP-LOSS SUMMARY")
     print(f" Stop-loss: price - {STOP_LOSS_ATR_MULTIPLE:g} x ATR({STOP_LOSS_ATR_PERIOD}), moved just below a support "
-          "level up to 1 ATR beyond it; trailed up (never down) at monthly reviews")
+          f"level up to {STOP_LOSS_SUPPORT_BAND_ATR:g} ATR beyond it; trailed up (never down) at monthly reviews")
     print("=" * 115)
     if risk_df.empty:
         print("No risk records to display.")

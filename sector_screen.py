@@ -42,6 +42,7 @@ from config import (
     LOCKED_PORTFOLIO_SYMBOLS,
     OUTPUT_DIR,
     RRG_MOMENTUM_DAYS,
+    RUNUP_RECENT_DAYS,
     SECTOR_SCREENS,
     TECHNICAL_RS_LOOKBACK_DAYS,
     TECHNICAL_RS_MARGIN_PP,
@@ -230,7 +231,8 @@ def build_review_table(
         stock_returns[symbol] = stock_return_pct
         _, rs_prev, rs_momentum, stock_returns_prev[symbol] = compute_rs_momentum(
             sym_prices, benchmark, TECHNICAL_RS_LOOKBACK_DAYS, RRG_MOMENTUM_DAYS)
-        rs_10d, _, recent_pct = compute_recent_rs_contribution(sym_prices, benchmark, 10, TECHNICAL_RS_LOOKBACK_DAYS)
+        rs_10d, _, recent_pct = compute_recent_rs_contribution(
+            sym_prices, benchmark, RUNUP_RECENT_DAYS, TECHNICAL_RS_LOOKBACK_DAYS)
         rows.append({
             "symbol": symbol,
             "company_name": member.get("Company Name"),
@@ -356,11 +358,11 @@ then `sector_rank` (ascending).
 
 ## Two relative strength measures
 
-**`rs_score_vs_nifty500`** measures whether a stock beats the broad market: its 63-session
+**`rs_score_vs_nifty500`** measures whether a stock beats the broad market: its {TECHNICAL_RS_LOOKBACK_DAYS}-session
 cumulative return minus the Nifty 500 price index's (NSE official closes), in percentage points. It bears on whether
 {sector} as a theme deserves capital at all, versus simply holding the index.
 **`rs_score_vs_sector_avg`** measures which {sector} stock is best positioned relative to its
-{sector} peers: the same 63-session return minus the equal-weighted average return of all
+{sector} peers: the same {TECHNICAL_RS_LOOKBACK_DAYS}-session return minus the equal-weighted average return of all
 {len(table)} constituents ({avg_text} over this window). It is the relevant measure once the
 decision to hold {sector} exposure has been made, per the project's sector-rotation requirement.
 
@@ -369,8 +371,8 @@ sum to approximately zero by construction.
 
 ## Full evaluation standard (applied to every row)
 
-- **RRG (Relative Rotation Graph).** x = RS (pp, 63 sessions); y = RS-Momentum = that RS today
-  minus the same 63-session RS ending {RRG_MOMENTUM_DAYS} sessions earlier (pp). Both axes are
+- **RRG (Relative Rotation Graph).** x = RS (pp, {TECHNICAL_RS_LOOKBACK_DAYS} sessions); y = RS-Momentum = that RS today
+  minus the same {TECHNICAL_RS_LOOKBACK_DAYS}-session RS ending {RRG_MOMENTUM_DAYS} sessions earlier (pp). Both axes are
   plain percentage-point spreads, not the proprietary JdK RS-Ratio index. Quadrants at (0, 0):
   LEADING (RS > 0, momentum > 0), WEAKENING (RS > 0, momentum <= 0), LAGGING (RS <= 0,
   momentum <= 0), IMPROVING (RS <= 0, momentum > 0). Computed against the Nifty 500
@@ -378,7 +380,7 @@ sum to approximately zero by construction.
   {sector} average (`rs_momentum_vs_sector`, `rrg_quadrant_vs_sector`).
 - **Trend quality.** `di_gap` = +DI - -DI; `thin_trend_flag` when |di_gap| < {DI_GAP_THIN_THRESHOLD:g},
   whichever way it points (the Bullish/Bearish label can flip on one bar).
-- **Run-up.** `recent_10day_contribution_pct` = RS over the last 10 sessions / 63-session RS x 100
+- **Run-up.** `recent_10day_contribution_pct` = RS over the last {RUNUP_RECENT_DAYS} sessions / {TECHNICAL_RS_LOOKBACK_DAYS}-session RS x 100
   (NaN when RS <= 0); `recent_spike_flag` above {RECENT_SPIKE_THRESHOLD_PCT:g}%.
 - **`high_turnover_business_flag`** (sectors with an OPM criterion): fails ONLY OPM, passes every
   other criterion, ROCE > {HIGH_TURNOVER_ROCE_MIN:g}%. A prompt for a manual business-model check,
@@ -428,7 +430,8 @@ def compute_runup_and_catalyst_info(
     rows = []
     for symbol in symbols:
         sym_prices = prices[prices["SYMBOL"] == symbol] if not prices.empty else pd.DataFrame()
-        rs10, rs63, pct = compute_recent_rs_contribution(sym_prices, benchmark, 10, TECHNICAL_RS_LOOKBACK_DAYS)
+        rs10, rs63, pct = compute_recent_rs_contribution(
+            sym_prices, benchmark, RUNUP_RECENT_DAYS, TECHNICAL_RS_LOOKBACK_DAYS)
         cal = fetch_results_calendar(symbol, as_of=today)
         next_date = pd.to_datetime(cal["next_results_date"]).date() if cal["next_results_date"] else None
         rows.append({
@@ -475,7 +478,7 @@ def build_tenth_candidate_sweep(
     info = compute_runup_and_catalyst_info(table["symbol"].tolist(), as_of=as_of, today=today)
     mismatch = (info["rs_score_vs_nifty500"] - table["rs_score_vs_nifty500"]).abs() > 0.011
     if mismatch.any():
-        raise RuntimeError(f"Recomputed 63-day RS differs from the review tables for {table['symbol'][mismatch].tolist()}")
+        raise RuntimeError(f"Recomputed {TECHNICAL_RS_LOOKBACK_DAYS}-day RS differs from the review tables for {table['symbol'][mismatch].tolist()}")
     info = info.drop(columns=["symbol", "rs_score_vs_nifty500"])
     # The review tables already carry the run-up columns; the freshly computed ones replace them
     table = pd.concat([table.drop(columns=[c for c in info.columns if c in table.columns]), info], axis=1)
