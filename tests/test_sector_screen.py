@@ -305,3 +305,28 @@ class TestPromoterPledge:
             assert fetch_pledged_percentage("GMRP&UI", cache_dir=tmp_path) == (59.96, "30-Jun-2026")
             session.return_value.get.assert_not_called()
 
+
+
+@pytest.mark.parametrize("sector", ["Cement", "Capital Goods", "Power"])
+def test_committed_review_table_sector_rs_properties(sector):
+    """
+    The committed review tables satisfy the within-sector RS invariants for every sector: each
+    stock is compared only with its own official index's constituents, the spreads from the
+    equal-weighted sector average sum to ~0, and (sharing the same stock return) the gap between
+    rs_score_vs_sector_avg and rs_score_vs_nifty500 is the same constant for every stock.
+    """
+    from sector_screen import review_table_path
+    table = pd.read_csv(review_table_path(sector))
+    members = load_constituents(SECTOR_SCREENS[sector]["constituents_csv"])
+    n = len(members)
+
+    assert sorted(table["symbol"]) == sorted(members["Symbol"])  # own universe only, each once
+    # Values are stored to 2 decimals, so each carries up to 0.005 rounding error
+    assert abs(table["rs_score_vs_sector_avg"].sum()) <= n * 0.005 + 1e-9
+    gap = table["rs_score_vs_sector_avg"] - table["rs_score_vs_nifty500"]
+    assert gap.max() - gap.min() <= 0.02 + 1e-9
+    assert sorted(table["sector_rank"]) == list(range(1, n + 1))
+    best_first = table.sort_values("rs_score_vs_sector_avg", ascending=False)["sector_rank"].tolist()
+    assert best_first == list(range(1, n + 1))
+    expected_order = table.sort_values(["fundamentals_passed_count", "sector_rank"], ascending=[False, True])
+    assert table["symbol"].tolist() == expected_order["symbol"].tolist()
