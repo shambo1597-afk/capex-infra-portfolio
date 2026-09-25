@@ -23,6 +23,7 @@ from config import (
     LOCKED_PORTFOLIO,
     LOCKED_PORTFOLIO_SYMBOLS,
     OUTPUT_DIR,
+    PORTFOLIO_SYMBOLS,
     SECTOR_SCREENS,
     RISK_SUMMARY_OUTPUT_CSV,
     STOP_LOSS_ATR_MULTIPLE,
@@ -743,7 +744,8 @@ with tab_technicals:
     with rrg_left:
         combined_png = OUTPUT_DIR / "rrg_all_vs_nifty500.png"
         if combined_png.exists():
-            st.image(str(combined_png), caption="All 87 stocks vs Nifty 500", width="stretch")
+            st.image(str(combined_png), caption=f"All {len(PORTFOLIO_SYMBOLS)} universe stocks vs Nifty 500",
+                     width="stretch")
         else:
             st.info("output/rrg_all_vs_nifty500.png not found. Run `python rrg.py --as-of <date>`.")
     with rrg_right:

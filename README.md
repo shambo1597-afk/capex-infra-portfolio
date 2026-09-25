@@ -75,7 +75,7 @@ A production-grade, mathematically transparent data pipeline and quantitative sc
 
 ## Portfolio Universe & Locked Portfolio
 
-**Universes.** The three sector universes are the official Nifty sector index constituent files in `data/index_constituents/` (niftyindices.com, downloaded 24-Sep-2026): Nifty Cement (16), Nifty Capital Goods (50) and Nifty Power (21), 87 stocks in total. `config.py` reads them at import time, so the universe lists, each symbol's sector and each company's name all come from these files; nothing is hand-typed.
+**Universes.** The three sector universes are the official Nifty sector index constituent files in `data/index_constituents/` (niftyindices.com, downloaded 24-Sep-2026): Nifty Cement (16), Nifty Capital Goods (50) and Nifty Power (21), plus two named constituents of the Nifty Infrastructure index (`ind_niftyinfralist.csv`, downloaded 25-Sep-2026) added to Capital Goods: `LT` and `BHARATFORG` (`config.NIFTY_INFRA_SECTOR_ADDITIONS`). That makes 16 + 52 + 21 = 89 stocks. The full Nifty Infrastructure index is not adopted: of its 30 constituents, 12 are already in the three universes and the other 16 are ports, aviation, oil & gas, telecom, healthcare, realty, hotels or auto components. `config.py` reads these files at import time, so the universe lists, each symbol's sector and each company's name all come from them; nothing is hand-typed. The review tables' `source_index` column shows where each stock came from, and `business_focus_note` carries the conglomerate / classification flags (`LT`, `BHARATFORG`, `GRASIM`) for a manual decision.
 
 **Locked portfolio (8 stocks, `config.LOCKED_PORTFOLIO`).** Chosen from the technical and fundamental screens (`output/*_full_review_table.csv`) and the Relative Rotation Graph analysis (`rrg.py`).
 
@@ -169,7 +169,7 @@ IAPFDOF/
 │   ├── index_constituents/       # Official Nifty Cement / Capital Goods / Power constituent files
 │   └── nifty500_tri.csv          # Official Nifty 500 Total Returns Index CSV
 ├── output/
-│   ├── portfolio_technical_summary.csv # Technical summary, one row per universe stock (87)
+│   ├── portfolio_technical_summary.csv # Technical summary, one row per universe stock (89)
 │   ├── portfolio_historical_ohlcv.csv  # Clean historical OHLCV data across universe
 │   ├── portfolio_risk_summary.csv      # Locked portfolio volatility, placeholder return/weight, stop-loss
 │   ├── *_full_screen.csv               # Technical-first sector screens (cement, capital_goods, power)
@@ -323,7 +323,7 @@ The automated fetch routine in `fetch_benchmark_tri_automated()` is completely w
 
 `python sector_screen.py` applies the brief's order ("technical analysis, then financial analysis") identically to each sector:
 
-1. **Universe:** the official Nifty Cement (16), Nifty Capital Goods (50) and Nifty Power (21) constituents, stored as downloaded from niftyindices.com in `data/index_constituents/`. No manual additions.
+1. **Universe:** the official Nifty Cement (16), Nifty Capital Goods (50) and Nifty Power (21) constituents, stored as downloaded from niftyindices.com in `data/index_constituents/`, plus the two named Nifty Infrastructure constituents `LT` and `BHARATFORG` in Capital Goods (see Portfolio Universe). No other additions.
 2. **Technical screen (every constituent):** RS vs Nifty 500 over 63 sessions **> +2 pp** (a margin: RS is a 63-day cumulative spread and one day's return can move it by several points, so a bare `> 0` flips on noise) **and** trend direction (+DI vs −DI) Bullish, computed with the existing indicator pipeline on the complete Bhavcopy history. ADX is reported as a tiebreaker, not a cutoff.
 3. **Fundamental safety screen (technical passers only):** fetched live via `get_fundamentals_summary(..., use_cache=False)` (Screener.in for financials, NSE pledge disclosures for promoter pledge) and scored against the sector's criteria in `config.py`. A metric that cannot be read fails. These are deliberately **light, current-year solvency checks** for a 3-month tactical mandate, not a multi-year quality bar (no 3-year averages or growth):
 
@@ -355,7 +355,7 @@ Outputs `output/cement_full_screen.csv`, `output/capital_goods_full_screen.csv` 
 - **`di_gap`** = +DI - -DI; **`thin_trend_flag`** when |gap| < 2.0 in either direction.
 - **`high_turnover_business_flag`**: fails only the OPM criterion, passes all others, ROCE > 20%: flagged for a manual business-model check, never auto-included.
 - **`full_standard_candidate`**: all fundamental criteria pass, LEADING vs both benchmarks, and di_gap >= 2.0. The run-up spike flag is reported beside it.
-- **Plots** (`output/`): `rrg_all_vs_nifty500.png` (all 87 stocks) and `rrg_<sector>_vs_sector.png` per sector; locked picks are ringed and bold.
+- **Plots** (`output/`): `rrg_all_vs_nifty500.png` (all 89 universe stocks) and `rrg_<sector>_vs_sector.png` per sector; locked picks are ringed and bold.
 
 ## Output Format & Column Definitions
 
@@ -395,7 +395,7 @@ Run the full automated unit test suite with `pytest`:
 pytest tests/ -v
 ```
 
-The 169 tests cover, among other things:
+The 170 tests cover, among other things:
 - Exact convergence of Wilder's smoothing against recursive mathematical definitions.
 - Boundary conditions for RSI ($RSI = 100$ in monotonic gains, $RSI = 0$ in monotonic losses).
 - Directional movement calculations and trend indicators for ADX.

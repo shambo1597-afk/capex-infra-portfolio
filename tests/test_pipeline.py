@@ -16,10 +16,14 @@ from config import (
     LOCKED_PORTFOLIO_SYMBOLS,
     PORTFOLIO_SYMBOLS,
     POWER_SECTOR_STOCKS,
+    BUSINESS_FOCUS_NOTES,
+    NIFTY_INFRA_CONSTITUENTS_FILE,
+    NIFTY_INFRA_SECTOR_ADDITIONS,
     SECTOR_CONSTITUENT_FILES,
     SYMBOL_ALIASES,
     SYMBOL_NAME,
     sector_of,
+    sector_universe,
 )
 from fetch_data import (
     NSEBhavcopyFetcher,
@@ -32,15 +36,25 @@ class TestUniverseConfiguration:
     """Verify stock universe setup and symbol alias mapping."""
 
     def test_universes_match_official_constituent_files(self):
-        """The three universes are read from the official niftyindices.com files, not hand-typed."""
+        """Each universe is its official niftyindices.com file plus the named Nifty Infrastructure
+        additions (appended, never hand-typed), and every stock maps to exactly one sector."""
         for sector, universe in (("Cement", CEMENT_STOCKS), ("Capital Goods", CAPITAL_GOODS_EPC_STOCKS),
                                  ("Power", POWER_SECTOR_STOCKS)):
             official = pd.read_csv(SECTOR_CONSTITUENT_FILES[sector])["Symbol"].str.strip().tolist()
-            assert universe == official
+            assert universe == official + NIFTY_INFRA_SECTOR_ADDITIONS.get(sector, [])
             assert all(sector_of(sym) == sector for sym in universe)
-        assert (len(CEMENT_STOCKS), len(CAPITAL_GOODS_EPC_STOCKS), len(POWER_SECTOR_STOCKS)) == (16, 50, 21)
-        assert len(set(PORTFOLIO_SYMBOLS)) == len(PORTFOLIO_SYMBOLS) == 87
+        assert (len(CEMENT_STOCKS), len(CAPITAL_GOODS_EPC_STOCKS), len(POWER_SECTOR_STOCKS)) == (16, 52, 21)
+        assert len(set(PORTFOLIO_SYMBOLS)) == len(PORTFOLIO_SYMBOLS) == 89
         assert sector_of("NOT_A_SYMBOL") == "Other"
+
+    def test_nifty_infra_additions_are_official_infra_constituents(self):
+        infra = pd.read_csv(NIFTY_INFRA_CONSTITUENTS_FILE)
+        infra_symbols = set(infra["Symbol"].str.strip())
+        for sector, symbols in NIFTY_INFRA_SECTOR_ADDITIONS.items():
+            for sym in symbols:
+                assert sym in infra_symbols
+                assert [r["index"] for r in sector_universe(sector) if r["symbol"] == sym] == ["Nifty Infrastructure"]
+                assert sym in BUSINESS_FOCUS_NOTES  # every addition carries a business-focus review note
 
     def test_locked_portfolio(self):
         expected_locked = ["JKCEMENT", "VOLTAMP", "FINCABLES", "APARINDS", "WELCORP",

@@ -4,8 +4,8 @@ Sector Screen: technical screen first, then fundamental safety screen.
 Implements the project brief's order ("Technical analysis, then financial analysis") identically
 for each sector:
 
-1. Universe: the official Nifty sector index constituents only (config.SECTOR_SCREENS), with no
-   manual additions.
+1. Universe: the official Nifty sector index constituents plus the named Nifty Infrastructure
+   additions (config.sector_universe / NIFTY_INFRA_SECTOR_ADDITIONS); no other additions.
 2. Technical screen on every constituent, using the existing indicator pipeline
    (analysis.evaluate_stock_technicals) on the complete NSE Bhavcopy history:
    passes when RS vs Nifty 500 (63 sessions) > +2 pp AND trend direction (+DI vs -DI) is Bullish.
@@ -36,6 +36,7 @@ import pandas as pd
 
 from analysis import evaluate_stock_technicals
 from config import (
+    BUSINESS_FOCUS_NOTES,
     DI_GAP_THIN_THRESHOLD,
     HIGH_TURNOVER_ROCE_MIN,
     LOCKED_PORTFOLIO_SYMBOLS,
@@ -44,6 +45,7 @@ from config import (
     SECTOR_SCREENS,
     TECHNICAL_RS_LOOKBACK_DAYS,
     TECHNICAL_RS_MARGIN_PP,
+    sector_universe,
 )
 from fetch_data import NSEBhavcopyFetcher, fetch_benchmark_nifty500, get_one_year_date_range
 from fundamentals import evaluate_fundamental_screen, fetch_results_calendar, get_fundamentals_summary
@@ -64,6 +66,16 @@ def load_constituents(csv_path: Path) -> pd.DataFrame:
     df.columns = [c.strip() for c in df.columns]
     df["Symbol"] = df["Symbol"].astype(str).str.strip()
     return df
+
+
+def load_sector_universe(sector: str) -> pd.DataFrame:
+    """
+    Every stock screened for a sector (config.sector_universe): the official index constituents
+    plus any named Nifty Infrastructure additions, with columns Symbol, Company Name, Index.
+    """
+    rows = sector_universe(sector)
+    return pd.DataFrame({"Symbol": [r["symbol"] for r in rows], "Company Name": [r["name"] for r in rows],
+                         "Index": [r["index"] for r in rows]})
 
 
 def technical_screen_result(
@@ -108,7 +120,7 @@ def screen_sector(
         rows.append({
             "symbol": symbol,
             "company_name": member.get("Company Name"),
-            "index": f"Nifty {sector}",
+            "index": member.get("Index", f"Nifty {sector}"),
             "price_sessions": int(sym_prices["DATE1"].nunique()) if not sym_prices.empty else 0,
             "current_price": tech["current_price"],
             "passed_technical_screen": passed,
@@ -157,7 +169,7 @@ def run_sector_screens(
 ) -> Dict[str, pd.DataFrame]:
     """Screen each configured sector (price window ending as_of, default today) and write its CSV."""
     sectors = sectors or list(SECTOR_SCREENS)
-    constituents = {s: load_constituents(SECTOR_SCREENS[s]["constituents_csv"]) for s in sectors}
+    constituents = {s: load_sector_universe(s) for s in sectors}
     all_symbols = sorted({sym for df in constituents.values() for sym in df["Symbol"]})
 
     start, end = get_one_year_date_range(as_of)
@@ -222,6 +234,8 @@ def build_review_table(
         rows.append({
             "symbol": symbol,
             "company_name": member.get("Company Name"),
+            "source_index": member.get("Index"),
+            "business_focus_note": BUSINESS_FOCUS_NOTES.get(symbol),
             **result,
             "fundamentals_passed_count": len(criteria) - len(failed),
             "fundamentals_failed": "; ".join(failed),
@@ -311,7 +325,7 @@ def add_evaluation_columns(table: pd.DataFrame, criteria: List[Tuple[str, str, f
 def run_review_table(sector: str, output_csv: Path, as_of: Optional[date] = None) -> pd.DataFrame:
     """Build and save the unfiltered review table for one sector (price window ending as_of, default today)."""
     cfg = SECTOR_SCREENS[sector]
-    constituents = load_constituents(cfg["constituents_csv"])
+    constituents = load_sector_universe(sector)
     start, end = get_one_year_date_range(as_of)
     prices = NSEBhavcopyFetcher().fetch_date_range(start, end, constituents["Symbol"].tolist(), use_cache=True)
     benchmark = fetch_benchmark_nifty500(start_date=start.isoformat(), end_date=end.isoformat())

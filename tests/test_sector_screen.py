@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 
 from config import CAPITAL_GOODS_SCREEN_CRITERIA, CEMENT_SCREEN_CRITERIA, POWER_SCREEN_CRITERIA, SECTOR_SCREENS
 from fundamentals import _statements_are_stale, parse_interest_coverage, parse_opm
-from sector_screen import load_constituents, screen_sector, technical_screen_result
+from sector_screen import load_constituents, load_sector_universe, screen_sector, technical_screen_result
 
 PL_HTML = """
 <section id="profit-loss"><table>
@@ -317,7 +317,7 @@ def test_committed_review_table_sector_rs_properties(sector):
     """
     from sector_screen import review_table_path
     table = pd.read_csv(review_table_path(sector))
-    members = load_constituents(SECTOR_SCREENS[sector]["constituents_csv"])
+    members = load_sector_universe(sector)  # official index constituents + Nifty Infrastructure additions
     n = len(members)
 
     assert sorted(table["symbol"]) == sorted(members["Symbol"])  # own universe only, each once
@@ -378,8 +378,8 @@ def test_committed_tenth_candidate_sweep():
     from sector_screen import CURRENT_PICKS, RECENT_SPIKE_THRESHOLD_PCT
     sweep = pd.read_csv(OUTPUT_DIR / "tenth_candidate_sweep.csv")
     universe = set()
-    for cfg in SECTOR_SCREENS.values():
-        universe |= set(load_constituents(cfg["constituents_csv"])["Symbol"])
+    for sector in SECTOR_SCREENS:
+        universe |= set(load_sector_universe(sector)["Symbol"])
     assert set(sweep["symbol"]) == universe - set(CURRENT_PICKS) and not sweep["symbol"].duplicated().any()
     spike = sweep["recent_10day_contribution_pct"].fillna(-1e9) > RECENT_SPIKE_THRESHOLD_PCT
     assert (sweep["recent_spike_flag"] == spike).all()

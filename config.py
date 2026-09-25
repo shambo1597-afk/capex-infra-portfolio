@@ -31,7 +31,8 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Official Nifty sector index constituent files, downloaded from niftyindices.com
 # (https://www.niftyindices.com/IndexConstituent/ind_nifty<Name>_list.csv) on 24-Sep-2026.
-# These files are the single source of truth for the three sector universes.
+# These files, plus the named Nifty Infrastructure additions below, are the single source of
+# truth for the three sector universes.
 INDEX_CONSTITUENTS_DIR = DATA_DIR / "index_constituents"
 SECTOR_CONSTITUENT_FILES = {
     "Cement": INDEX_CONSTITUENTS_DIR / "ind_niftyCement_list.csv",
@@ -40,20 +41,73 @@ SECTOR_CONSTITUENT_FILES = {
 }
 
 
-def _read_constituents(csv_path: Path) -> List[Dict[str, str]]:
-    """Rows (symbol, name) of an official constituent file; empty if the file is missing."""
+NIFTY_INFRA_CONSTITUENTS_FILE = INDEX_CONSTITUENTS_DIR / "ind_niftyinfralist.csv"  # downloaded 25-Sep-2026
+
+
+def _read_constituents(csv_path: Path, index_name: str) -> List[Dict[str, str]]:
+    """Rows (symbol, name, index) of an official constituent file; empty if the file is missing."""
     if not csv_path.exists():
         return []
     with open(csv_path, newline="", encoding="utf-8-sig") as f:
-        return [{"symbol": row["Symbol"].strip(), "name": row["Company Name"].strip()}
+        return [{"symbol": row["Symbol"].strip(), "name": row["Company Name"].strip(), "index": index_name}
                 for row in csv.DictReader(f) if row.get("Symbol", "").strip()]
 
 
-_CONSTITUENTS = {sector: _read_constituents(path) for sector, path in SECTOR_CONSTITUENT_FILES.items()}
+_CONSTITUENTS = {sector: _read_constituents(path, f"Nifty {sector}")
+                 for sector, path in SECTOR_CONSTITUENT_FILES.items()}
+
+# Nifty Infrastructure constituents added to a sector universe. The full index is NOT adopted
+# (it spans ports, aviation, oil & gas, telecom, healthcare, realty and hotels); of its 30
+# constituents, 12 are already in the three sector universes and only these two others have a
+# primary business in Cement, Capital Goods/EPC or Power. Each is screened with that sector's
+# thresholds and ranked against its universe; see BUSINESS_FOCUS_NOTES before selecting one.
+NIFTY_INFRA_SECTOR_ADDITIONS = {
+    "Capital Goods": ["LT", "BHARATFORG"],
+}
+
+# Business-focus review notes (conglomerate / classification concerns), shown in the review
+# tables' business_focus_note column. They are flags for a manual decision, not exclusions.
+BUSINESS_FOCUS_NOTES = {
+    "LT": (
+        "CONGLOMERATE CONCERN - manual review. NSE industry: Construction. Core business is EPC "
+        "(infrastructure and energy projects, hi-tech manufacturing), but consolidated revenue also "
+        "includes IT & technology services (listed subsidiaries LTIMindtree, L&T Technology Services) "
+        "and financial services (L&T Finance). Verify the latest segment split in the annual report."
+    ),
+    "BHARATFORG": (
+        "CLASSIFICATION CONCERN - manual review. NSE industry: Automobile and Auto Components, not "
+        "Capital Goods. Forgings serve automotive (commercial and passenger vehicles, including overseas "
+        "auto subsidiaries) as well as industrial, defence and aerospace customers. Verify the auto vs "
+        "non-auto revenue split before treating it as a capital-goods name."
+    ),
+    "GRASIM": (
+        "CONGLOMERATE CONCERN (same treatment as NAVA). Consolidated results include UltraTech (cement) "
+        "but also VSF and chemicals, paints, B2B e-commerce and financial services (Aditya Birla Capital)."
+    ),
+}
+
+
+def _add_infra_constituents() -> None:
+    infra = {r["symbol"]: r for r in _read_constituents(NIFTY_INFRA_CONSTITUENTS_FILE, "Nifty Infrastructure")}
+    for sector, symbols in NIFTY_INFRA_SECTOR_ADDITIONS.items():
+        present = {r["symbol"] for rows in _CONSTITUENTS.values() for r in rows}
+        for symbol in symbols:
+            if symbol in infra and symbol not in present:
+                _CONSTITUENTS[sector].append(infra[symbol])
+
+
+_add_infra_constituents()
 
 CEMENT_STOCKS = [r["symbol"] for r in _CONSTITUENTS["Cement"]]
 CAPITAL_GOODS_EPC_STOCKS = [r["symbol"] for r in _CONSTITUENTS["Capital Goods"]]
 POWER_SECTOR_STOCKS = [r["symbol"] for r in _CONSTITUENTS["Power"]]
+
+
+def sector_universe(sector: str) -> List[Dict[str, str]]:
+    """Every stock screened for a sector: its official index constituents plus any Nifty
+    Infrastructure additions, as rows {symbol, name, index}."""
+    return list(_CONSTITUENTS.get(sector, []))
+
 
 # Symbol -> sector / company name lookups shared by every module
 SYMBOL_SECTOR = {r["symbol"]: sector for sector, rows in _CONSTITUENTS.items() for r in rows}
