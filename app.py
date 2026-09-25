@@ -9,10 +9,11 @@ It imports and reuses the existing pipeline outputs, focusing on the locked port
 (config.LOCKED_PORTFOLIO) across the Cement, Capital Goods and Power sectors.
 """
 
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -39,6 +40,7 @@ from config import (
 from fetch_data import TRI_REDOWNLOAD_INSTRUCTIONS, TriStaleness, assess_tri_staleness, load_benchmark_tri
 from fundamentals import get_fundamentals_summary
 from rrg import CONVICTION_HIGH, CONVICTION_LOW, CONVICTION_MODERATE, conviction_tier
+from refresh_data import latest_expected_session, load_manifest, run_refresh
 from sector_screen import review_table_path
 
 # -----------------------------------------------------------------------------
@@ -369,7 +371,7 @@ def render_tri_staleness_banner(tri: pd.DataFrame, staleness: Optional[TriStalen
 
 
 @st.cache_data(show_spinner=False)
-def load_fundamentals_summary(force_refresh: bool = False) -> pd.DataFrame:
+def load_fundamentals_summary(file_mtimes: tuple, force_refresh: bool = False) -> pd.DataFrame:
     """
     Fetch and parse fundamental quality, return, leverage, and cash flow metrics
     directly from individual Screener.in company pages with local disk caching
@@ -464,6 +466,71 @@ if not risk_df.empty:
         risk_df.drop(columns=["sector", "current_price"], errors="ignore"), on="symbol", how="left")
 portfolio_df = portfolio_df.merge(rrg_df, on="symbol", how="left")
 missing_symbols = sorted(set(LOCKED_PORTFOLIO_SYMBOLS) - set(portfolio_df["symbol"]))
+
+
+# -----------------------------------------------------------------------------
+# DATA FRESHNESS & REFRESH (always visible under the header)
+# -----------------------------------------------------------------------------
+
+def render_data_freshness() -> None:
+    """How current the dashboard's data is, a stale warning, and a one-click full refresh."""
+    price_date = pd.Timestamp(ohlcv_df["DATE1"].max()).date() if not ohlcv_df.empty else None
+    fund_dates = pd.concat([pd.read_csv(review_table_path(s), usecols=["fundamentals_as_of"])
+                            for s in SECTOR_SCREENS if review_table_path(s).exists()], ignore_index=True)
+    fund_date = pd.to_datetime(fund_dates["fundamentals_as_of"]).max().date() if not fund_dates.empty else None
+    manifest = load_manifest()
+    expected = latest_expected_session()
+    behind = int(np.busday_count(price_date + timedelta(days=1), expected + timedelta(days=1))) \
+        if price_date and expected > price_date else 0
+
+    info_col, button_col = st.columns([5, 1.3])
+    with info_col:
+        last_run = ""
+        if manifest and manifest.get("finished"):
+            last_run = f" &bull; Last refresh: {pd.Timestamp(manifest['finished']):%d-%b-%Y %H:%M} IST"
+        st.markdown(
+            f"<div style='font-size:0.85rem;padding-top:0.45rem;'><strong>Data as of</strong> &bull; "
+            f"Prices through <strong>{price_date:%d-%b-%Y}</strong> &bull; "
+            f"Fundamentals fetched <strong>{fund_date:%d-%b-%Y}</strong>{last_run}</div>"
+            if price_date and fund_date else "<div>No pipeline outputs found.</div>",
+            unsafe_allow_html=True,
+        )
+    running = bool(manifest and manifest.get("status") == "running"
+                   and pd.Timestamp.now(tz="Asia/Kolkata") - pd.Timestamp(manifest["started"]) < pd.Timedelta(minutes=45))
+    with button_col:
+        clicked = st.button("Refresh all data", disabled=running, width="stretch",
+                            help="Re-downloads NSE prices and Screener.in fundamentals and rebuilds every table "
+                                 "and chart (about 5-10 minutes; needs internet).")
+
+    if running:
+        st.info(f"A data refresh started at {pd.Timestamp(manifest['started']):%H:%M} IST is still running.")
+    elif manifest and manifest.get("status") == "failed":
+        st.error(f"The last data refresh failed at step: {manifest.get('failed_step')}. Some tables may be from "
+                 "different runs; click Refresh all data to try again.")
+    elif behind > 0:
+        st.warning(f"Prices are {behind} trading day{'s' if behind > 1 else ''} old (latest expected session: "
+                   f"{expected:%d-%b-%Y}; exchange holidays are not modelled). Click Refresh all data to update.")
+
+    if clicked:
+        with st.status("Refreshing all data (about 5-10 minutes)...", expanded=True) as status:
+            log_box = st.empty()
+            lines: list = []
+
+            def show(line: str) -> None:
+                lines.append(line)
+                log_box.code("\n".join(lines[-25:]), language=None)
+
+            result = run_refresh(on_output=show)
+            if result["status"] == "ok":
+                status.update(label="Data refreshed.", state="complete")
+            else:
+                status.update(label=f"Refresh failed at: {result.get('failed_step')}", state="error")
+        st.cache_data.clear()
+        if result["status"] == "ok":
+            st.rerun()
+
+
+render_data_freshness()
 
 # TRI must cover the period the last pipeline run analysed (its latest price date)
 _last_price_date = ohlcv_df["DATE1"].max() if not ohlcv_df.empty else pd.NaT
@@ -629,7 +696,8 @@ with tab_fundamentals:
             unsafe_allow_html=True,
         )
 
-    fund_raw_df = load_fundamentals_summary()
+    # Keyed on the review tables: a data refresh rewrites them after re-fetching fundamentals
+    fund_raw_df = load_fundamentals_summary(tuple(_file_mtime(review_table_path(s)) for s in SECTOR_SCREENS))
 
     if fund_raw_df is None or fund_raw_df.empty:
         st.warning("Fundamentals data unavailable. Please verify network access to Screener.in.")

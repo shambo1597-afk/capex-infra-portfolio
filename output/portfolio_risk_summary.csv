@@ -1,9 +1,9 @@
 symbol,sector,current_price,annualized_volatility_pct,historical_expected_return_pct,weight_pct,atr_14,atr_pct,stop_loss_price,stop_loss_pct_below_current,stop_loss_method
-JKCEMENT,Cement,5184.5,32.59,-23.02,12.5,147.76,2.85,4741.23,8.55,atr
-VOLTAMP,Capital Goods,10587.0,40.24,47.79,12.5,367.34,3.47,9484.99,10.41,atr
-FINCABLES,Capital Goods,1480.0,43.55,68.66,12.5,63.64,4.3,1289.07,12.9,atr
-APARINDS,Capital Goods,17804.0,46.8,83.84,12.5,813.42,4.57,15363.73,13.71,atr
-WELCORP,Capital Goods,2692.2,42.26,122.27,12.5,129.8,4.82,2207.75,17.99,support
-APLAPOLLO,Capital Goods,2184.8,27.95,30.39,12.5,60.01,2.75,2004.77,8.24,atr
-ACMESOLAR,Power,446.65,38.13,51.95,12.5,19.74,4.42,371.36,16.86,support
-TATAPOWER,Power,363.45,21.65,-6.25,12.5,7.36,2.03,341.37,6.08,atr
+JKCEMENT,Cement,5184.5,32.55,-20.42,12.5,147.76,2.85,4741.23,8.55,atr
+VOLTAMP,Capital Goods,10587.0,40.32,48.29,12.5,367.34,3.47,9484.99,10.41,atr
+FINCABLES,Capital Goods,1480.0,43.63,68.91,12.5,63.64,4.3,1289.07,12.9,atr
+APARINDS,Capital Goods,17804.0,46.89,83.21,12.5,813.42,4.57,15363.73,13.71,atr
+WELCORP,Capital Goods,2692.2,42.34,123.16,12.5,129.8,4.82,2207.75,17.99,support
+APLAPOLLO,Capital Goods,2184.8,28.0,30.93,12.5,60.01,2.75,2004.77,8.24,atr
+ACMESOLAR,Power,446.65,38.18,53.44,12.5,19.74,4.42,371.36,16.86,support
+TATAPOWER,Power,363.45,21.66,-4.94,12.5,7.36,2.03,341.37,6.08,atr

@@ -265,5 +265,5 @@ if __name__ == "__main__":
     # Optional --as-of YYYY-MM-DD: the review tables' price-window end date, shown in the titles
     label = ""
     if "--as-of" in sys.argv:
-        label = f"as of {date.fromisoformat(sys.argv[sys.argv.index('--as-of') + 1]):%d-%b-%Y}"
+        label = f"prices to {date.fromisoformat(sys.argv[sys.argv.index('--as-of') + 1]):%d-%b-%Y}"
     plot_all_rrgs({sector: pd.read_csv(review_table_path(sector)) for sector in SECTOR_SCREENS}, as_of_label=label)

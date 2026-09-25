@@ -334,6 +334,10 @@ def run_review_table(sector: str, output_csv: Path, as_of: Optional[date] = None
     if benchmark.empty:
         raise RuntimeError("Nifty 500 benchmark unavailable; RS cannot be computed.")
     table = build_review_table(constituents, prices, benchmark, cfg["criteria"])
+    # Label outputs with the last session actually in the data (the requested end date can be a
+    # weekend, a holiday, or today before NSE publishes the day's Bhavcopy)
+    end = pd.to_datetime(prices["DATE1"]).max().date() if not prices.empty else end
+    table.attrs["last_session"] = end
     if len(table) != len(constituents) or set(table["symbol"]) != set(constituents["Symbol"]):
         raise RuntimeError("Review table does not contain exactly one row per constituent.")
     output_csv = Path(output_csv)
@@ -537,14 +541,15 @@ if __name__ == "__main__":
         args = ["--review", "Cement"]
     if args[:1] == ["--review"]:
         # Unfiltered review tables (no screening), one per named sector (default: all three)
+        last_sessions = []
         for sector in args[1:] or list(SECTOR_SCREENS):
             if sector not in SECTOR_SCREENS:
                 sys.exit(f"Unknown sector {sector!r}; choose from {list(SECTOR_SCREENS)}")
-            run_review_table(sector, review_table_path(sector), as_of=as_of)
+            last_sessions.append(run_review_table(sector, review_table_path(sector), as_of=as_of).attrs["last_session"])
         # Redraw the RRG plots from all three review tables (whichever were just refreshed)
         from rrg import plot_all_rrgs
         plot_all_rrgs({sec: pd.read_csv(review_table_path(sec)) for sec in SECTOR_SCREENS},
-                      as_of_label=f"as of {(as_of or date.today()):%d-%b-%Y}")
+                      as_of_label=f"prices to {max(last_sessions):%d-%b-%Y}")
     else:
         print_screen_summary(run_sector_screens(as_of=as_of))
     sys.exit(0)
