@@ -330,3 +330,59 @@ def test_committed_review_table_sector_rs_properties(sector):
     assert best_first == list(range(1, n + 1))
     expected_order = table.sort_values(["fundamentals_passed_count", "sector_rank"], ascending=[False, True])
     assert table["symbol"].tolist() == expected_order["symbol"].tolist()
+
+
+class TestTenthCandidateSweepPieces:
+    @staticmethod
+    def _series(closes, start="2026-06-01"):
+        dates = pd.bdate_range(start, periods=len(closes))
+        stock = pd.DataFrame({"DATE1": dates, "CLOSE_PRICE": closes})
+        bench = pd.DataFrame({"Date": dates, "Close": [100.0] * len(closes)})  # flat benchmark
+        return stock, bench
+
+    def test_recent_contribution_for_a_late_burst(self):
+        from indicators import compute_recent_rs_contribution
+        # Flat at 100 for 54 sessions, then +1% a day for 10 sessions: all outperformance is recent
+        closes = [100.0] * 54 + [100.0 * 1.01 ** i for i in range(1, 11)]
+        rs10, rs63, pct = compute_recent_rs_contribution(*self._series(closes))
+        assert rs10 == pytest.approx(rs63, abs=0.01) and pct == pytest.approx(100.0, abs=0.5)
+
+    def test_recent_contribution_for_steady_trend(self):
+        from indicators import compute_recent_rs_contribution
+        closes = [100.0 * 1.002 ** i for i in range(64)]  # steady outperformance
+        _, _, pct = compute_recent_rs_contribution(*self._series(closes))
+        assert 12 < pct < 20  # ~10/63 of the window's edge
+
+    def test_recent_contribution_undefined_without_outperformance(self):
+        from indicators import compute_recent_rs_contribution
+        closes = [100.0 * 0.999 ** i for i in range(64)]
+        assert np.isnan(compute_recent_rs_contribution(*self._series(closes))[2])
+
+    def test_results_meetings_parsed_without_guessing(self):
+        from datetime import date
+        from fundamentals import parse_results_meetings
+        records = [
+            {"bm_date": "19-Oct-2026", "bm_purpose": "Board Meeting Intimation", "bm_desc": "approve the Unaudited Financial results"},
+            {"bm_date": "30-Sep-2026", "bm_purpose": "Fund Raising", "bm_desc": "raise funds via NCDs"},
+            {"bm_date": "18-Oct-2025", "bm_purpose": "Financial Results", "bm_desc": "results for Sep 30, 2025"},
+            {"bm_date": "18-Jul-2026", "bm_purpose": "Financial Results", "bm_desc": "results for Jun 30, 2026"},
+        ]
+        info = parse_results_meetings(records, date(2026, 9, 25))
+        assert info["next_results_date"] == "2026-10-19"
+        assert info["prior_year_sep_qtr_results_date"] == "2025-10-18"
+        assert parse_results_meetings(records[1:], date(2026, 9, 25))["next_results_date"] is None
+
+
+def test_committed_tenth_candidate_sweep():
+    from config import OUTPUT_DIR
+    from sector_screen import CURRENT_PICKS, RECENT_SPIKE_THRESHOLD_PCT
+    sweep = pd.read_csv(OUTPUT_DIR / "tenth_candidate_sweep.csv")
+    universe = set()
+    for cfg in SECTOR_SCREENS.values():
+        universe |= set(load_constituents(cfg["constituents_csv"])["Symbol"])
+    assert set(sweep["symbol"]) == universe - set(CURRENT_PICKS) and not sweep["symbol"].duplicated().any()
+    spike = sweep["recent_10day_contribution_pct"].fillna(-1e9) > RECENT_SPIKE_THRESHOLD_PCT
+    assert (sweep["recent_spike_flag"] == spike).all()
+    expected = sweep["fundamentals_clean"] & sweep["technically_attractive"] & ~sweep["recent_spike_flag"]
+    assert (sweep["clean_candidate"] == expected).all()
+    assert set(sweep["results_date_status"]) <= {"announced", "not announced", "unavailable"}

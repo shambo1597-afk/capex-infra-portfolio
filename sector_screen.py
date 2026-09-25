@@ -21,12 +21,13 @@ Usage:
     python sector_screen.py --review-cement  # unfiltered Cement review table (no screening)
     python sector_screen.py --review "Capital Goods" Power   # same review table for other sectors
     python sector_screen.py --review --as-of 2026-09-24      # pin the price window's end date
+    python sector_screen.py --tenth-sweep --as-of 2026-09-24 # candidates excluding current picks
 """
 
 import logging
 import math
 import sys
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -35,8 +36,8 @@ import pandas as pd
 from analysis import evaluate_stock_technicals
 from config import OUTPUT_DIR, SECTOR_SCREENS, TECHNICAL_RS_LOOKBACK_DAYS, TECHNICAL_RS_MARGIN_PP
 from fetch_data import NSEBhavcopyFetcher, fetch_benchmark_nifty500, get_one_year_date_range
-from fundamentals import evaluate_fundamental_screen, get_fundamentals_summary
-from indicators import compute_relative_strength, compute_sector_relative_strength
+from fundamentals import evaluate_fundamental_screen, fetch_results_calendar, get_fundamentals_summary
+from indicators import compute_recent_rs_contribution, compute_relative_strength, compute_sector_relative_strength
 
 logger = logging.getLogger("sector_screen")
 
@@ -274,6 +275,78 @@ sum to approximately zero by construction.
 """
 
 
+# The 9 current picks (as given on 25-Sep-2026) excluded from the 10th-candidate sweep. Note that
+# config.LOCKED_PORTFOLIO has not been updated to this list; it is maintained by the user.
+CURRENT_PICKS = ["JKCEMENT", "JKLAKSHMI", "VOLTAMP", "FINCABLES", "ELGIEQUIP", "APARINDS", "WELCORP", "ACMESOLAR", "TATAPOWER"]
+
+# recent_10day_contribution_pct above this counts as a recent spike rather than sustained
+# strength: 10 of 63 sessions is ~16% of the window, so > 50% is over 3x the steady pace
+RECENT_SPIKE_THRESHOLD_PCT = 50.0
+CATALYST_WINDOW_DAYS = 30
+
+
+def build_tenth_candidate_sweep(
+    exclude: List[str],
+    as_of: date,
+    today: Optional[date] = None,
+) -> pd.DataFrame:
+    """
+    One row per official-index constituent across all three sectors, excluding `exclude`.
+
+    Reuses each sector's generated review table (lightened fundamentals with per-criterion
+    flags, technicals, both RS measures, sector_rank) and adds:
+      - recent_10day_contribution_pct (indicators.compute_recent_rs_contribution) on the same
+        price and benchmark history (window ending as_of),
+      - the next announced results board meeting from NSE (fetch_results_calendar), and
+        whether it falls within CATALYST_WINDOW_DAYS of `today`.
+    Sorted by fundamentals_passed_count, then rs_score_vs_nifty500, descending.
+    """
+    today = today or date.today()
+    start, end = get_one_year_date_range(as_of)
+    tables = []
+    for sector, cfg in SECTOR_SCREENS.items():
+        t = pd.read_csv(review_table_path(sector))
+        t.insert(0, "sector", sector)
+        t["criteria_total"] = len(cfg["criteria"])
+        t["sector_size"] = len(t)
+        tables.append(t)
+    table = pd.concat(tables, ignore_index=True)
+    table = table[~table["symbol"].isin(exclude)].reset_index(drop=True)
+
+    prices = NSEBhavcopyFetcher().fetch_date_range(start, end, table["symbol"].tolist(), use_cache=True)
+    benchmark = fetch_benchmark_nifty500(start_date=start.isoformat(), end_date=end.isoformat())
+    rows = []
+    for symbol, rs_table in zip(table["symbol"], table["rs_score_vs_nifty500"]):
+        sym_prices = prices[prices["SYMBOL"] == symbol]
+        rs10, rs63, pct = compute_recent_rs_contribution(sym_prices, benchmark, 10, TECHNICAL_RS_LOOKBACK_DAYS)
+        if not (pd.isna(rs63) and pd.isna(rs_table)) and abs(rs63 - rs_table) > 0.011:
+            raise RuntimeError(f"{symbol}: recomputed 63-day RS {rs63} differs from review table {rs_table}")
+        cal = fetch_results_calendar(symbol, as_of=today)
+        next_date = pd.to_datetime(cal["next_results_date"]).date() if cal["next_results_date"] else None
+        rows.append({
+            "rs_last_10d": rs10,
+            "recent_10day_contribution_pct": pct,
+            "recent_spike_flag": bool(pd.notna(pct) and pct > RECENT_SPIKE_THRESHOLD_PCT),
+            "next_results_date": cal["next_results_date"],
+            "results_date_status": cal["results_date_status"],
+            "results_within_30_days": (bool(next_date <= today + timedelta(days=CATALYST_WINDOW_DAYS))
+                                       if next_date else None),
+            "prior_year_sep_qtr_results_date": cal["prior_year_sep_qtr_results_date"],
+        })
+    table = pd.concat([table, pd.DataFrame(rows)], axis=1)
+    table["fundamentals_clean"] = table["fundamentals_passed_count"] == table["criteria_total"]
+    table["clean_candidate"] = (table["fundamentals_clean"] & table["technically_attractive"]
+                                & ~table["recent_spike_flag"])
+    front = ["sector", "symbol", "company_name", "fundamentals_passed_count", "criteria_total", "fundamentals_clean",
+             "fundamentals_failed", "technically_attractive", "rs_score_vs_nifty500", "rs_last_10d",
+             "recent_10day_contribution_pct", "recent_spike_flag", "trend_direction", "latest_adx", "latest_rsi",
+             "rs_score_vs_sector_avg", "sector_rank", "sector_size", "next_results_date", "results_date_status",
+             "results_within_30_days", "prior_year_sep_qtr_results_date", "clean_candidate"]
+    table = table[front + [c for c in table.columns if c not in front]]
+    return table.sort_values(["fundamentals_passed_count", "rs_score_vs_nifty500"],
+                             ascending=[False, False], na_position="last").reset_index(drop=True)
+
+
 def print_screen_summary(results: Dict[str, pd.DataFrame]) -> None:
     print("\n" + "=" * 115)
     print(f" SECTOR SCREEN: technical screen first (RS > {TECHNICAL_RS_MARGIN_PP:+g} pp AND Bullish), then live fundamental safety screen")
@@ -299,6 +372,12 @@ if __name__ == "__main__":
         i = args.index("--as-of")
         as_of = date.fromisoformat(args[i + 1])
         del args[i:i + 2]
+    if args[:1] == ["--tenth-sweep"]:
+        # Candidate sweep over all three universes excluding the current picks (no selection)
+        sweep = build_tenth_candidate_sweep(CURRENT_PICKS, as_of=as_of or date.today())
+        sweep.to_csv(OUTPUT_DIR / "tenth_candidate_sweep.csv", index=False)
+        logger.info("Saved 10th-candidate sweep (%d rows) to %s", len(sweep), (OUTPUT_DIR / "tenth_candidate_sweep.csv").resolve())
+        sys.exit(0)
     if args[:1] == ["--review-cement"]:
         args = ["--review", "Cement"]
     if args[:1] == ["--review"]:

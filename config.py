@@ -123,6 +123,8 @@ NSE_INDEX_CLOSE_URL_TEMPLATE = "https://nsearchives.nseindia.com/content/indices
 # Promoter pledge disclosures (JSON); the page URL seeds the Akamai cookies the API requires
 NSE_PLEDGE_PAGE_URL = "https://www.nseindia.com/companies-listing/corporate-filings-pledged-data"
 NSE_PLEDGE_API_URL = "https://www.nseindia.com/api/corporate-pledgedata?index=equities&symbol={symbol}"
+# Board-meeting disclosures (upcoming results dates are announced here in advance)
+NSE_BOARD_MEETINGS_API_URL = "https://www.nseindia.com/api/corporate-board-meetings?index=equities&symbol={symbol}"
 BENCHMARK_INDEX_NAME = "Nifty 500"
 
 # Mandatory real browser headers to bypass NSE Cloudflare / Akamai bot detection

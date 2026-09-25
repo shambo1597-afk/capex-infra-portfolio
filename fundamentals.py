@@ -44,6 +44,7 @@ from config import (
     FUNDAMENTALS_SCREEN_OUTPUT_CSV,
     LOCKED_PORTFOLIO,
     LOCKED_PORTFOLIO_SYMBOLS,
+    NSE_BOARD_MEETINGS_API_URL,
     NSE_PLEDGE_API_URL,
     NSE_PLEDGE_PAGE_URL,
     NSE_REQUEST_HEADERS,
@@ -630,6 +631,90 @@ def parse_pledge_records(payload: Dict[str, Any]) -> Tuple[Optional[float], Opti
     return (value if value is not None else None), latest.get("shp")
 
 
+def _fetch_nse_json(url: str, cache_path: Path, label: str, use_cache: bool = True, attempts: int = 4) -> Optional[Any]:
+    """
+    GET an NSE JSON API with the cookie-seeded session, retrying Akamai blocks, and cache the
+    payload at cache_path. Returns None when NSE could not be reached (never a fabricated value).
+    """
+    if use_cache and cache_path.exists():
+        try:
+            return json.loads(cache_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            logger.warning("Unreadable cache for %s (%s); refetching.", label, exc)
+    payload = None
+    for attempt in range(1, attempts + 1):
+        try:
+            resp = _get_nse_pledge_session(refresh=attempt > 1).get(url, timeout=20)
+            if resp.status_code == 200 and resp.headers.get("content-type", "").startswith("application/json"):
+                payload = resp.json()
+                break
+            logger.info("NSE %s: HTTP %d (attempt %d/%d).", label, resp.status_code, attempt, attempts)
+        except (requests.RequestException, ValueError) as exc:
+            logger.info("NSE %s failed (%s), attempt %d/%d.", label, exc, attempt, attempts)
+        if attempt < attempts:
+            time.sleep(3 * attempt)
+    if payload is None:
+        logger.warning("Could not fetch NSE %s.", label)
+        return None
+    try:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_path.write_text(json.dumps(payload), encoding="utf-8")
+    except OSError as exc:
+        logger.warning("Could not cache NSE %s: %s", label, exc)
+    return payload
+
+
+def parse_results_meetings(records: List[Dict[str, Any]], as_of: date) -> Dict[str, Any]:
+    """
+    From NSE board-meeting records, find the next announced results meeting on/after as_of and
+    last year's actual meeting for the same (July-September) quarter.
+
+    Only meetings NSE lists are used: if no upcoming results meeting has been announced, the next
+    date is None ("not announced"), never an estimate.
+    """
+    def is_results(rec):
+        text = f"{rec.get('bm_purpose', '')} {rec.get('bm_desc', '')}".lower()
+        return "result" in text
+
+    meetings = []
+    for rec in records or []:
+        when = pd.to_datetime(rec.get("bm_date"), format="%d-%b-%Y", errors="coerce")
+        if pd.notna(when) and is_results(rec):
+            meetings.append((when.date(), rec))
+    upcoming = sorted((m for m in meetings if m[0] >= as_of), key=lambda m: m[0])
+    # Last year's September-quarter results: a results meeting held Oct-Dec of the previous year
+    prior = sorted((m for m in meetings if m[0].year == as_of.year - 1 and m[0].month >= 10), key=lambda m: m[0])
+    return {
+        "next_results_date": upcoming[0][0].isoformat() if upcoming else None,
+        "next_results_desc": (upcoming[0][1].get("bm_desc") or "")[:160] if upcoming else None,
+        "prior_year_sep_qtr_results_date": prior[0][0].isoformat() if prior else None,
+    }
+
+
+def fetch_results_calendar(
+    symbol: str,
+    as_of: Optional[date] = None,
+    cache_dir: Path = FUNDAMENTALS_CACHE_DIR,
+    use_cache: bool = True,
+) -> Dict[str, Any]:
+    """
+    Upcoming quarterly-results board meeting for one symbol from NSE's board-meeting disclosures
+    (see parse_results_meetings). 'results_date_status' is 'announced', 'not announced', or
+    'unavailable' (NSE unreachable); dates are never guessed.
+    """
+    as_of = as_of or date.today()
+    url = NSE_BOARD_MEETINGS_API_URL.format(symbol=urllib.parse.quote(symbol.upper(), safe=""))
+    payload = _fetch_nse_json(url, Path(cache_dir) / f"{symbol.upper()}.board_meetings.json",
+                              f"board meetings for {symbol}", use_cache=use_cache)
+    if payload is None:
+        return {"next_results_date": None, "next_results_desc": None,
+                "prior_year_sep_qtr_results_date": None, "results_date_status": "unavailable"}
+    records = payload if isinstance(payload, list) else payload.get("data", [])
+    info = parse_results_meetings(records, as_of)
+    info["results_date_status"] = "announced" if info["next_results_date"] else "not announced"
+    return info
+
+
 def fetch_pledged_percentage(
     symbol: str,
     cache_dir: Path = FUNDAMENTALS_CACHE_DIR,
@@ -642,34 +727,11 @@ def fetch_pledged_percentage(
     Cached as data/fundamentals_cache/{SYMBOL}.pledge.json. Returns (None, None) when NSE could
     not be reached, so a screen treats it as missing (a fail), never as zero.
     """
-    cache_path = Path(cache_dir) / f"{symbol.upper()}.pledge.json"
-    payload = None
-    if use_cache and cache_path.exists():
-        try:
-            payload = json.loads(cache_path.read_text(encoding="utf-8"))
-        except (OSError, ValueError) as exc:
-            logger.warning("Unreadable pledge cache for %s (%s); refetching.", symbol, exc)
+    url = NSE_PLEDGE_API_URL.format(symbol=urllib.parse.quote(symbol.upper(), safe=""))
+    payload = _fetch_nse_json(url, Path(cache_dir) / f"{symbol.upper()}.pledge.json", f"pledge data for {symbol}",
+                              use_cache=use_cache, attempts=attempts)
     if payload is None:
-        url = NSE_PLEDGE_API_URL.format(symbol=urllib.parse.quote(symbol.upper(), safe=""))
-        for attempt in range(1, attempts + 1):
-            try:
-                resp = _get_nse_pledge_session(refresh=attempt > 1).get(url, timeout=20)
-                if resp.status_code == 200 and resp.headers.get("content-type", "").startswith("application/json"):
-                    payload = resp.json()
-                    break
-                logger.info("NSE pledge data for %s: HTTP %d (attempt %d/%d).", symbol, resp.status_code, attempt, attempts)
-            except (requests.RequestException, ValueError) as exc:
-                logger.info("NSE pledge data for %s failed (%s), attempt %d/%d.", symbol, exc, attempt, attempts)
-            if attempt < attempts:
-                time.sleep(3 * attempt)
-        if payload is None:
-            logger.warning("Could not fetch NSE pledge data for %s.", symbol)
-            return None, None
-        try:
-            cache_path.parent.mkdir(parents=True, exist_ok=True)
-            cache_path.write_text(json.dumps(payload), encoding="utf-8")
-        except OSError as exc:
-            logger.warning("Could not cache pledge data for %s: %s", symbol, exc)
+        return None, None
     if not isinstance(payload, dict) or "data" not in payload:
         return None, None
     return parse_pledge_records(payload)

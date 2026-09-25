@@ -311,6 +311,15 @@ The automated fetch routine in `fetch_benchmark_tri_automated()` is completely w
 
 Outputs `output/cement_full_screen.csv`, `output/capital_goods_full_screen.csv` and `output/power_full_screen.csv`, one row per constituent: technical metrics and `passed_technical_screen` for all; for technical passers, each fundamental metric with its `pass_<metric>` flag, `passed_fundamental_screen` and `failed_criteria`; and `passes_both_screens`.
 
+### 10th-Candidate Sweep
+
+`python sector_screen.py --tenth-sweep --as-of 2026-09-24` writes `output/tenth_candidate_sweep.csv`: every official-index constituent across the three sectors except the current picks (`sector_screen.CURRENT_PICKS`), reusing the review tables' fundamentals and technicals, plus two new fields:
+
+- **Results catalyst:** the next quarterly-results board meeting announced on NSE (`results_date_status` = announced / not announced / unavailable; never estimated), whether it falls within 30 days, and last year's actual September-quarter results date for reference.
+- **Run-up heuristic** (simple, not an established indicator): `recent_10day_contribution_pct = RS_last_10_sessions / RS_63_sessions x 100`, defined only when the 63-session RS is positive. Steady outperformance earns ~16% (10/63) of the edge in the last 10 sessions; `recent_spike_flag` marks > 50% (over 3x that pace) as a recent burst that may mean-revert.
+
+`clean_candidate` = all fundamental criteria pass, technically attractive (RS > +2 pp and Bullish), and no recent spike.
+
 ## Output Format & Column Definitions
 
 The pipeline prints a formatted table and saves `output/portfolio_technical_summary.csv` containing:

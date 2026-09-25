@@ -381,6 +381,38 @@ def compute_sector_relative_strength(
     return spreads, sector_avg
 
 
+def compute_recent_rs_contribution(
+    stock_df: pd.DataFrame,
+    benchmark_df: pd.DataFrame,
+    recent_days: int = 10,
+    full_days: int = 63,
+) -> Tuple[float, float, float]:
+    """
+    Share of the full-window RS earned in the most recent sessions: a simple "already run up"
+    heuristic (not an established indicator).
+
+        RS_recent = RS vs benchmark over the last `recent_days` sessions        (pp)
+        RS_full   = RS vs benchmark over the last `full_days` sessions (63)     (pp)
+        recent_contribution_pct = RS_recent / RS_full x 100      (only when RS_full > 0)
+
+    Both RS values come from compute_relative_strength() on the same paired sessions. Spreads
+    of compounded returns are not strictly additive, so the percentage is approximate. Reading:
+    10 of 63 sessions is ~16% of the window, so steady outperformance earns roughly that share
+    recently; well above it (e.g. > 50%) means most of the edge arrived in a recent burst that
+    may mean-revert; above 100% means the stock was flat or lagging before the burst; negative
+    means it has been giving back ground lately. Undefined (NaN) when RS_full <= 0, since there
+    is no outperformance to attribute.
+
+    Returns:
+        Tuple[float, float, float]: (RS_recent, RS_full, recent_contribution_pct)
+    """
+    rs_recent, _, _ = compute_relative_strength(stock_df, benchmark_df, lookback_days=recent_days)
+    rs_full, _, _ = compute_relative_strength(stock_df, benchmark_df, lookback_days=full_days)
+    if np.isnan(rs_recent) or np.isnan(rs_full) or rs_full <= 0:
+        return rs_recent, rs_full, np.nan
+    return rs_recent, rs_full, round(rs_recent / rs_full * 100.0, 1)
+
+
 # -----------------------------------------------------------------------------
 # 4. SUPPORT & RESISTANCE IDENTIFICATION (20-DAY ROLLING WINDOW)
 # -----------------------------------------------------------------------------
