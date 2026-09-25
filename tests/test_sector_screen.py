@@ -386,3 +386,41 @@ def test_committed_tenth_candidate_sweep():
     expected = sweep["fundamentals_clean"] & sweep["technically_attractive"] & ~sweep["recent_spike_flag"]
     assert (sweep["clean_candidate"] == expected).all()
     assert set(sweep["results_date_status"]) <= {"announced", "not announced", "unavailable"}
+
+
+def test_runup_and_catalyst_info_single_source():
+    """One implementation serves any symbol list: spike flag, 30-day window, no fabricated dates."""
+    from datetime import date
+    from sector_screen import compute_runup_and_catalyst_info
+    contributions = {"AAA": (6.0, 10.0, 60.0), "BBB": (1.0, 10.0, 10.0), "CCC": (1.0, -3.0, float("nan"))}
+    calendars = {
+        "AAA": {"next_results_date": "2026-10-19", "results_date_status": "announced", "prior_year_sep_qtr_results_date": "2025-10-18"},
+        "BBB": {"next_results_date": "2026-11-13", "results_date_status": "announced", "prior_year_sep_qtr_results_date": None},
+        "CCC": {"next_results_date": None, "results_date_status": "not announced", "prior_year_sep_qtr_results_date": "2025-11-01"},
+    }
+    prices = pd.DataFrame({"SYMBOL": ["AAA", "BBB", "CCC"], "DATE1": [pd.Timestamp("2026-09-24")] * 3, "CLOSE_PRICE": [1.0] * 3})
+    order = iter(["AAA", "BBB", "CCC"])
+    with patch("sector_screen.NSEBhavcopyFetcher") as fetcher, \
+            patch("sector_screen.fetch_benchmark_nifty500", return_value=pd.DataFrame()), \
+            patch("sector_screen.compute_recent_rs_contribution", side_effect=lambda *a, **k: contributions[next(order)]), \
+            patch("sector_screen.fetch_results_calendar", side_effect=lambda sym, as_of: calendars[sym]):
+        fetcher.return_value.fetch_date_range.return_value = prices
+        info = compute_runup_and_catalyst_info(["AAA", "BBB", "CCC"], as_of=date(2026, 9, 24), today=date(2026, 9, 25))
+
+    by = info.set_index("symbol")
+    assert by["recent_spike_flag"].to_dict() == {"AAA": True, "BBB": False, "CCC": False}
+    assert bool(by.loc["AAA", "results_within_30_days"])              # 19-Oct is within 30 days
+    assert not bool(by.loc["BBB", "results_within_30_days"])          # 13-Nov is beyond 30 days
+    assert pd.isna(by.loc["CCC", "next_results_date"]) and by.loc["CCC", "results_date_status"] == "not announced"
+    assert pd.isna(by.loc["CCC", "results_within_30_days"])
+
+
+def test_committed_locked_portfolio_check():
+    from config import OUTPUT_DIR
+    from sector_screen import CURRENT_PICKS, RECENT_SPIKE_THRESHOLD_PCT
+    check = pd.read_csv(OUTPUT_DIR / "locked_portfolio_runup_catalyst_check.csv")
+    assert check["symbol"].tolist() == CURRENT_PICKS
+    spike = check["recent_10day_contribution_pct"].fillna(-1e9) > RECENT_SPIKE_THRESHOLD_PCT
+    assert (check["recent_spike_flag"] == spike).all()
+    announced = check["results_date_status"] == "announced"
+    assert check.loc[~announced, "next_results_date"].isna().all()  # no date without an NSE announcement

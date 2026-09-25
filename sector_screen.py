@@ -22,6 +22,7 @@ Usage:
     python sector_screen.py --review "Capital Goods" Power   # same review table for other sectors
     python sector_screen.py --review --as-of 2026-09-24      # pin the price window's end date
     python sector_screen.py --tenth-sweep --as-of 2026-09-24 # candidates excluding current picks
+    python sector_screen.py --locked-check --as-of 2026-09-24 # run-up / results-date check of the picks
 """
 
 import logging
@@ -285,6 +286,52 @@ RECENT_SPIKE_THRESHOLD_PCT = 50.0
 CATALYST_WINDOW_DAYS = 30
 
 
+def compute_runup_and_catalyst_info(
+    symbols: List[str],
+    as_of: date,
+    today: Optional[date] = None,
+) -> pd.DataFrame:
+    """
+    Run-up and results-catalyst information for any list of symbols (one row each, same order).
+    The single implementation behind the 10th-candidate sweep and the locked-portfolio check.
+
+    Columns:
+      rs_score_vs_nifty500 (63 sessions) and rs_last_10d: RS vs the Nifty 500, window ending as_of;
+      recent_10day_contribution_pct: rs_last_10d / 63-session RS x 100, a simple run-up heuristic
+        (indicators.compute_recent_rs_contribution; NaN when the 63-session RS <= 0);
+      recent_spike_flag: contribution above RECENT_SPIKE_THRESHOLD_PCT;
+      next_results_date / results_date_status: the next results board meeting announced on NSE
+        (announced / not announced / unavailable; never estimated);
+      results_within_30_days: announced date within CATALYST_WINDOW_DAYS of `today` (None if none);
+      prior_year_sep_qtr_results_date: last year's actual September-quarter results date.
+
+    Informational only: nothing here is a pass/fail gate.
+    """
+    today = today or date.today()
+    start, end = get_one_year_date_range(as_of)
+    prices = NSEBhavcopyFetcher().fetch_date_range(start, end, list(symbols), use_cache=True)
+    benchmark = fetch_benchmark_nifty500(start_date=start.isoformat(), end_date=end.isoformat())
+    rows = []
+    for symbol in symbols:
+        sym_prices = prices[prices["SYMBOL"] == symbol] if not prices.empty else pd.DataFrame()
+        rs10, rs63, pct = compute_recent_rs_contribution(sym_prices, benchmark, 10, TECHNICAL_RS_LOOKBACK_DAYS)
+        cal = fetch_results_calendar(symbol, as_of=today)
+        next_date = pd.to_datetime(cal["next_results_date"]).date() if cal["next_results_date"] else None
+        rows.append({
+            "symbol": symbol,
+            "rs_score_vs_nifty500": rs63,
+            "rs_last_10d": rs10,
+            "recent_10day_contribution_pct": pct,
+            "recent_spike_flag": bool(pd.notna(pct) and pct > RECENT_SPIKE_THRESHOLD_PCT),
+            "next_results_date": cal["next_results_date"],
+            "results_date_status": cal["results_date_status"],
+            "results_within_30_days": (bool(next_date <= today + timedelta(days=CATALYST_WINDOW_DAYS))
+                                       if next_date else None),
+            "prior_year_sep_qtr_results_date": cal["prior_year_sep_qtr_results_date"],
+        })
+    return pd.DataFrame(rows)
+
+
 def build_tenth_candidate_sweep(
     exclude: List[str],
     as_of: date,
@@ -295,14 +342,12 @@ def build_tenth_candidate_sweep(
 
     Reuses each sector's generated review table (lightened fundamentals with per-criterion
     flags, technicals, both RS measures, sector_rank) and adds:
-      - recent_10day_contribution_pct (indicators.compute_recent_rs_contribution) on the same
-        price and benchmark history (window ending as_of),
-      - the next announced results board meeting from NSE (fetch_results_calendar), and
-        whether it falls within CATALYST_WINDOW_DAYS of `today`.
+      - the run-up heuristic and NSE results-date fields from compute_runup_and_catalyst_info()
+        (same price and benchmark history, window ending as_of), checked against the review
+        tables' 63-day RS.
     Sorted by fundamentals_passed_count, then rs_score_vs_nifty500, descending.
     """
     today = today or date.today()
-    start, end = get_one_year_date_range(as_of)
     tables = []
     for sector, cfg in SECTOR_SCREENS.items():
         t = pd.read_csv(review_table_path(sector))
@@ -313,27 +358,11 @@ def build_tenth_candidate_sweep(
     table = pd.concat(tables, ignore_index=True)
     table = table[~table["symbol"].isin(exclude)].reset_index(drop=True)
 
-    prices = NSEBhavcopyFetcher().fetch_date_range(start, end, table["symbol"].tolist(), use_cache=True)
-    benchmark = fetch_benchmark_nifty500(start_date=start.isoformat(), end_date=end.isoformat())
-    rows = []
-    for symbol, rs_table in zip(table["symbol"], table["rs_score_vs_nifty500"]):
-        sym_prices = prices[prices["SYMBOL"] == symbol]
-        rs10, rs63, pct = compute_recent_rs_contribution(sym_prices, benchmark, 10, TECHNICAL_RS_LOOKBACK_DAYS)
-        if not (pd.isna(rs63) and pd.isna(rs_table)) and abs(rs63 - rs_table) > 0.011:
-            raise RuntimeError(f"{symbol}: recomputed 63-day RS {rs63} differs from review table {rs_table}")
-        cal = fetch_results_calendar(symbol, as_of=today)
-        next_date = pd.to_datetime(cal["next_results_date"]).date() if cal["next_results_date"] else None
-        rows.append({
-            "rs_last_10d": rs10,
-            "recent_10day_contribution_pct": pct,
-            "recent_spike_flag": bool(pd.notna(pct) and pct > RECENT_SPIKE_THRESHOLD_PCT),
-            "next_results_date": cal["next_results_date"],
-            "results_date_status": cal["results_date_status"],
-            "results_within_30_days": (bool(next_date <= today + timedelta(days=CATALYST_WINDOW_DAYS))
-                                       if next_date else None),
-            "prior_year_sep_qtr_results_date": cal["prior_year_sep_qtr_results_date"],
-        })
-    table = pd.concat([table, pd.DataFrame(rows)], axis=1)
+    info = compute_runup_and_catalyst_info(table["symbol"].tolist(), as_of=as_of, today=today)
+    mismatch = (info["rs_score_vs_nifty500"] - table["rs_score_vs_nifty500"]).abs() > 0.011
+    if mismatch.any():
+        raise RuntimeError(f"Recomputed 63-day RS differs from the review tables for {table['symbol'][mismatch].tolist()}")
+    table = pd.concat([table, info.drop(columns=["symbol", "rs_score_vs_nifty500"])], axis=1)
     table["fundamentals_clean"] = table["fundamentals_passed_count"] == table["criteria_total"]
     table["clean_candidate"] = (table["fundamentals_clean"] & table["technically_attractive"]
                                 & ~table["recent_spike_flag"])
@@ -372,6 +401,13 @@ if __name__ == "__main__":
         i = args.index("--as-of")
         as_of = date.fromisoformat(args[i + 1])
         del args[i:i + 2]
+    if args[:1] == ["--locked-check"]:
+        # Informational run-up / results-date check of the current picks (no pass/fail, no changes)
+        check = compute_runup_and_catalyst_info(CURRENT_PICKS, as_of=as_of or date.today())
+        out = OUTPUT_DIR / "locked_portfolio_runup_catalyst_check.csv"
+        check.to_csv(out, index=False)
+        logger.info("Saved run-up/catalyst check for %d picks to %s", len(check), out.resolve())
+        sys.exit(0)
     if args[:1] == ["--tenth-sweep"]:
         # Candidate sweep over all three universes excluding the current picks (no selection)
         sweep = build_tenth_candidate_sweep(CURRENT_PICKS, as_of=as_of or date.today())
