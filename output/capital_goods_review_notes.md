@@ -8,7 +8,7 @@ then `sector_rank` (ascending).
 ## Two relative strength measures
 
 **`rs_score_vs_nifty500`** measures whether a stock beats the broad market: its 63-session
-cumulative return minus the Nifty 500's (^CRSLDX), in percentage points. It bears on whether
+cumulative return minus the Nifty 500 price index's (NSE official closes), in percentage points. It bears on whether
 Capital Goods as a theme deserves capital at all, versus simply holding the index.
 **`rs_score_vs_sector_avg`** measures which Capital Goods stock is best positioned relative to its
 Capital Goods peers: the same 63-session return minus the equal-weighted average return of all

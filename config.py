@@ -120,6 +120,9 @@ NSE_BHAVCOPY_URL_TEMPLATE = (
 
 # Official daily closing values of all NSE indices (source for the Nifty 500 benchmark series)
 NSE_INDEX_CLOSE_URL_TEMPLATE = "https://nsearchives.nseindia.com/content/indices/ind_close_all_{ddmmyyyy}.csv"
+# Promoter pledge disclosures (JSON); the page URL seeds the Akamai cookies the API requires
+NSE_PLEDGE_PAGE_URL = "https://www.nseindia.com/companies-listing/corporate-filings-pledged-data"
+NSE_PLEDGE_API_URL = "https://www.nseindia.com/api/corporate-pledgedata?index=equities&symbol={symbol}"
 BENCHMARK_INDEX_NAME = "Nifty 500"
 
 # Mandatory real browser headers to bypass NSE Cloudflare / Akamai bot detection
@@ -162,41 +165,52 @@ HISTORICAL_OHLCV_CSV = OUTPUT_DIR / "portfolio_historical_ohlcv.csv"
 RISK_SUMMARY_OUTPUT_CSV = OUTPUT_DIR / "portfolio_risk_summary.csv"
 FUNDAMENTALS_SCREEN_OUTPUT_CSV = OUTPUT_DIR / "fundamentals_screen_check.csv"
 
-# Capital Goods / EPC fundamental screen (Screener.in basis): (field, comparison, threshold, label)
-CAPITAL_GOODS_SCREEN_CRITERIA = [
-    ("market_cap", ">", 1000, "Market Cap > 1000 (Rs Cr)"),
-    ("sales_growth_3yr", ">", 8, "Sales growth 3Years > 8%"),
-    ("profit_growth_3yr", ">", 8, "Profit growth 3Years > 8%"),
-    ("roce_3yr_avg", ">", 13, "Average ROCE 3Years > 13%"),
-    ("opm", ">", 9, "OPM > 9%"),
-    ("operating_cash_flow_3yr", ">", 0, "Operating cash flow 3years > 0 (Rs Cr)"),
-    ("debt_to_equity", "<", 1.2, "Debt to equity < 1.2"),
-]
+# -----------------------------------------------------------------------------
+# FUNDAMENTAL SAFETY SCREENS: (field, comparison, threshold, label)
+#
+# These are deliberately LIGHTER than a long-term investment screen. The mandate is a 3-month
+# tactical portfolio with a hard freeze date (and a known mid-October earnings catalyst inside
+# the evaluation window), so technicals (RS vs Nifty 500, trend, ADX) drive selection and
+# fundamentals only answer "is this company solvent and safe to hold for a quarter?". Criteria
+# are therefore current-year only: no 3-year averages of ROCE and no 3-year sales/profit growth,
+# which measure multi-year durability and are miscalibrated for a one-quarter holding period.
+# Promoter pledge is a hard criterion in every sector: heavily pledged promoter stakes can force
+# selling (margin calls) regardless of fundamentals, a real risk over any horizon.
+#   roce: latest-year ROCE (Screener headline); opm: latest column (TTM where shown), exact;
+#   operating_cash_flow: last financial year; debt_to_equity: latest balance sheet;
+#   interest_coverage: EBIT / interest, latest full year; pledged_pct: % of promoter holding
+#   pledged, from NSE's pledge disclosures (fundamentals.fetch_pledged_percentage).
+# -----------------------------------------------------------------------------
 
-# Cement fundamental safety screen. No price/DMA condition: that is a technical filter and
-# belongs to the technical screen, which runs first.
 CEMENT_SCREEN_CRITERIA = [
     ("market_cap", ">", 1000, "Market Cap > 1000 (Rs Cr)"),
-    ("roce", ">", 11, "ROCE > 11%"),
-    ("roce_3yr_avg", ">", 10, "Average ROCE 3Years > 10%"),
-    ("opm", ">", 13, "OPM > 13%"),
-    ("debt_to_equity", "<", 1, "Debt to equity < 1"),
+    ("roce", ">", 8, "ROCE > 8%"),
+    ("opm", ">", 10, "OPM > 10%"),
     ("operating_cash_flow", ">", 0, "Cash from operations last year > 0 (Rs Cr)"),
-    ("sales_growth_3yr", ">", 6, "Sales growth 3Years > 6%"),
-    ("profit_growth_3yr", ">", 5, "Profit growth 3Years > 5%"),
+    ("debt_to_equity", "<", 1.5, "Debt to equity < 1.5"),
+    ("pledged_pct", "<", 15, "Pledged percentage < 15%"),
 ]
 
-# Power fundamental safety screen. No sales/profit growth filters: under regulated cost-plus
-# tariffs, revenue can fall when pass-through input costs fall while profitability holds, so
-# growth is a misleading signal for this sector. ROCE floors are lowered for the regulated,
-# debt-heavy (normative 70:30) capital structure. Interest coverage is EBIT / interest for the
-# latest full financial year (fundamentals.parse_interest_coverage).
+CAPITAL_GOODS_SCREEN_CRITERIA = [
+    ("market_cap", ">", 1000, "Market Cap > 1000 (Rs Cr)"),
+    ("roce", ">", 8, "ROCE > 8%"),
+    ("opm", ">", 8, "OPM > 8%"),
+    ("operating_cash_flow", ">", 0, "Cash from operations last year > 0 (Rs Cr)"),
+    ("debt_to_equity", "<", 1.5, "Debt to equity < 1.5"),
+    ("pledged_pct", "<", 15, "Pledged percentage < 15%"),
+]
+
+# Power: no sales/profit growth filter (under regulated cost-plus tariffs, revenue can fall when
+# pass-through input costs fall while profitability holds, so growth misleads for this sector),
+# and interest coverage instead of a flat debt/equity cap (the regulated capital structure is
+# normatively debt-heavy, ~70:30, so leverage is structural; the ability to service it is what
+# matters). The ROCE floor is lower for the same regulated, leveraged capital structure.
 POWER_SCREEN_CRITERIA = [
     ("market_cap", ">", 2000, "Market Cap > 2000 (Rs Cr)"),
-    ("roce", ">", 7, "ROCE > 7%"),
-    ("roce_3yr_avg", ">", 7, "Average ROCE 3Years > 7%"),
-    ("interest_coverage", ">", 2, "Interest coverage > 2"),
+    ("roce", ">", 6, "ROCE > 6%"),
+    ("interest_coverage", ">", 1.5, "Interest coverage > 1.5"),
     ("operating_cash_flow", ">", 0, "Cash from operations last year > 0 (Rs Cr)"),
+    ("pledged_pct", "<", 15, "Pledged percentage < 15%"),
 ]
 
 # -----------------------------------------------------------------------------

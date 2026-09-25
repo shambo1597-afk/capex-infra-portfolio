@@ -152,13 +152,13 @@ class TestGracefulDegradation:
 
 
 PASSING_RECORD = {
-    "status": "OK", "market_cap": 21808.0, "sales_growth_3yr": 25.0, "profit_growth_3yr": 68.0,
-    "roce_3yr_avg": 29.33, "opm": 10.0, "operating_cash_flow_3yr": 1388.0, "debt_to_equity": 0.42,
+    "status": "OK", "market_cap": 21808.0, "roce": 32.8, "opm": 10.0, "operating_cash_flow": 500.0,
+    "debt_to_equity": 0.42, "pledged_pct": 0.0,
 }
 
 
 class TestFundamentalsScreenCheck:
-    """Capital Goods/EPC screen: every threshold must be strictly met; missing data fails."""
+    """Capital Goods/EPC safety screen: every threshold must be strictly met; missing data fails."""
 
     def _run(self, record):
         with patch("fundamentals.extract_stock_fundamentals", return_value=record):
@@ -170,15 +170,19 @@ class TestFundamentalsScreenCheck:
         assert row["sector"] == "Capital Goods/EPC"
 
     def test_boundary_values_fail_strict_thresholds(self):
-        row = self._run({**PASSING_RECORD, "opm": 9.0, "debt_to_equity": 1.2})
+        row = self._run({**PASSING_RECORD, "opm": 8.0, "debt_to_equity": 1.5})
         assert not row["passes_screen"]
         assert not row["pass_opm"] and not row["pass_debt_to_equity"]
-        assert row["failed_criteria"] == "OPM > 9%; Debt to equity < 1.2"
+        assert row["failed_criteria"] == "OPM > 8%; Debt to equity < 1.5"
 
     def test_missing_metric_fails_and_is_labelled(self):
-        row = self._run({**PASSING_RECORD, "operating_cash_flow_3yr": None})
+        row = self._run({**PASSING_RECORD, "pledged_pct": None})
         assert not row["passes_screen"]
-        assert row["failed_criteria"] == "Operating cash flow 3years > 0 (Rs Cr) (missing)"
+        assert row["failed_criteria"] == "Pledged percentage < 15% (missing)"
+
+    def test_heavy_pledge_fails(self):
+        row = self._run({**PASSING_RECORD, "pledged_pct": 44.74})
+        assert row["failed_criteria"] == "Pledged percentage < 15%"
 
     def test_writes_csv(self, tmp_path):
         out = tmp_path / "fundamentals_screen_check.csv"

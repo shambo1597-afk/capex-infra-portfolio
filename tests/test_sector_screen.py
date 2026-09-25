@@ -2,7 +2,7 @@
 Unit tests for the technical-first sector screen and the fundamentals parsers it relies on.
 """
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pandas as pd
@@ -94,18 +94,19 @@ class TestScreenSector:
 
 class TestSectorScreenConfig:
     def test_criteria_match_the_specified_thresholds(self):
+        """Lightened, current-year-only safety screens (no 3-year averages or growth)."""
         as_tuples = lambda crit: [(f, op, t) for f, op, t, _ in crit]  # noqa: E731
         assert as_tuples(CEMENT_SCREEN_CRITERIA) == [
-            ("market_cap", ">", 1000), ("roce", ">", 11), ("roce_3yr_avg", ">", 10), ("opm", ">", 13),
-            ("debt_to_equity", "<", 1), ("operating_cash_flow", ">", 0),
-            ("sales_growth_3yr", ">", 6), ("profit_growth_3yr", ">", 5)]
+            ("market_cap", ">", 1000), ("roce", ">", 8), ("opm", ">", 10), ("operating_cash_flow", ">", 0),
+            ("debt_to_equity", "<", 1.5), ("pledged_pct", "<", 15)]
         assert as_tuples(CAPITAL_GOODS_SCREEN_CRITERIA) == [
-            ("market_cap", ">", 1000), ("sales_growth_3yr", ">", 8), ("profit_growth_3yr", ">", 8),
-            ("roce_3yr_avg", ">", 13), ("opm", ">", 9), ("operating_cash_flow_3yr", ">", 0),
-            ("debt_to_equity", "<", 1.2)]
+            ("market_cap", ">", 1000), ("roce", ">", 8), ("opm", ">", 8), ("operating_cash_flow", ">", 0),
+            ("debt_to_equity", "<", 1.5), ("pledged_pct", "<", 15)]
         assert as_tuples(POWER_SCREEN_CRITERIA) == [
-            ("market_cap", ">", 2000), ("roce", ">", 7), ("roce_3yr_avg", ">", 7),
-            ("interest_coverage", ">", 2), ("operating_cash_flow", ">", 0)]
+            ("market_cap", ">", 2000), ("roce", ">", 6), ("interest_coverage", ">", 1.5),
+            ("operating_cash_flow", ">", 0), ("pledged_pct", "<", 15)]
+        for crit in (CEMENT_SCREEN_CRITERIA, CAPITAL_GOODS_SCREEN_CRITERIA, POWER_SCREEN_CRITERIA):
+            assert not {f for f, *_ in crit} & {"roce_3yr_avg", "sales_growth_3yr", "profit_growth_3yr", "operating_cash_flow_3yr"}
 
     @pytest.mark.parametrize("sector, count", [("Cement", 16), ("Capital Goods", 50), ("Power", 21)])
     def test_official_constituent_files(self, sector, count):
@@ -267,3 +268,40 @@ def test_presigned_s3_credentials_are_redacted_before_caching():
     assert "AKIA" not in clean and "deadbeef" not in clean
     assert "X-Amz-Credential=REDACTED" in clean and "X-Amz-Signature=REDACTED" in clean
     assert "<td>OPM %</td>" in clean  # page content otherwise untouched
+
+
+class TestPromoterPledge:
+    """Pledged percentage from NSE disclosures (percPromoterShares = % of promoter holding pledged)."""
+
+    def test_latest_shareholding_record_wins(self):
+        from fundamentals import parse_pledge_records
+        payload = {"data": [
+            {"shp": "31-Mar-2026", "percPromoterShares": "    50.00"},
+            {"shp": "30-Jun-2026", "percPromoterShares": "    44.74"},
+        ]}
+        assert parse_pledge_records(payload) == (44.74, "30-Jun-2026")
+
+    def test_no_disclosed_pledge_is_zero(self):
+        from fundamentals import parse_pledge_records
+        assert parse_pledge_records({"data": []}) == (0.0, None)
+
+    def test_unreachable_nse_is_missing_not_zero(self, tmp_path):
+        from fundamentals import fetch_pledged_percentage
+        blocked = MagicMock(status_code=403, headers={"content-type": "text/html"})
+        with patch("fundamentals._get_nse_pledge_session") as session, patch("fundamentals.time.sleep"):
+            session.return_value.get.return_value = blocked
+            assert fetch_pledged_percentage("KPIGREEN", cache_dir=tmp_path, use_cache=False) == (None, None)
+        assert not list(tmp_path.iterdir())  # nothing cached for a failed fetch
+
+    def test_fetch_encodes_symbol_and_caches(self, tmp_path):
+        from fundamentals import fetch_pledged_percentage
+        ok = MagicMock(status_code=200, headers={"content-type": "application/json; charset=utf-8"})
+        ok.json.return_value = {"data": [{"shp": "30-Jun-2026", "percPromoterShares": "59.96"}]}
+        with patch("fundamentals._get_nse_pledge_session") as session:
+            session.return_value.get.return_value = ok
+            assert fetch_pledged_percentage("GMRP&UI", cache_dir=tmp_path, use_cache=False) == (59.96, "30-Jun-2026")
+            assert "symbol=GMRP%26UI" in session.return_value.get.call_args.args[0]
+        with patch("fundamentals._get_nse_pledge_session") as session:  # served from cache, no request
+            assert fetch_pledged_percentage("GMRP&UI", cache_dir=tmp_path) == (59.96, "30-Jun-2026")
+            session.return_value.get.assert_not_called()
+

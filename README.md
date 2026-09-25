@@ -299,7 +299,15 @@ The automated fetch routine in `fetch_benchmark_tri_automated()` is completely w
 
 1. **Universe:** the official Nifty Cement (16), Nifty Capital Goods (50) and Nifty Power (21) constituents, stored as downloaded from niftyindices.com in `data/index_constituents/`. No manual additions.
 2. **Technical screen (every constituent):** RS vs Nifty 500 over 63 sessions **> +2 pp** (a margin: RS is a 63-day cumulative spread and one day's return can move it by several points, so a bare `> 0` flips on noise) **and** trend direction (+DI vs −DI) Bullish, computed with the existing indicator pipeline on the complete Bhavcopy history. ADX is reported as a tiebreaker, not a cutoff.
-3. **Fundamental safety screen (technical passers only):** fetched live from Screener.in via `get_fundamentals_summary(..., use_cache=False)` and scored against the sector's criteria in `config.py` (`CEMENT_SCREEN_CRITERIA`, `CAPITAL_GOODS_SCREEN_CRITERIA`, `POWER_SCREEN_CRITERIA`). A metric that cannot be read fails.
+3. **Fundamental safety screen (technical passers only):** fetched live via `get_fundamentals_summary(..., use_cache=False)` (Screener.in for financials, NSE pledge disclosures for promoter pledge) and scored against the sector's criteria in `config.py`. A metric that cannot be read fails. These are deliberately **light, current-year solvency checks** for a 3-month tactical mandate, not a multi-year quality bar (no 3-year averages or growth):
+
+   | Sector | Criteria |
+   | :--- | :--- |
+   | Cement | Market Cap > 1000 Cr, ROCE > 8%, OPM > 10%, CFO last year > 0, D/E < 1.5, Pledge < 15% |
+   | Capital Goods | Market Cap > 1000 Cr, ROCE > 8%, OPM > 8%, CFO last year > 0, D/E < 1.5, Pledge < 15% |
+   | Power | Market Cap > 2000 Cr, ROCE > 6%, Interest coverage > 1.5, CFO last year > 0, Pledge < 15% |
+
+   Pledge is "% of promoter holding pledged" from NSE's corporate pledge data: Screener's public page only mentions pledge in its Cons text at high levels (~40%+), so its absence is not evidence of zero. `--as-of YYYY-MM-DD` pins the price window's end date.
 
 Outputs `output/cement_full_screen.csv`, `output/capital_goods_full_screen.csv` and `output/power_full_screen.csv`, one row per constituent: technical metrics and `passed_technical_screen` for all; for technical passers, each fundamental metric with its `pass_<metric>` flag, `passed_fundamental_screen` and `failed_criteria`; and `passes_both_screens`.
 
@@ -331,7 +339,7 @@ It also saves `output/portfolio_risk_summary.csv`, one row per locked portfolio 
 | `stop_loss_pct_below_current` | Float (%) | Distance of the stop below the current price. |
 | `stop_loss_method` | String | `support` or `volatility_cap` (whichever was tighter); `unavailable` if neither could be computed. |
 
-`output/fundamentals_screen_check.csv` (from `fundamentals.generate_fundamentals_screen_check()`, live Screener.in data by default) records each checked stock's screen metrics, a `pass_<metric>` flag per criterion (`config.CAPITAL_GOODS_SCREEN_CRITERIA`: Market Cap > 1000 Cr, 3-yr sales and profit growth > 8%, 3-yr average ROCE > 13%, OPM > 9%, 3-yr operating cash flow > 0, Debt/Equity < 1.2), `passes_screen`, and `failed_criteria`. A metric that cannot be read counts as a failure.
+`output/fundamentals_screen_check.csv` is an earlier one-off check of CEMPRO and SCHNEIDER against the *previous* long-term Capital Goods screen (3-year ROCE and growth). It is kept for the record; the current screens are the lightened safety checks described under Sector Screen.
 
 ---
 

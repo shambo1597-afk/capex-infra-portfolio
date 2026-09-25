@@ -874,13 +874,12 @@ def fetch_benchmark_tri_automated(start_date: str, end_date: str) -> pd.DataFram
         return load_benchmark_tri(DEFAULT_TRI_CSV_PATH, as_of=end_date)
 
 
-def get_one_year_date_range() -> Tuple[date, date]:
+def get_one_year_date_range(end_date: Optional[date] = None) -> Tuple[date, date]:
     """
-    Calculate the standard 1-year back date window from current execution date.
+    Calculate the standard 1-year window ending on end_date (default: today).
+
     Returns:
         Tuple[date, date]: (start_date, end_date)
     """
-    today = date.today()
-    # 365 days back
-    one_year_ago = today - timedelta(days=365)
-    return one_year_ago, today
+    end = pd.Timestamp(end_date).date() if end_date is not None else date.today()
+    return end - timedelta(days=365), end

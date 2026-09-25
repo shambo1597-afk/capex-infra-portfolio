@@ -20,6 +20,7 @@ Usage:
     python sector_screen.py                  # technical-first screens for all three sectors
     python sector_screen.py --review-cement  # unfiltered Cement review table (no screening)
     python sector_screen.py --review "Capital Goods" Power   # same review table for other sectors
+    python sector_screen.py --review --as-of 2026-09-24      # pin the price window's end date
 """
 
 import logging
@@ -110,7 +111,7 @@ def screen_sector(
     records = {r["symbol"]: r for r in fundamentals.to_dict("records")} if not fundamentals.empty else {}
 
     metric_cols = [c for field, *_ in criteria for c in (field, f"pass_{field}")]
-    for col in ["fundamentals_as_of", "fundamentals_status", *metric_cols, "passed_fundamental_screen", "failed_criteria"]:
+    for col in ["fundamentals_as_of", "fundamentals_status", "pledged_as_of", *metric_cols, "passed_fundamental_screen", "failed_criteria"]:
         screen[col] = pd.Series([None] * len(screen), dtype="object")
     for i, row in screen.iterrows():
         if not row["passed_technical_screen"]:
@@ -124,6 +125,7 @@ def screen_sector(
             screen.at[i, col] = value
         screen.at[i, "fundamentals_as_of"] = date.today().isoformat()
         screen.at[i, "fundamentals_status"] = record.get("status")
+        screen.at[i, "pledged_as_of"] = record.get("pledged_as_of")
         screen.at[i, "passed_fundamental_screen"] = not failed
         screen.at[i, "failed_criteria"] = "; ".join(failed)
 
@@ -131,13 +133,17 @@ def screen_sector(
     return screen
 
 
-def run_sector_screens(sectors: Optional[List[str]] = None, use_price_cache: bool = True) -> Dict[str, pd.DataFrame]:
-    """Screen each configured sector and write its CSV. Returns {sector: screen DataFrame}."""
+def run_sector_screens(
+    sectors: Optional[List[str]] = None,
+    use_price_cache: bool = True,
+    as_of: Optional[date] = None,
+) -> Dict[str, pd.DataFrame]:
+    """Screen each configured sector (price window ending as_of, default today) and write its CSV."""
     sectors = sectors or list(SECTOR_SCREENS)
     constituents = {s: load_constituents(SECTOR_SCREENS[s]["constituents_csv"]) for s in sectors}
     all_symbols = sorted({sym for df in constituents.values() for sym in df["Symbol"]})
 
-    start, end = get_one_year_date_range()
+    start, end = get_one_year_date_range(as_of)
     prices = NSEBhavcopyFetcher().fetch_date_range(start, end, all_symbols, use_cache=use_price_cache)
     benchmark = fetch_benchmark_nifty500(start_date=start.isoformat(), end_date=end.isoformat())
     if benchmark.empty:
@@ -196,6 +202,7 @@ def build_review_table(
             "fundamentals_failed": "; ".join(failed),
             "fundamentals_status": record.get("status"),
             "fundamentals_as_of": date.today().isoformat(),
+            "pledged_as_of": record.get("pledged_as_of"),
             "current_price": tech["current_price"],
             "latest_rsi": tech["latest_rsi"],
             "latest_adx": tech["latest_adx"],
@@ -220,11 +227,11 @@ def build_review_table(
                              ascending=[False, True], na_position="last").reset_index(drop=True)
 
 
-def run_review_table(sector: str, output_csv: Path) -> pd.DataFrame:
-    """Build and save the unfiltered review table for one sector's official index."""
+def run_review_table(sector: str, output_csv: Path, as_of: Optional[date] = None) -> pd.DataFrame:
+    """Build and save the unfiltered review table for one sector (price window ending as_of, default today)."""
     cfg = SECTOR_SCREENS[sector]
     constituents = load_constituents(cfg["constituents_csv"])
-    start, end = get_one_year_date_range()
+    start, end = get_one_year_date_range(as_of)
     prices = NSEBhavcopyFetcher().fetch_date_range(start, end, constituents["Symbol"].tolist(), use_cache=True)
     benchmark = fetch_benchmark_nifty500(start_date=start.isoformat(), end_date=end.isoformat())
     if benchmark.empty:
@@ -286,6 +293,12 @@ def review_table_path(sector: str) -> Path:
 
 if __name__ == "__main__":
     args = sys.argv[1:]
+    as_of = None
+    if "--as-of" in args:
+        # Pin the price window's end date (YYYY-MM-DD), e.g. to re-run on the same sessions
+        i = args.index("--as-of")
+        as_of = date.fromisoformat(args[i + 1])
+        del args[i:i + 2]
     if args[:1] == ["--review-cement"]:
         args = ["--review", "Cement"]
     if args[:1] == ["--review"]:
@@ -293,7 +306,7 @@ if __name__ == "__main__":
         for sector in args[1:] or list(SECTOR_SCREENS):
             if sector not in SECTOR_SCREENS:
                 sys.exit(f"Unknown sector {sector!r}; choose from {list(SECTOR_SCREENS)}")
-            run_review_table(sector, review_table_path(sector))
+            run_review_table(sector, review_table_path(sector), as_of=as_of)
     else:
-        print_screen_summary(run_sector_screens())
+        print_screen_summary(run_sector_screens(as_of=as_of))
     sys.exit(0)

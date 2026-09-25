@@ -22,10 +22,12 @@ Every function contains detailed academic docstrings explaining the financial in
 accounting mechanics, and investment risk management applications.
 """
 
+import json
 import logging
 import operator
 import re
 import time
+import urllib.parse
 from datetime import date
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -42,6 +44,8 @@ from config import (
     FUNDAMENTALS_SCREEN_OUTPUT_CSV,
     LOCKED_PORTFOLIO,
     LOCKED_PORTFOLIO_SYMBOLS,
+    NSE_PLEDGE_API_URL,
+    NSE_PLEDGE_PAGE_URL,
     NSE_REQUEST_HEADERS,
     POWER_SECTOR_STOCKS,
 )
@@ -582,6 +586,95 @@ def parse_sales_and_profit_growth(soup: BeautifulSoup) -> Tuple[Optional[float],
 # HIGH-LEVEL AGGREGATOR ENGINE
 # -----------------------------------------------------------------------------
 
+# -----------------------------------------------------------------------------
+# PROMOTER PLEDGE (NSE disclosures)
+# -----------------------------------------------------------------------------
+# Screener.in's public company page does not report pledge as a ratio; it only mentions it in
+# machine-generated "Cons" text when pledge is high (seen only at 40%+), so its absence does not
+# mean zero. NSE's corporate pledge disclosures are the authoritative source.
+
+_nse_pledge_session: Optional[requests.Session] = None
+
+
+def _get_nse_pledge_session(refresh: bool = False) -> requests.Session:
+    """Session carrying NSE's Akamai cookies, seeded from the pledge-data page (the homepage 403s)."""
+    global _nse_pledge_session
+    if _nse_pledge_session is None or refresh:
+        session = requests.Session()
+        session.headers.update({**NSE_REQUEST_HEADERS, "Accept": "application/json, text/plain, */*",
+                                "Referer": NSE_PLEDGE_PAGE_URL})
+        try:
+            session.get(NSE_PLEDGE_PAGE_URL, timeout=20)
+        except requests.RequestException as exc:
+            logger.warning("NSE pledge page warm-up failed: %s", exc)
+        _nse_pledge_session = session
+    return _nse_pledge_session
+
+
+def parse_pledge_records(payload: Dict[str, Any]) -> Tuple[Optional[float], Optional[str]]:
+    """
+    Pledged percentage (% of promoter holding pledged, NSE 'percPromoterShares') and its
+    shareholding-pattern date from an NSE corporate-pledgedata response.
+
+    An empty record list means no promoter pledge is disclosed: (0.0, None).
+    """
+    records = payload.get("data") or []
+    if not records:
+        return 0.0, None
+
+    def shp_date(rec):
+        return pd.to_datetime(rec.get("shp"), format="%d-%b-%Y", errors="coerce")
+
+    latest = max(records, key=lambda rec: (shp_date(rec) if pd.notna(shp_date(rec)) else pd.Timestamp.min))
+    value = _clean_numeric(str(latest.get("percPromoterShares", "")).strip())
+    return (value if value is not None else None), latest.get("shp")
+
+
+def fetch_pledged_percentage(
+    symbol: str,
+    cache_dir: Path = FUNDAMENTALS_CACHE_DIR,
+    use_cache: bool = True,
+    attempts: int = 4,
+) -> Tuple[Optional[float], Optional[str]]:
+    """
+    Promoter pledge for one NSE symbol: (% of promoter holding pledged, shareholding date).
+
+    Cached as data/fundamentals_cache/{SYMBOL}.pledge.json. Returns (None, None) when NSE could
+    not be reached, so a screen treats it as missing (a fail), never as zero.
+    """
+    cache_path = Path(cache_dir) / f"{symbol.upper()}.pledge.json"
+    payload = None
+    if use_cache and cache_path.exists():
+        try:
+            payload = json.loads(cache_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            logger.warning("Unreadable pledge cache for %s (%s); refetching.", symbol, exc)
+    if payload is None:
+        url = NSE_PLEDGE_API_URL.format(symbol=urllib.parse.quote(symbol.upper(), safe=""))
+        for attempt in range(1, attempts + 1):
+            try:
+                resp = _get_nse_pledge_session(refresh=attempt > 1).get(url, timeout=20)
+                if resp.status_code == 200 and resp.headers.get("content-type", "").startswith("application/json"):
+                    payload = resp.json()
+                    break
+                logger.info("NSE pledge data for %s: HTTP %d (attempt %d/%d).", symbol, resp.status_code, attempt, attempts)
+            except (requests.RequestException, ValueError) as exc:
+                logger.info("NSE pledge data for %s failed (%s), attempt %d/%d.", symbol, exc, attempt, attempts)
+            if attempt < attempts:
+                time.sleep(3 * attempt)
+        if payload is None:
+            logger.warning("Could not fetch NSE pledge data for %s.", symbol)
+            return None, None
+        try:
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            cache_path.write_text(json.dumps(payload), encoding="utf-8")
+        except OSError as exc:
+            logger.warning("Could not cache pledge data for %s: %s", symbol, exc)
+    if not isinstance(payload, dict) or "data" not in payload:
+        return None, None
+    return parse_pledge_records(payload)
+
+
 def extract_stock_fundamentals(symbol: str, use_cache: bool = True) -> Dict[str, Any]:
     """
     Retrieve and parse all required fundamental metrics for a single stock symbol.
@@ -610,10 +703,15 @@ def extract_stock_fundamentals(symbol: str, use_cache: bool = True) -> Dict[str,
         "operating_cash_flow": None,
         "operating_cash_flow_3yr": None,
         "interest_coverage": None,
+        "pledged_pct": None,
+        "pledged_as_of": None,
         "sales_growth_3yr": None,
         "profit_growth_3yr": None,
         "status": "Data Unavailable",
     }
+
+    pledged_pct, pledged_as_of = fetch_pledged_percentage(symbol, use_cache=use_cache)
+    default_record.update({"pledged_pct": pledged_pct, "pledged_as_of": pledged_as_of})
 
     html = fetch_screener_page(symbol, use_cache=use_cache)
     if not html:
@@ -644,6 +742,8 @@ def extract_stock_fundamentals(symbol: str, use_cache: bool = True) -> Dict[str,
             "operating_cash_flow": cfo,
             "operating_cash_flow_3yr": cfo_3yr,
             "interest_coverage": interest_cov,
+            "pledged_pct": pledged_pct,
+            "pledged_as_of": pledged_as_of,
             "sales_growth_3yr": sales_3y,
             "profit_growth_3yr": profit_3y,
             "status": "OK",
