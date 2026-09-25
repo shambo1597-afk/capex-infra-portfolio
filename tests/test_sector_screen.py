@@ -26,19 +26,26 @@ PL_HTML = """
 
 
 class TestTechnicalScreenRule:
-    """Passes only when RS vs Nifty 500 > 0 AND trend is Bullish; ADX is not a cutoff."""
+    """Passes only when RS vs Nifty 500 > +2 pp AND trend is Bullish; ADX is not a cutoff."""
 
     @pytest.mark.parametrize("rs, trend, passed, reason", [
         (5.0, "Bullish (Uptrend)", True, ""),
-        (0.01, "Bullish (Uptrend)", True, ""),
-        (0.0, "Bullish (Uptrend)", False, "RS <= 0"),
-        (-3.0, "Bullish (Uptrend)", False, "RS <= 0"),
+        (2.01, "Bullish (Uptrend)", True, ""),
+        (2.0, "Bullish (Uptrend)", False, "RS <= +2 pp"),     # margin is strict
+        (0.01, "Bullish (Uptrend)", False, "RS <= +2 pp"),    # passed under the old bare-zero rule
+        (0.0, "Bullish (Uptrend)", False, "RS <= +2 pp"),
+        (-3.0, "Bullish (Uptrend)", False, "RS <= +2 pp"),
         (5.0, "Bearish (Downtrend)", False, "trend Bearish"),
-        (-3.0, "Bearish (Downtrend)", False, "RS <= 0; trend Bearish"),
+        (-3.0, "Bearish (Downtrend)", False, "RS <= +2 pp; trend Bearish"),
         (float("nan"), "N/A (Insufficient Data)", False, "RS unavailable; trend N/A"),
     ])
     def test_rule(self, rs, trend, passed, reason):
         assert technical_screen_result(rs, trend) == (passed, reason)
+
+    def test_margin_comes_from_config(self):
+        from config import TECHNICAL_RS_MARGIN_PP
+        assert TECHNICAL_RS_MARGIN_PP == 2.0
+        assert technical_screen_result(1.0, "Bullish (Uptrend)", rs_margin_pp=0.5) == (True, "")
 
 
 class TestScreenSector:

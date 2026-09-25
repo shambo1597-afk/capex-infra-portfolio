@@ -225,9 +225,18 @@ SECTOR_SCREENS = {
     },
 }
 
-# Technical screen: passes when RS vs Nifty 500 over TECHNICAL_RS_LOOKBACK_DAYS is > 0 AND the
-# trend direction (+DI vs -DI) is Bullish. ADX is reported (tiebreaker) but not a cutoff.
+# Technical screen ("technically attractive"): passes when RS vs Nifty 500 over
+# TECHNICAL_RS_LOOKBACK_DAYS exceeds TECHNICAL_RS_MARGIN_PP AND the trend direction (+DI vs -DI)
+# is Bullish. ADX is reported (tiebreaker) but not a cutoff.
 TECHNICAL_RS_LOOKBACK_DAYS = 63
+
+# Minimum RS vs Nifty 500 (percentage points) to count as outperforming. A bare zero threshold is
+# too sensitive to single-day noise: RS is a 63-day cumulative spread, and one new trading day's
+# return alone can shift it meaningfully (moving the window end by one session changed RS by up
+# to +/-11 pp and flipped several stocks' pass/fail). A +2 pp margin requires the outperformance
+# to be more than marginal before a stock is called technically attractive. Applies only to this
+# absolute pass/fail test, not to rs_score_vs_sector_avg / sector_rank (a relative ranking).
+TECHNICAL_RS_MARGIN_PP = 2.0
 
 # -----------------------------------------------------------------------------
 # RISK, STOP-LOSS & SIZING ASSUMPTIONS (see stoploss.py)

@@ -298,7 +298,7 @@ The automated fetch routine in `fetch_benchmark_tri_automated()` is completely w
 `python sector_screen.py` applies the brief's order ("technical analysis, then financial analysis") identically to each sector:
 
 1. **Universe:** the official Nifty Cement (16), Nifty Capital Goods (50) and Nifty Power (21) constituents, stored as downloaded from niftyindices.com in `data/index_constituents/`. No manual additions.
-2. **Technical screen (every constituent):** RS vs Nifty 500 over 63 sessions > 0 **and** trend direction (+DI vs −DI) Bullish, computed with the existing indicator pipeline on the complete Bhavcopy history. ADX is reported as a tiebreaker, not a cutoff.
+2. **Technical screen (every constituent):** RS vs Nifty 500 over 63 sessions **> +2 pp** (a margin: RS is a 63-day cumulative spread and one day's return can move it by several points, so a bare `> 0` flips on noise) **and** trend direction (+DI vs −DI) Bullish, computed with the existing indicator pipeline on the complete Bhavcopy history. ADX is reported as a tiebreaker, not a cutoff.
 3. **Fundamental safety screen (technical passers only):** fetched live from Screener.in via `get_fundamentals_summary(..., use_cache=False)` and scored against the sector's criteria in `config.py` (`CEMENT_SCREEN_CRITERIA`, `CAPITAL_GOODS_SCREEN_CRITERIA`, `POWER_SCREEN_CRITERIA`). A metric that cannot be read fails.
 
 Outputs `output/cement_full_screen.csv`, `output/capital_goods_full_screen.csv` and `output/power_full_screen.csv`, one row per constituent: technical metrics and `passed_technical_screen` for all; for technical passers, each fundamental metric with its `pass_<metric>` flag, `passed_fundamental_screen` and `failed_criteria`; and `passes_both_screens`.

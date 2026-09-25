@@ -244,20 +244,33 @@ class TestOfficialIndexBenchmark:
 
     def test_index_closes_parsed_with_holidays_and_wrong_sessions(self, tmp_path):
         replies = {
-            "22092026": _Resp(200, _index_file("22-09-2026", 22794.2)),
-            "23092026": _Resp(404, "<html>Not found</html>"),          # holiday
-            "24092026": _Resp(200, _index_file("23-09-2026", 22600.0)),  # previous session served
+            "22092025": _Resp(200, _index_file("22-09-2025", 22794.2)),
+            "23092025": _Resp(404, "<html>Not found</html>"),          # holiday
+            "24092025": _Resp(200, _index_file("23-09-2025", 22600.0)),  # previous session served
         }
         fetcher = NSEBhavcopyFetcher(cache_dir=tmp_path, delay_seconds=0)
         fetcher.session.get = lambda url, timeout: replies[url.rsplit("_", 1)[1][:8]]
         fetcher.session_initialized = True
 
-        df = fetcher.fetch_index_closes(date(2026, 9, 22), date(2026, 9, 24))
+        df = fetcher.fetch_index_closes(date(2025, 9, 22), date(2025, 9, 24))
 
-        assert df["Date"].dt.date.tolist() == [date(2026, 9, 22)]
+        assert df["Date"].dt.date.tolist() == [date(2025, 9, 22)]
         assert df["Close"].tolist() == [22794.2]
-        assert (tmp_path / "holiday_v2_23-Sep-2026.flag").exists()
-        assert (tmp_path / "holiday_v2_24-Sep-2026.flag").exists()
+        assert (tmp_path / "holiday_v2_23-Sep-2025.flag").exists()
+        assert (tmp_path / "holiday_v2_24-Sep-2025.flag").exists()
+
+    def test_unpublished_recent_day_is_not_cached_as_holiday(self, tmp_path):
+        """A 404 for today may only mean NSE hasn't published yet: it must be re-checked later."""
+        from datetime import timedelta
+        today = date.today()
+        fetcher = NSEBhavcopyFetcher(cache_dir=tmp_path, delay_seconds=0)
+        fetcher.session.get = lambda url, timeout: _Resp(404, "<html>Not found</html>")
+        fetcher.session_initialized = True
+
+        fetcher.fetch_daily_bhavcopy(today, ["JKCEMENT"])
+        fetcher.fetch_index_closes(today - timedelta(days=1), today)
+
+        assert not list(tmp_path.glob("holiday*"))
 
     def test_blocked_index_day_is_retried(self, tmp_path):
         replies = [AKAMAI_403, _Resp(200, _index_file("22-09-2026", 22794.2))]

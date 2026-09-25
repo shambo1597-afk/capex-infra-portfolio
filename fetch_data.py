@@ -128,7 +128,17 @@ class NSEBhavcopyFetcher:
         return target_df
 
     @staticmethod
-    def _mark_holiday(holiday_flag_file: Path) -> None:
+    def _mark_holiday(holiday_flag_file: Path, session_date: date) -> None:
+        """
+        Cache session_date as a market holiday, except for today or yesterday: NSE publishes a
+        day's files in the evening (IST), so a 404 or previous-session file for a very recent
+        date may just mean "not published yet". Caching that would drop a real trading day
+        permanently; leaving it unflagged means it is simply re-checked on the next run.
+        """
+        if session_date >= date.today() - timedelta(days=1):
+            logger.info("No NSE file yet for %s; not caching it as a holiday (may be unpublished).",
+                        session_date.strftime("%d-%b-%Y"))
+            return
         try:
             holiday_flag_file.touch()
         except OSError:
@@ -221,7 +231,7 @@ class NSEBhavcopyFetcher:
         if response.status_code == 404:
             # NSE's origin answers 404 for weekends and exchange holidays
             logger.debug("No bhavcopy for %s (404: market holiday/weekend).", date_str)
-            self._mark_holiday(holiday_flag_file)
+            self._mark_holiday(holiday_flag_file, target_date)
             return None
 
         # Parse CSV content from response text
@@ -269,7 +279,7 @@ class NSEBhavcopyFetcher:
         # accepting it would duplicate that session under a second request date
         if self._is_other_session(day_df, target_date):
             logger.debug("Bhavcopy requested for %s contains another session; treating as holiday.", date_str)
-            self._mark_holiday(holiday_flag_file)
+            self._mark_holiday(holiday_flag_file, target_date)
             return None
 
         # Cache the full day's equity file locally for fast re-runs
@@ -330,14 +340,14 @@ class NSEBhavcopyFetcher:
                     failed.append(day)
                     continue
                 if response.status_code == 404:
-                    self._mark_holiday(holiday_flag_file)
+                    self._mark_holiday(holiday_flag_file, day)
                     continue
                 day_df = pd.read_csv(io.StringIO(response.text))
                 day_df.columns = [c.strip() for c in day_df.columns]
                 file_dates = pd.to_datetime(day_df["Index Date"], format="%d-%m-%Y", errors="coerce").dropna().dt.date
                 if not file_dates.empty and (file_dates != day).all():
                     logger.debug("Index file requested for %s contains another session; treating as holiday.", date_str)
-                    self._mark_holiday(holiday_flag_file)
+                    self._mark_holiday(holiday_flag_file, day)
                     continue
                 try:
                     day_df.to_csv(cache_file, index=False)

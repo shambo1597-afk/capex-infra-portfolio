@@ -8,7 +8,7 @@ for each sector:
    manual additions.
 2. Technical screen on every constituent, using the existing indicator pipeline
    (analysis.evaluate_stock_technicals) on the complete NSE Bhavcopy history:
-   passes when RS vs Nifty 500 (63 sessions) > 0 AND trend direction (+DI vs -DI) is Bullish.
+   passes when RS vs Nifty 500 (63 sessions) > +2 pp AND trend direction (+DI vs -DI) is Bullish.
    ADX is reported for tie-breaking but is not a cutoff.
 3. Fundamental safety screen, run live (fundamentals.get_fundamentals_summary, no cache) ONLY for
    stocks that passed step 2, against that sector's criteria in config.py.
@@ -32,7 +32,7 @@ from typing import Dict, List, Optional, Tuple
 import pandas as pd
 
 from analysis import evaluate_stock_technicals
-from config import OUTPUT_DIR, SECTOR_SCREENS, TECHNICAL_RS_LOOKBACK_DAYS
+from config import OUTPUT_DIR, SECTOR_SCREENS, TECHNICAL_RS_LOOKBACK_DAYS, TECHNICAL_RS_MARGIN_PP
 from fetch_data import NSEBhavcopyFetcher, fetch_benchmark_nifty500, get_one_year_date_range
 from fundamentals import evaluate_fundamental_screen, get_fundamentals_summary
 from indicators import compute_relative_strength, compute_sector_relative_strength
@@ -48,9 +48,14 @@ def load_constituents(csv_path: Path) -> pd.DataFrame:
     return df
 
 
-def technical_screen_result(rs_score: float, trend_direction: str) -> Tuple[bool, str]:
+def technical_screen_result(
+    rs_score: float,
+    trend_direction: str,
+    rs_margin_pp: float = TECHNICAL_RS_MARGIN_PP,
+) -> Tuple[bool, str]:
     """
-    Apply the technical screen: RS vs Nifty 500 > 0 AND trend direction Bullish.
+    Apply the technical screen: RS vs Nifty 500 > rs_margin_pp (default +2 pp, see
+    config.TECHNICAL_RS_MARGIN_PP for why a bare zero is too noisy) AND trend direction Bullish.
 
     Returns:
         (passed, reason): reason is "" when passed, else why it failed.
@@ -58,8 +63,8 @@ def technical_screen_result(rs_score: float, trend_direction: str) -> Tuple[bool
     reasons = []
     if rs_score is None or pd.isna(rs_score):
         reasons.append("RS unavailable")
-    elif rs_score <= 0:
-        reasons.append("RS <= 0")
+    elif rs_score <= rs_margin_pp:
+        reasons.append(f"RS <= {rs_margin_pp:+g} pp")
     if not str(trend_direction).startswith("Bullish"):
         reasons.append(f"trend {str(trend_direction).split(' (')[0]}")
     return not reasons, "; ".join(reasons)
@@ -264,7 +269,7 @@ sum to approximately zero by construction.
 
 def print_screen_summary(results: Dict[str, pd.DataFrame]) -> None:
     print("\n" + "=" * 115)
-    print(" SECTOR SCREEN: technical screen first (RS > 0 AND Bullish), then live fundamental safety screen")
+    print(f" SECTOR SCREEN: technical screen first (RS > {TECHNICAL_RS_MARGIN_PP:+g} pp AND Bullish), then live fundamental safety screen")
     print("=" * 115)
     for sector, df in results.items():
         tech = df[df["passed_technical_screen"]]
