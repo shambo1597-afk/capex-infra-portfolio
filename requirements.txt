@@ -18,6 +18,9 @@ pytest>=7.0.0
 streamlit>=1.30.0
 plotly>=5.15.0
 
+# Static Relative Rotation Graph plots (output/rrg_*.png)
+matplotlib>=3.7.0
+
 # HTML parsing for fundamental data extraction
 beautifulsoup4>=4.12.0
 

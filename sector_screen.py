@@ -35,10 +35,25 @@ from typing import Dict, List, Optional, Tuple
 import pandas as pd
 
 from analysis import evaluate_stock_technicals
-from config import LOCKED_PORTFOLIO_SYMBOLS, OUTPUT_DIR, SECTOR_SCREENS, TECHNICAL_RS_LOOKBACK_DAYS, TECHNICAL_RS_MARGIN_PP
+from config import (
+    DI_GAP_THIN_THRESHOLD,
+    HIGH_TURNOVER_ROCE_MIN,
+    LOCKED_PORTFOLIO_SYMBOLS,
+    OUTPUT_DIR,
+    RRG_MOMENTUM_DAYS,
+    SECTOR_SCREENS,
+    TECHNICAL_RS_LOOKBACK_DAYS,
+    TECHNICAL_RS_MARGIN_PP,
+)
 from fetch_data import NSEBhavcopyFetcher, fetch_benchmark_nifty500, get_one_year_date_range
 from fundamentals import evaluate_fundamental_screen, fetch_results_calendar, get_fundamentals_summary
-from indicators import compute_recent_rs_contribution, compute_relative_strength, compute_sector_relative_strength
+from indicators import (
+    compute_recent_rs_contribution,
+    compute_relative_strength,
+    compute_rs_momentum,
+    compute_sector_relative_strength,
+)
+from rrg import LEADING, classify_quadrant
 
 logger = logging.getLogger("sector_screen")
 
@@ -177,6 +192,10 @@ def build_review_table(
     are informational. Two RS measures over the same 63-session window:
     rs_score_vs_nifty500 (vs the broad market) and rs_score_vs_sector_avg (vs the equal-weighted
     average return of all constituents), with sector_rank 1 = best within the sector.
+
+    Full evaluation standard, applied identically to every constituent (see add_evaluation_columns):
+    RRG quadrant and momentum vs both benchmarks, DI-gap trend quality, the 10-day run-up share,
+    the OPM-exception review flag and full_standard_candidate.
     Sorted by fundamentals_passed_count descending, then sector_rank ascending.
     """
     symbols = constituents["Symbol"].tolist()
@@ -185,6 +204,7 @@ def build_review_table(
 
     rows = []
     stock_returns: Dict[str, float] = {}
+    stock_returns_prev: Dict[str, float] = {}
     for _, member in constituents.iterrows():
         symbol = member["Symbol"]
         record = records.get(symbol, {"status": "Data Unavailable"})
@@ -196,6 +216,9 @@ def build_review_table(
         # The stock's own 63-session return, exactly as used for rs_score_vs_nifty500
         _, stock_return_pct, _ = compute_relative_strength(sym_prices, benchmark, lookback_days=TECHNICAL_RS_LOOKBACK_DAYS)
         stock_returns[symbol] = stock_return_pct
+        _, rs_prev, rs_momentum, stock_returns_prev[symbol] = compute_rs_momentum(
+            sym_prices, benchmark, TECHNICAL_RS_LOOKBACK_DAYS, RRG_MOMENTUM_DAYS)
+        rs_10d, _, recent_pct = compute_recent_rs_contribution(sym_prices, benchmark, 10, TECHNICAL_RS_LOOKBACK_DAYS)
         rows.append({
             "symbol": symbol,
             "company_name": member.get("Company Name"),
@@ -216,6 +239,10 @@ def build_review_table(
             "nearest_resistance": tech["nearest_resistance"],
             "technically_attractive": attractive,
             "price_sessions": int(sym_prices["DATE1"].nunique()) if not sym_prices.empty else 0,
+            "rs_score_vs_nifty500_prev": rs_prev,
+            "rs_momentum_vs_nifty500": rs_momentum,
+            "rs_last_10d": rs_10d,
+            "recent_10day_contribution_pct": recent_pct,
         })
     table = pd.DataFrame(rows)
 
@@ -225,8 +252,60 @@ def build_review_table(
                                                           if not pd.isna(sector_rs[sym]) else float("nan"))
     table["sector_rank"] = table["rs_score_vs_sector_avg"].rank(ascending=False, method="min").astype("Int64")
     table.attrs["sector_avg_return_pct"] = sector_avg
+
+    # Same spread with the window ending RRG_MOMENTUM_DAYS sessions earlier -> momentum vs sector
+    sector_rs_prev, _ = compute_sector_relative_strength(stock_returns_prev)
+    prev = table["symbol"].map(sector_rs_prev)
+    table["rs_momentum_vs_sector"] = (table["symbol"].map(sector_rs) - prev).round(2)
+
+    table = add_evaluation_columns(table, criteria)
     return table.sort_values(["fundamentals_passed_count", "sector_rank"],
                              ascending=[False, True], na_position="last").reset_index(drop=True)
+
+
+def add_evaluation_columns(table: pd.DataFrame, criteria: List[Tuple[str, str, float, str]]) -> pd.DataFrame:
+    """
+    Derived columns of the full evaluation standard (inputs already in the review table):
+
+      rrg_quadrant_vs_nifty500 / rrg_quadrant_vs_sector: RRG quadrant (rrg.classify_quadrant) of
+        (RS, RS-Momentum) against the Nifty 500 and against the equal-weighted sector average;
+      di_gap: +DI - -DI (signed); thin_trend_flag: |di_gap| < DI_GAP_THIN_THRESHOLD, whichever
+        direction it points;
+      recent_spike_flag: recent_10day_contribution_pct > RECENT_SPIKE_THRESHOLD_PCT;
+      fundamentals_clean: every fundamental criterion passed;
+      high_turnover_business_flag: fails ONLY the OPM criterion, passes every other criterion, and
+        ROCE > HIGH_TURNOVER_ROCE_MIN -> candidate for a manual business-model check, never an
+        automatic pass (NA in sectors without an OPM criterion, i.e. Power);
+      full_standard_candidate: fundamentals_clean AND LEADING vs both benchmarks AND
+        di_gap >= DI_GAP_THIN_THRESHOLD (a real, bullish trend).
+    Informational: nothing is removed from the table.
+    """
+    table = table.copy()
+    table["rrg_quadrant_vs_nifty500"] = [classify_quadrant(r, m) for r, m in
+                                         zip(table["rs_score_vs_nifty500"], table["rs_momentum_vs_nifty500"])]
+    table["rrg_quadrant_vs_sector"] = [classify_quadrant(r, m) for r, m in
+                                       zip(table["rs_score_vs_sector_avg"], table["rs_momentum_vs_sector"])]
+    table["di_gap"] = (pd.to_numeric(table["plus_di"]) - pd.to_numeric(table["minus_di"])).round(2)
+    table["thin_trend_flag"] = table["di_gap"].abs() < DI_GAP_THIN_THRESHOLD
+    table["recent_spike_flag"] = pd.to_numeric(table["recent_10day_contribution_pct"]) > RECENT_SPIKE_THRESHOLD_PCT
+    table["fundamentals_clean"] = table["fundamentals_passed_count"] == len(criteria)
+
+    fields = [field for field, *_ in criteria]
+    if "opm" in fields:
+        others = [f"pass_{f}" for f in fields if f != "opm"]
+        only_opm_failed = (table["pass_opm"] == False) & table[others].eq(True).all(axis=1)  # noqa: E712
+        roce = pd.to_numeric(table["roce"]) if "roce" in table else pd.Series(float("nan"), index=table.index)
+        table["high_turnover_business_flag"] = only_opm_failed & (roce > HIGH_TURNOVER_ROCE_MIN)
+    else:
+        table["high_turnover_business_flag"] = pd.NA
+
+    table["full_standard_candidate"] = (
+        table["fundamentals_clean"]
+        & (table["rrg_quadrant_vs_nifty500"] == LEADING)
+        & (table["rrg_quadrant_vs_sector"] == LEADING)
+        & (table["di_gap"] >= DI_GAP_THIN_THRESHOLD)
+    )
+    return table
 
 
 def run_review_table(sector: str, output_csv: Path, as_of: Optional[date] = None) -> pd.DataFrame:
@@ -273,6 +352,28 @@ decision to hold {sector} exposure has been made, per the project's sector-rotat
 
 `sector_rank` ranks `rs_score_vs_sector_avg` from 1 (best) to {len(table)} (worst); the spreads
 sum to approximately zero by construction.
+
+## Full evaluation standard (applied to every row)
+
+- **RRG (Relative Rotation Graph).** x = RS (pp, 63 sessions); y = RS-Momentum = that RS today
+  minus the same 63-session RS ending {RRG_MOMENTUM_DAYS} sessions earlier (pp). Both axes are
+  plain percentage-point spreads, not the proprietary JdK RS-Ratio index. Quadrants at (0, 0):
+  LEADING (RS > 0, momentum > 0), WEAKENING (RS > 0, momentum <= 0), LAGGING (RS <= 0,
+  momentum <= 0), IMPROVING (RS <= 0, momentum > 0). Computed against the Nifty 500
+  (`rs_momentum_vs_nifty500`, `rrg_quadrant_vs_nifty500`) and against the equal-weighted
+  {sector} average (`rs_momentum_vs_sector`, `rrg_quadrant_vs_sector`).
+- **Trend quality.** `di_gap` = +DI - -DI; `thin_trend_flag` when |di_gap| < {DI_GAP_THIN_THRESHOLD:g},
+  whichever way it points (the Bullish/Bearish label can flip on one bar).
+- **Run-up.** `recent_10day_contribution_pct` = RS over the last 10 sessions / 63-session RS x 100
+  (NaN when RS <= 0); `recent_spike_flag` above {RECENT_SPIKE_THRESHOLD_PCT:g}%.
+- **`high_turnover_business_flag`** (sectors with an OPM criterion): fails ONLY OPM, passes every
+  other criterion, ROCE > {HIGH_TURNOVER_ROCE_MIN:g}%. A prompt for a manual business-model check,
+  never an automatic pass.
+- **`full_standard_candidate`** = every fundamental criterion passed AND LEADING vs both the
+  Nifty 500 and the sector AND di_gap >= {DI_GAP_THIN_THRESHOLD:g} (a real, bullish trend). The
+  spike flag is reported beside it, not folded in.
+
+Plots: `rrg_{sector.lower().replace(' ', '_')}_vs_sector.png` and the combined `rrg_all_vs_nifty500.png`.
 """
 
 
@@ -361,7 +462,9 @@ def build_tenth_candidate_sweep(
     mismatch = (info["rs_score_vs_nifty500"] - table["rs_score_vs_nifty500"]).abs() > 0.011
     if mismatch.any():
         raise RuntimeError(f"Recomputed 63-day RS differs from the review tables for {table['symbol'][mismatch].tolist()}")
-    table = pd.concat([table, info.drop(columns=["symbol", "rs_score_vs_nifty500"])], axis=1)
+    info = info.drop(columns=["symbol", "rs_score_vs_nifty500"])
+    # The review tables already carry the run-up columns; the freshly computed ones replace them
+    table = pd.concat([table.drop(columns=[c for c in info.columns if c in table.columns]), info], axis=1)
     table["fundamentals_clean"] = table["fundamentals_passed_count"] == table["criteria_total"]
     table["clean_candidate"] = (table["fundamentals_clean"] & table["technically_attractive"]
                                 & ~table["recent_spike_flag"])
@@ -421,6 +524,10 @@ if __name__ == "__main__":
             if sector not in SECTOR_SCREENS:
                 sys.exit(f"Unknown sector {sector!r}; choose from {list(SECTOR_SCREENS)}")
             run_review_table(sector, review_table_path(sector), as_of=as_of)
+        # Redraw the RRG plots from all three review tables (whichever were just refreshed)
+        from rrg import plot_all_rrgs
+        plot_all_rrgs({sec: pd.read_csv(review_table_path(sec)) for sec in SECTOR_SCREENS},
+                      as_of_label=f"as of {(as_of or date.today()):%d-%b-%Y}")
     else:
         print_screen_summary(run_sector_screens(as_of=as_of))
     sys.exit(0)

@@ -413,6 +413,50 @@ def compute_recent_rs_contribution(
     return rs_recent, rs_full, round(rs_recent / rs_full * 100.0, 1)
 
 
+def compute_rs_momentum(
+    stock_df: pd.DataFrame,
+    benchmark_df: pd.DataFrame,
+    lookback_days: int = 63,
+    momentum_days: int = 10,
+) -> Tuple[float, float, float, float]:
+    """
+    RS-Momentum for a Relative Rotation Graph: the rate of change of the RS spread.
+
+        RS_now  = RS vs benchmark over the `lookback_days` sessions ending today        (pp)
+        RS_prev = the same 63-session RS, window ending `momentum_days` sessions earlier (pp)
+        RS_momentum = RS_now - RS_prev                                                   (pp)
+
+    Positive momentum means the RS spread widened over the last `momentum_days` sessions
+    (relative strength improving), negative that it narrowed. Unlike the run-up share
+    (compute_recent_rs_contribution), it is defined for negative RS too, which the IMPROVING and
+    LAGGING quadrants need. Sessions are the stock/benchmark paired dates, as in
+    compute_relative_strength().
+
+    Returns:
+        Tuple[float, float, float, float]:
+            (RS_now, RS_prev, RS_momentum, stock_return_prev_pct); NaN when there is too little history.
+    """
+    nan4 = (np.nan, np.nan, np.nan, np.nan)
+    if stock_df.empty or benchmark_df.empty:
+        return nan4
+    stock_dates = pd.to_datetime(stock_df.dropna(subset=["CLOSE_PRICE"])["DATE1"]).dt.tz_localize(None)
+    bench_dates = pd.to_datetime(benchmark_df.dropna(subset=["Close"])["Date"]).dt.tz_localize(None)
+    paired = np.sort(np.intersect1d(stock_dates.unique(), bench_dates.unique()))
+    if len(paired) < lookback_days + momentum_days + 1:
+        return nan4
+    cutoff = pd.Timestamp(paired[-1 - momentum_days])
+
+    rs_now, _, _ = compute_relative_strength(stock_df, benchmark_df, lookback_days=lookback_days)
+    rs_prev, stock_ret_prev, _ = compute_relative_strength(
+        stock_df[pd.to_datetime(stock_df["DATE1"]).dt.tz_localize(None) <= cutoff],
+        benchmark_df[pd.to_datetime(benchmark_df["Date"]).dt.tz_localize(None) <= cutoff],
+        lookback_days=lookback_days,
+    )
+    if np.isnan(rs_now) or np.isnan(rs_prev):
+        return nan4
+    return rs_now, rs_prev, round(rs_now - rs_prev, 2), stock_ret_prev
+
+
 # -----------------------------------------------------------------------------
 # 4. SUPPORT & RESISTANCE IDENTIFICATION (20-DAY ROLLING WINDOW)
 # -----------------------------------------------------------------------------

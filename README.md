@@ -169,7 +169,8 @@ IAPFDOF/
 │   ├── portfolio_historical_ohlcv.csv  # Clean historical OHLCV data across universe
 │   ├── portfolio_risk_summary.csv      # Locked portfolio volatility, placeholder return/weight, stop-loss
 │   ├── *_full_screen.csv               # Technical-first sector screens (cement, capital_goods, power)
-│   ├── *_full_review_table.csv         # Unfiltered per-sector review tables (+ *_review_notes.md)
+│   ├── *_full_review_table.csv         # Unfiltered per-sector review tables with RRG / DI-gap columns (+ *_review_notes.md)
+│   ├── rrg_*.png                       # Relative Rotation Graphs (combined vs Nifty 500; per sector vs sector average)
 │   ├── tenth_candidate_sweep.csv       # Run-up / results-date sweep of non-picked stocks
 │   └── locked_portfolio_runup_catalyst_check.csv # Same checks on the locked picks
 ├── tests/
@@ -178,6 +179,7 @@ IAPFDOF/
 │   ├── test_fundamentals.py      # Unit tests for Screener.in extraction and parsing
 │   ├── test_indicators.py        # Unit tests for Wilder's smoothing, RSI, ADX, RS, S/R
 │   ├── test_pipeline.py          # Integration tests for Bhavcopy parsing, aliases, benchmarks
+│   ├── test_rrg.py               # RS-Momentum, RRG quadrants, DI-gap and OPM-exception flags
 │   ├── test_stoploss.py          # Unit tests for volatility, ATR and the trailing ATR stop-loss
 │   └── test_tri_staleness.py     # Unit tests for the TRI CSV staleness check
 ├── config.py                     # Universe definitions, URLs, headers, symbol alias mapping
@@ -187,6 +189,7 @@ IAPFDOF/
 ├── analysis.py                   # Portfolio evaluator, table formatter, CSV exporter
 ├── stoploss.py                   # Volatility, historical return, ATR and stop-loss calculations
 ├── sector_screen.py              # Technical-first, then fundamental, screen of official sector indices
+├── rrg.py                        # Relative Rotation Graph quadrants and plots
 ├── main.py                       # CLI entry point orchestrating the end-to-end pipeline
 ├── app.py                        # Streamlit 5-tab institutional portfolio dashboard
 ├── requirements.txt              # Project dependencies
@@ -339,6 +342,17 @@ Outputs `output/cement_full_screen.csv`, `output/capital_goods_full_screen.csv` 
 
 `clean_candidate` = all fundamental criteria pass, technically attractive (RS > +2 pp and Bullish), and no recent spike.
 
+### Relative Rotation Graph & full evaluation standard
+
+`python sector_screen.py --review --as-of 2026-09-24` rebuilds all three review tables with the same standard applied to every constituent, and redraws the RRG plots (`python rrg.py --as-of 2026-09-24` redraws them from the committed tables).
+
+- **RRG axes** (both in percentage points, clearly not the proprietary JdK RS-Ratio index): x = 63-session RS; y = RS-Momentum = RS today minus the same 63-session RS ending 10 sessions earlier (`indicators.compute_rs_momentum`). Unlike the run-up share, it is defined for negative RS, which the IMPROVING and LAGGING quadrants need.
+- **Quadrants** at (0, 0): LEADING (RS > 0, momentum > 0), WEAKENING (RS > 0, momentum <= 0), LAGGING (RS <= 0, momentum <= 0), IMPROVING (RS <= 0, momentum > 0), computed against the Nifty 500 and against the equal-weighted sector average (sector rotation first, then stock selection).
+- **`di_gap`** = +DI - -DI; **`thin_trend_flag`** when |gap| < 2.0 in either direction.
+- **`high_turnover_business_flag`**: fails only the OPM criterion, passes all others, ROCE > 20%: flagged for a manual business-model check, never auto-included.
+- **`full_standard_candidate`**: all fundamental criteria pass, LEADING vs both benchmarks, and di_gap >= 2.0. The run-up spike flag is reported beside it.
+- **Plots** (`output/`): `rrg_all_vs_nifty500.png` (all 87 stocks) and `rrg_<sector>_vs_sector.png` per sector; locked picks are ringed and bold.
+
 ## Output Format & Column Definitions
 
 The pipeline prints a formatted table and saves `output/portfolio_technical_summary.csv` containing:
@@ -377,7 +391,7 @@ Run the full automated unit test suite with `pytest`:
 pytest tests/ -v
 ```
 
-The 137 tests cover, among other things:
+The 157 tests cover, among other things:
 - Exact convergence of Wilder's smoothing against recursive mathematical definitions.
 - Boundary conditions for RSI ($RSI = 100$ in monotonic gains, $RSI = 0$ in monotonic losses).
 - Directional movement calculations and trend indicators for ADX.

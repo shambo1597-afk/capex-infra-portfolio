@@ -256,6 +256,22 @@ TECHNICAL_RS_LOOKBACK_DAYS = 63
 TECHNICAL_RS_MARGIN_PP = 2.0
 
 # -----------------------------------------------------------------------------
+# RELATIVE ROTATION GRAPH & TREND-QUALITY CHECKS (see rrg.py)
+# -----------------------------------------------------------------------------
+
+# RS-Momentum = 63-session RS today minus the 63-session RS this many sessions ago (pp)
+RRG_MOMENTUM_DAYS = 10
+
+# |+DI - -DI| below this is a thin, borderline trend whichever way it points: the direction
+# label can flip on a single bar (e.g. JKCEMENT +DI 19.50 vs -DI 18.95)
+DI_GAP_THIN_THRESHOLD = 2.0
+
+# OPM-exception review flag: a stock failing ONLY the OPM criterion with ROCE above this may be
+# a high-turnover, low-margin business (e.g. a steel-tube fabricator) for which OPM is the
+# wrong yardstick. Flag for a manual business-model check; never an automatic pass.
+HIGH_TURNOVER_ROCE_MIN = 20.0
+
+# -----------------------------------------------------------------------------
 # RISK, STOP-LOSS & SIZING ASSUMPTIONS (see stoploss.py)
 # These are stated, adjustable modelling choices, not universally "correct" values.
 # -----------------------------------------------------------------------------
