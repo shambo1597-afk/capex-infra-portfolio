@@ -45,6 +45,8 @@ CML_PNG = OUTPUT_DIR / "cml.png"
 OPTIMISED_WEIGHTS_CSV = OUTPUT_DIR / "portfolio_weights_compared.csv"
 OPTIMISED_STATS_CSV = OUTPUT_DIR / "portfolio_weights_compared_stats.csv"
 WINDOWS = {"Last quarter (63 sessions)": 63, "Last year": None}
+LIVE_LABEL = "Live since the snapshot"
+MIN_LIVE_SESSIONS = 20  # ratios on fewer daily returns are noise
 
 
 def xirr(cash_flows: Sequence[Tuple[date, float]]) -> float:
@@ -110,6 +112,23 @@ def window_metrics(port: pd.Series, mkt: pd.Series, rf: pd.Series, label: str) -
         "xirr_portfolio_pct": round(port_xirr * 100, 2),
         "xirr_benchmark_pct": round(mkt_xirr * 100, 2),
     }
+
+
+def live_metrics(min_sessions: int = MIN_LIVE_SESSIONS) -> Optional[Dict[str, object]]:
+    """
+    The same metrics for the real portfolio from the snapshot (tracker.py's daily values: stocks + puts +
+    cash, so trades between stocks and cash do not distort the returns), against the same Rs 1 crore in
+    the Nifty 500 TRI, with the liquid fund as the risk-free rate. None until `min_sessions` returns exist.
+    """
+    from tracker import TRACKER_DAILY_CSV
+
+    if not TRACKER_DAILY_CSV.exists():
+        return None
+    daily = pd.read_csv(TRACKER_DAILY_CSV, parse_dates=["date"]).set_index("date")
+    if len(daily) - 1 < min_sessions:
+        return None
+    r = daily[["total_inr", "nifty500_inr", "liquid_fund_inr"]].pct_change().iloc[1:]
+    return window_metrics(r["total_inr"], r["nifty500_inr"], r["liquid_fund_inr"], LIVE_LABEL)
 
 
 def tangency_portfolio(mu: np.ndarray, cov: np.ndarray, rf: float, iterations: int = 4000) -> np.ndarray:
@@ -250,6 +269,9 @@ def run(as_of: Optional[date] = None) -> Dict[str, pd.DataFrame]:
     for label, sessions in WINDOWS.items():
         idx = port.index if sessions is None else port.index[-sessions:]
         rows.append(window_metrics(port.loc[idx], mkt.loc[idx], fx["rf"].loc[idx], label))
+    live = live_metrics()
+    if live is not None:
+        rows.insert(0, live)
     summary = pd.DataFrame(rows)
     summary.to_csv(PERFORMANCE_CSV, index=False)
 

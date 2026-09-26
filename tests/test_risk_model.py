@@ -145,3 +145,24 @@ def test_risk_reward_ratio():
     assert out.loc["A", "first_hurdle_above_pct"] == pytest.approx(2.0)
     assert out.loc["PORTFOLIO (all stocks at once)", "downside_inr"] == pytest.approx(1e5)
     assert out.loc["PORTFOLIO (diversified)", "reward_risk"] == pytest.approx(1.0)
+
+
+def test_live_metrics_wait_for_enough_sessions_then_use_the_tracker(tmp_path, monkeypatch):
+    import tracker
+    from performance import live_metrics
+    path = tmp_path / "tracker_daily.csv"
+    monkeypatch.setattr(tracker, "TRACKER_DAILY_CSV", path)
+    idx = pd.bdate_range("2026-09-28", periods=26)
+    rng = np.random.default_rng(6)
+    m = np.cumprod(np.r_[1.0, 1 + rng.normal(0.0005, 0.01, 25)]) * 1e7
+    p = np.cumprod(np.r_[1.0, 1 + 1.1 * (m[1:] / m[:-1] - 1) + 0.0005]) * 1e7
+    liquid = 1e7 * (1 + 0.0002) ** np.arange(26)
+    pd.DataFrame({"date": idx.strftime("%Y-%m-%d"), "total_inr": p, "nifty500_inr": m,
+                  "liquid_fund_inr": liquid}).head(15).to_csv(path, index=False)
+    assert live_metrics() is None  # 14 returns: too few
+    pd.DataFrame({"date": idx.strftime("%Y-%m-%d"), "total_inr": p, "nifty500_inr": m,
+                  "liquid_fund_inr": liquid}).to_csv(path, index=False)
+    out = live_metrics()
+    assert out["window"].startswith("Live") and out["sessions"] == 25
+    assert out["portfolio_return_pct"] == pytest.approx((p[-1] / 1e7 - 1) * 100, abs=0.01)
+    assert out["beta_vs_nifty500"] == pytest.approx(1.1, abs=0.02)

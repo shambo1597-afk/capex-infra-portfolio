@@ -59,6 +59,7 @@ from refresh_data import (
     refresh_state,
     start_background_refresh,
 )
+from performance import MIN_LIVE_SESSIONS
 from rrg_tails import smooth_path
 from sector_screen import review_table_path
 
@@ -1545,13 +1546,23 @@ with tab_performance:
     if perf_df.empty:
         st.info("Performance outputs not found. Press the refresh button (or run `python performance.py`).")
     else:
-        st.markdown(
-            "<span class='placeholder-badge' style='margin-bottom:0;'>Backtest until the 28-Sep snapshot</span> "
-            "<span style='font-size:0.82rem;'>These windows hold <strong>today's</strong> portfolio and weights over past "
-            "prices. The stocks were chosen for strong past returns, so the figures are hindsight, not a forecast. "
-            "Live tracking starts from the 28-Sep-2026 snapshot.</span>",
-            unsafe_allow_html=True,
-        )
+        has_live = perf_df["window"].str.startswith("Live").any()
+        if has_live:
+            st.markdown(
+                "<span style='font-size:0.82rem;'>The <strong>Live</strong> column is the real portfolio since the "
+                f"{pd.Timestamp(EVALUATION_START_DATE):%d-%b-%Y} snapshot (stocks + Nifty puts + cash, from the trade ledger) "
+                "against the same ₹1 crore in the Nifty 500 TRI; risk-free = the liquid fund. The other columns are a "
+                "<strong>backtest</strong> of today's portfolio over past prices (hindsight, not a forecast).</span>",
+                unsafe_allow_html=True)
+        else:
+            st.markdown(
+                "<span class='placeholder-badge' style='margin-bottom:0;'>Backtest until live figures start</span> "
+                "<span style='font-size:0.82rem;'>These windows hold <strong>today's</strong> portfolio and weights over past "
+                "prices. The stocks were chosen for strong past returns, so the figures are hindsight, not a forecast. "
+                f"Live Sharpe, Treynor, alpha and XIRR appear here once the portfolio has {MIN_LIVE_SESSIONS} trading days "
+                f"of history from the {pd.Timestamp(EVALUATION_START_DATE):%d-%b-%Y} snapshot.</span>",
+                unsafe_allow_html=True,
+            )
         show = perf_df.set_index("window").T
         labels = {
             "start": "Start", "end": "End", "sessions": "Sessions",
