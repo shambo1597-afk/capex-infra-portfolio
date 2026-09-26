@@ -207,3 +207,114 @@ def test_proceeds_wait_in_cash_when_no_reserve_stock_qualifies():
                                      _ranking(RESERVE_SYMBOLS, "Low"), pd.Series({s: 50.0 for s in RESERVE_SYMBOLS}))
     r = plan.iloc[0]
     assert pd.isna(r["buy"]) and r["buy_shares"] == 0 and r["cash_left_inr"] == 900.0
+
+
+# ---------------------------------------------------------------------------
+# Dashboard trade recording, near-stop warning, WhatsApp update
+# ---------------------------------------------------------------------------
+
+def test_near_stop_flag(tmp_path, monkeypatch):
+    risk = pd.DataFrame({"symbol": ["AAA", "BBB", "CCC"], "stop_loss_price": [100.0, 100.0, 100.0]})
+    path = tmp_path / "risk.csv"
+    risk.to_csv(path, index=False)
+    monkeypatch.setattr(tracker, "RISK_SUMMARY_OUTPUT_CSV", path)
+    closes = pd.DataFrame({"AAA": [102.0], "BBB": [110.0], "CCC": [99.0]}, index=pd.to_datetime(["2026-10-01"]))
+    ledger = pd.DataFrame([{"date": "2026-09-28", "instrument": s, "action": "BUY", "quantity": 10, "price": 105.0,
+                            "note": ""} for s in ["AAA", "BBB", "CCC"]])
+    pos = tracker.current_positions(ledger, closes, closes.index[-1]).set_index("symbol")
+    assert pos["near_stop"].to_dict() == {"AAA": True, "BBB": False, "CCC": False}  # CCC is breached, not near
+    assert pos.loc["AAA", "pct_above_stop"] == 2.0
+
+
+def test_validate_ledger_catches_bad_rows():
+    good = pd.DataFrame([{"date": "2026-09-28", "instrument": "AAA", "action": "BUY", "quantity": 10, "price": 5.0,
+                          "note": ""}])
+    assert tracker.validate_ledger(good) == []
+    bad = pd.concat([good, pd.DataFrame([{"date": "28/09", "instrument": "AAA", "action": "SEL", "quantity": 0,
+                                          "price": -1, "note": ""}])])
+    problems = " ".join(tracker.validate_ledger(bad))
+    assert "date" in problems and "BUY or SELL" in problems and "quantity" in problems and "price" in problems
+    oversold = pd.concat([good, good.assign(action="SELL", quantity=11)])
+    assert "sells more than was bought" in " ".join(tracker.validate_ledger(oversold))
+
+
+def test_save_ledger_writes_clean_rows(tmp_path, monkeypatch):
+    monkeypatch.setattr(tracker, "TRADES_CSV", tmp_path / "trades.csv")
+    rows = pd.DataFrame([{"date": "2026-10-02", "instrument": " AAA ", "action": "sell", "quantity": 5.0, "price": 6.0,
+                          "note": None},
+                         {"date": "2026-09-28", "instrument": "AAA", "action": "BUY", "quantity": 10, "price": 5.0,
+                          "note": "x"}])
+    assert tracker.save_ledger(rows) == []
+    out = pd.read_csv(tmp_path / "trades.csv")
+    assert out["date"].tolist() == ["2026-09-28", "2026-10-02"] and out["action"].tolist() == ["BUY", "SELL"]
+    assert out["instrument"].tolist() == ["AAA", "AAA"] and out["quantity"].tolist() == [10, 5]
+
+
+def test_replacement_trades_use_actual_fills():
+    plan = pd.DataFrame([{"sell": "AAA", "sell_shares": 100, "sell_close": 90.0, "stop_loss_price": 95.0,
+                          "proceeds_inr": 9000.0, "buy": "BBB", "buy_rank": 9, "buy_close": 50.0, "buy_shares": 180,
+                          "buy_inr": 9000.0, "cash_left_inr": 0.0, "note": ""}])
+    t = tracker.replacement_trades(plan, "2026-10-05", fills={"AAA": 88.0, "BBB": 51.0})
+    assert t[["instrument", "action", "quantity", "price"]].values.tolist() == [
+        ["AAA", "SELL", 100, 88.0], ["BBB", "BUY", 172, 51.0]]  # 8800 // 51
+
+
+def test_roll_trades_parse_the_plan_lines():
+    roll = pd.DataFrame({"field": ["status", "trade", "trade"],
+                         "value": ["TRIGGERED", "SELL 65 NIFTY 2026-12-29 22000 PE @ 12.30",
+                                   "BUY 130 NIFTY 2026-12-29 24000 PE @ 45.10 (2 lots)"]})
+    t = tracker.roll_trades(roll, "2026-11-02")
+    assert t[["instrument", "action", "quantity", "price"]].values.tolist() == [
+        ["NIFTY 2026-12-29 22000 PE", "SELL", 65, 12.3], ["NIFTY 2026-12-29 24000 PE", "BUY", 130, 45.1]]
+
+
+def test_whatsapp_update():
+    summary = {"as_of": "2026-10-15", "value_inr": 10250000, "pnl_inr": 250000, "pnl_pct": 2.5,
+               "vs_nifty500_inr": 100000, "vs_liquid_fund_inr": 180000}
+    pos = pd.DataFrame({"symbol": ["AAA", "BBB"], "pnl_pct": [8.0, -3.0], "near_stop": [False, True],
+                        "pct_above_stop": [20.0, 1.5]})
+    text = tracker.whatsapp_update(summary, pos, pd.DataFrame())
+    assert "Rs 1,02,50,000" in text and "+Rs 2,50,000" in text and "ahead by Rs 1,00,000" in text
+    assert "Best: AAA +8.0%" in text and "BBB is 1.5% above its stop" in text
+    assert "No action needed" in tracker.whatsapp_update(summary, pos.assign(near_stop=False), pd.DataFrame())
+    assert "not invested yet" in tracker.whatsapp_update(None, pd.DataFrame(), pd.DataFrame())
+
+
+def test_a_recorded_sale_clears_the_replacement_alert():
+    from config import INITIAL_HOLDINGS, RESERVE_SYMBOLS
+    pos = _positions([(INITIAL_HOLDINGS[0], 10, 90.0, 95.0), (INITIAL_HOLDINGS[1], 10, 90.0, 95.0)])
+    # The first stop's replacement was recorded after the last close: only the second is still to do,
+    # and it takes the next reserve stock, not the one already bought
+    ledger = pd.DataFrame([
+        {"date": "2026-10-06", "instrument": INITIAL_HOLDINGS[0], "action": "SELL", "quantity": 10, "price": 90.0, "note": ""},
+        {"date": "2026-10-06", "instrument": RESERVE_SYMBOLS[0], "action": "BUY", "quantity": 18, "price": 50.0, "note": ""}])
+    plan = tracker.plan_replacements(pos, ledger, _ranking(RESERVE_SYMBOLS), pd.Series({s: 50.0 for s in RESERVE_SYMBOLS}))
+    assert plan["sell"].tolist() == [INITIAL_HOLDINGS[1]] and plan["buy"].tolist() == [RESERVE_SYMBOLS[1]]
+
+
+def test_publish_ledger_pushes_only_the_ledger(tmp_path, monkeypatch):
+    import subprocess
+
+    def git(*args, cwd):
+        return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, check=True).stdout.strip()
+
+    remote, work = tmp_path / "remote.git", tmp_path / "work"
+    git("init", "-q", "--bare", "-b", "main", str(remote), cwd=tmp_path)
+    git("clone", "-q", str(remote), str(work), cwd=tmp_path)
+    for k, v in [("user.email", "t@example.com"), ("user.name", "t")]:
+        git("config", k, v, cwd=work)
+    (work / "data").mkdir()
+    (work / "data" / "trades.csv").write_text("date,instrument,action,quantity,price,note\n")
+    (work / "other.txt").write_text("committed")
+    git("add", "-A", cwd=work)
+    git("commit", "-q", "-m", "init", cwd=work)
+    git("push", "-q", "origin", "HEAD:main", cwd=work)
+    # Local state: the ledger changed and an unrelated file has uncommitted edits
+    (work / "data" / "trades.csv").write_text("date,instrument,action,quantity,price,note\n2026-09-28,AAA,BUY,1,2.0,\n")
+    (work / "other.txt").write_text("local edit, not for GitHub")
+    monkeypatch.setattr(tracker, "TRADES_CSV", work / "data" / "trades.csv")
+    assert tracker.publish_ledger("record AAA").startswith("Saved to GitHub")
+    assert "AAA" in git("show", "main:data/trades.csv", cwd=remote)
+    assert git("show", "main:other.txt", cwd=remote) == "committed"  # only the ledger was pushed
+    assert (work / "other.txt").read_text() == "local edit, not for GitHub"  # working tree untouched
+    assert tracker.publish_ledger("again").startswith("GitHub main already has")

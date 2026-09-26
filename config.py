@@ -445,6 +445,7 @@ CRUDE_TICKER = "BZ=F"                                # Brent crude front-month f
 TAIL_QUANTILE = 0.10          # tail beta: regression on the worst 10% of Nifty 50 days
 TAIL_HEDGE_OTM_PCT = 5.0      # protective puts struck about 5% below spot: insure the tail, not every wobble
 HEDGE_PROFIT_TRIGGER_PCT = 10.0  # once the portfolio is up 10%, roll the puts up to lock in part of the gain
+NEAR_STOP_PCT = 3.0              # amber warning when a holding closes within this % above its stop-loss
 HEDGE_MAX_ROLLS = 1              # roll up once (a team decision; raise to roll again at each further trigger)
 # CAPM expected return E[r_i] = r_f + beta_i x MRP (risk_model.py): r_f = the Nifty 1D Rate index
 # annualised over the last quarter; MRP = India's total equity risk premium from Damodaran's country

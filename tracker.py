@@ -19,6 +19,7 @@ also valued in the Nifty 500 TRI and in the liquid fund from the snapshot close,
 
 import logging
 import re
+import subprocess
 from datetime import date
 from pathlib import Path
 from typing import Dict, Optional
@@ -39,6 +40,7 @@ from config import (
     HEDGE_PROFIT_TRIGGER_PCT,
     INITIAL_HOLDINGS,
     LOCKED_PORTFOLIO_SYMBOLS,
+    NEAR_STOP_PCT,
     SELECTION_CONVICTION_TIERS,
     TAIL_HEDGE_OTM_PCT,
     TRADES_CSV,
@@ -142,17 +144,17 @@ def plan_replacements(positions: pd.DataFrame, ledger: pd.DataFrame, ranking: pd
     """
     columns = ["sell", "sell_shares", "sell_close", "stop_loss_price", "proceeds_inr", "buy", "buy_rank",
                "buy_close", "buy_shares", "buy_inr", "cash_left_inr", "note"]
-    if positions.empty or not positions["stop_breached"].any():
+    sold = sold_stocks(ledger)  # the whole ledger: a sale recorded after the last close is already done
+    if positions.empty or not (positions["stop_breached"] & ~positions["symbol"].isin(sold)).any():
         return pd.DataFrame(columns=columns)
-    held = set(positions["symbol"])
-    sold = sold_stocks(ledger)
+    held = set(positions["symbol"]) | set(held_stocks(ledger) if not ledger.empty else [])
     ok = ranking[ranking["conviction"].isin(SELECTION_CONVICTION_TIERS)] if "conviction" in ranking else ranking
     passing = set(ok["symbol"])
     queue = [s for s in LOCKED_PORTFOLIO_SYMBOLS if s not in held and s not in sold]
     skipped = [s for s in queue if s not in passing]
     queue = [s for s in queue if s in passing]
     rows = []
-    for _, p in positions[positions["stop_breached"]].iterrows():
+    for _, p in positions[positions["stop_breached"] & ~positions["symbol"].isin(sold)].iterrows():
         proceeds = float(p["shares"]) * float(p["close"])
         row = {"sell": p["symbol"], "sell_shares": int(p["shares"]), "sell_close": float(p["close"]),
                "stop_loss_price": float(p["stop_loss_price"]), "proceeds_inr": round(proceeds, 2)}
@@ -286,6 +288,8 @@ def current_positions(ledger: pd.DataFrame, closes: pd.DataFrame, day: pd.Timest
             "pnl_pct": round((close / avg_cost - 1) * 100, 2), "stop_loss_price": stop,
             "at_risk_to_stop_inr": round(max(close - stop, 0) * qty, 2) if pd.notna(stop) else np.nan,
             "stop_breached": bool(pd.notna(stop) and close <= stop),
+            "near_stop": bool(pd.notna(stop) and stop < close <= stop * (1 + NEAR_STOP_PCT / 100)),
+            "pct_above_stop": round((close / stop - 1) * 100, 2) if pd.notna(stop) and stop > 0 else np.nan,
         })
     return pd.DataFrame(rows)
 
@@ -310,6 +314,8 @@ def summarise(daily: pd.DataFrame, positions: pd.DataFrame) -> pd.DataFrame:
         ("stocks_inr", last["stocks_inr"]), ("options_inr", last["options_inr"]), ("cash_inr", last["cash_inr"]),
         ("at_risk_to_stops_inr", round(positions["at_risk_to_stop_inr"].sum(), 2) if not positions.empty else np.nan),
         ("stops_breached", ", ".join(positions.loc[positions["stop_breached"], "symbol"]) if not positions.empty else ""),
+        ("near_stop", ", ".join(positions.loc[positions["near_stop"], "symbol"])
+         if not positions.empty and "near_stop" in positions else ""),
         ("evaluation_end", EVALUATION_END_DATE),
     ]
     return pd.DataFrame(rows, columns=["metric", "value"])
@@ -396,6 +402,169 @@ def plan_put_roll(summary: Dict[str, object], ledger: pd.DataFrame, as_of: pd.Ti
              ("net_cost_inr", round(buy_cost - sell_value)), ("cash_inr", round(float(summary["cash_inr"]))),
              ("cash_sufficient", bool(float(summary["cash_inr"]) >= buy_cost - sell_value))]
     return pd.DataFrame(rows, columns=["field", "value"])
+
+
+# ---------------------------------------------------------------------------
+# Recording trades from the dashboard (instead of hand-editing data/trades.csv)
+# ---------------------------------------------------------------------------
+
+_TRADE_TEXT = re.compile(r"^(BUY|SELL) (\d+) (.+?) @ ([\d.]+)")
+
+
+def validate_ledger(ledger: pd.DataFrame) -> list:
+    """Problems that would make the ledger unusable; empty when it is fine."""
+    problems = []
+    missing = [c for c in LEDGER_COLUMNS if c not in ledger.columns]
+    if missing:
+        return [f"missing column(s): {', '.join(missing)}"]
+    for i, r in ledger.reset_index(drop=True).iterrows():
+        row = f"row {i + 1} ({r['instrument']})"
+        if pd.isna(pd.to_datetime(r["date"], errors="coerce")):
+            problems.append(f"{row}: date must be YYYY-MM-DD")
+        if str(r["action"]).upper() not in ("BUY", "SELL"):
+            problems.append(f"{row}: action must be BUY or SELL")
+        if not (pd.notna(r["quantity"]) and float(r["quantity"]) > 0 and float(r["quantity"]) == int(float(r["quantity"]))):
+            problems.append(f"{row}: quantity must be a whole number above 0")
+        if not (pd.notna(r["price"]) and float(r["price"]) > 0):
+            problems.append(f"{row}: price must be above 0")
+        if not isinstance(r["instrument"], str) or not r["instrument"].strip():
+            problems.append(f"row {i + 1}: instrument is empty")
+    if not problems:
+        held = ledger_positions(ledger.assign(action=ledger["action"].str.upper()))
+        short = [k for k, v in held.items() if v < 0]
+        if short:
+            problems.append(f"sells more than was bought: {', '.join(short)}")
+    return problems
+
+
+def save_ledger(ledger: pd.DataFrame) -> list:
+    """Validate, sort by date (keeping the order within a day) and write the ledger; returns the problems."""
+    ledger = ledger[LEDGER_COLUMNS].copy() if set(LEDGER_COLUMNS) <= set(ledger.columns) else ledger
+    ledger = ledger.dropna(how="all").copy()
+    if set(LEDGER_COLUMNS) <= set(ledger.columns):
+        ledger["instrument"] = ledger["instrument"].astype("string").str.strip()
+        ledger["action"] = ledger["action"].astype("string").str.strip().str.upper()
+    problems = validate_ledger(ledger)
+    if problems:
+        return problems
+    ledger["quantity"] = ledger["quantity"].astype(float).astype(int)
+    ledger["date"] = pd.to_datetime(ledger["date"]).dt.strftime("%Y-%m-%d")
+    ledger["note"] = ledger["note"].fillna("")
+    ledger = ledger.sort_values("date", kind="stable")
+    TRADES_CSV.parent.mkdir(parents=True, exist_ok=True)
+    ledger.to_csv(TRADES_CSV, index=False)
+    return []
+
+
+def replacement_trades(plan: pd.DataFrame, day: str, fills: Optional[Dict[str, float]] = None) -> pd.DataFrame:
+    """Ledger rows for a replacement plan: SELL the stopped stock, BUY the reserve stock (fills override closes).
+    The buy quantity is recomputed from the actual sale proceeds when fill prices are given."""
+    fills = fills or {}
+    rows = []
+    for _, r in plan.iterrows():
+        sell_px = float(fills.get(r["sell"], r["sell_close"]))
+        rows.append({"date": day, "instrument": r["sell"], "action": "SELL", "quantity": int(r["sell_shares"]),
+                     "price": round(sell_px, 2), "note": f"stop-loss exit (stop {float(r['stop_loss_price']):.2f})"})
+        if isinstance(r.get("buy"), str) and r["buy"]:
+            buy_px = float(fills.get(r["buy"], r["buy_close"]))
+            qty = int(int(r["sell_shares"]) * sell_px // buy_px)
+            if qty > 0:
+                rows.append({"date": day, "instrument": r["buy"], "action": "BUY", "quantity": qty,
+                             "price": round(buy_px, 2), "note": f"replaces {r['sell']} (reserve rank #{int(r['buy_rank'])})"})
+    return pd.DataFrame(rows, columns=LEDGER_COLUMNS)
+
+
+def roll_trades(roll: pd.DataFrame, day: str) -> pd.DataFrame:
+    """Ledger rows from the profit-lock plan's trade lines ("BUY 130 NIFTY 2026-12-29 24000 PE @ 45.10 (2 lots)")."""
+    rows = []
+    for text in roll.loc[roll["field"] == "trade", "value"]:
+        m = _TRADE_TEXT.match(str(text))
+        if m:
+            rows.append({"date": day, "instrument": m.group(3), "action": m.group(1), "quantity": int(m.group(2)),
+                         "price": float(m.group(4)), "note": "profit-lock put roll"})
+    return pd.DataFrame(rows, columns=LEDGER_COLUMNS)
+
+
+def publish_ledger(message: str, branch: str = "main") -> str:
+    """
+    Commit data/trades.csv onto the remote branch without touching the working tree or the local branch
+    (a temporary index on top of origin/<branch>), so the evening alert run sees the trades. Returns a
+    one-line result; a failure (no git, no network, no permission) is reported, never raised.
+    """
+    import os
+    import tempfile
+
+    repo = TRADES_CSV.resolve().parents[1]
+    rel = TRADES_CSV.resolve().relative_to(repo).as_posix()
+
+    def git(*args, env=None):
+        return subprocess.run(["git", *args], cwd=repo, capture_output=True, text=True, check=True,
+                              env=env, timeout=60).stdout.strip()
+
+    try:
+        git("fetch", "-q", "origin", branch)
+        base = git("rev-parse", "FETCH_HEAD")
+        blob = git("hash-object", "-w", rel)
+        with tempfile.TemporaryDirectory() as tmp:
+            env = {**os.environ, "GIT_INDEX_FILE": os.path.join(tmp, "index")}
+            git("read-tree", base, env=env)
+            git("update-index", "--add", "--cacheinfo", f"100644,{blob},{rel}", env=env)
+            tree = git("write-tree", env=env)
+        if tree == git("rev-parse", f"{base}^{{tree}}"):
+            return f"GitHub {branch} already has these trades."
+        commit = git("commit-tree", tree, "-p", base, "-m", message)
+        git("push", "-q", "origin", f"{commit}:refs/heads/{branch}")
+        return f"Saved to GitHub ({branch}): the evening alerts will use these trades."
+    except Exception as exc:  # noqa: BLE001 - shown to the user, never fatal
+        detail = getattr(exc, "stderr", "") or str(exc)
+        return f"Saved on this computer only; pushing to GitHub failed ({str(detail).strip()[:160]})."
+
+
+def _inr(x: float) -> str:
+    neg, x = x < 0, abs(round(x))
+    s = str(int(x))
+    head, tail = s[:-3], s[-3:]
+    while len(head) > 2:
+        tail = head[-2:] + "," + tail
+        head = head[:-2]
+    return ("-Rs " if neg else "Rs ") + ((head + "," + tail) if head else tail)
+
+
+def whatsapp_update(summary: Optional[Dict[str, object]], positions: pd.DataFrame, plan: pd.DataFrame,
+                    roll: Optional[Dict[str, object]] = None, risk: Optional[pd.DataFrame] = None) -> str:
+    """A short plain-text update for the group chat (WhatsApp *bold* markup)."""
+    if not summary:
+        lines = ["*Capex portfolio: not invested yet*",
+                 f"Snapshot at the {pd.Timestamp(EVALUATION_START_DATE):%d-%b} close; money goes into the top 8 of 15."]
+        if risk is not None and not risk.empty:
+            near = risk[risk["stop_loss_pct_below_current"] <= NEAR_STOP_PCT]["symbol"].tolist()
+            lines.append("Planned: " + ", ".join(f"{r.symbol} {r.weight_pct:.1f}%" for r in risk.itertuples()))
+            if near:
+                lines.append(f"Stops within {NEAR_STOP_PCT:g}%: " + ", ".join(near))
+        return "\n".join(lines)
+    pnl = float(summary["pnl_inr"])
+    lines = [f"*Capex portfolio, {pd.Timestamp(summary['as_of']):%d-%b-%Y}*",
+             f"Rs 1 cr is now *{_inr(float(summary['value_inr']))}* ({'+' if pnl >= 0 else '-'}{_inr(abs(pnl))}, "
+             f"{float(summary['pnl_pct']) + 0.0:+.2f}%)".replace("-0.00", "+0.00"),
+             f"vs Nifty 500: {'ahead' if float(summary['vs_nifty500_inr']) >= 0 else 'behind'} by "
+             f"{_inr(abs(float(summary['vs_nifty500_inr'])))}; vs liquid fund: "
+             f"{'ahead' if float(summary['vs_liquid_fund_inr']) >= 0 else 'behind'} by "
+             f"{_inr(abs(float(summary['vs_liquid_fund_inr'])))}"]
+    if not positions.empty:
+        best = positions.loc[positions["pnl_pct"].idxmax()]
+        worst = positions.loc[positions["pnl_pct"].idxmin()]
+        lines.append(f"Best: {best['symbol']} {best['pnl_pct']:+.1f}% | Worst: {worst['symbol']} {worst['pnl_pct']:+.1f}%")
+    alerts = []
+    for _, r in plan.iterrows():
+        alerts.append(f"STOP HIT {r['sell']}: sell, buy {r['buy']}" if isinstance(r.get("buy"), str) and r["buy"]
+                      else f"STOP HIT {r['sell']}: sell, cash waits (no reserve stock qualifies)")
+    if not positions.empty and "near_stop" in positions:
+        for _, r in positions[positions["near_stop"]].iterrows():
+            alerts.append(f"{r['symbol']} is {r['pct_above_stop']:.1f}% above its stop")
+    if roll and roll.get("status") == "TRIGGERED":
+        alerts.append("Profit lock triggered: roll the Nifty puts up")
+    lines.append(("*Action:* " + "; ".join(alerts)) if alerts else "No action needed.")
+    return "\n".join(lines)
 
 
 def run(as_of: Optional[date] = None, fetch=None) -> Optional[Dict[str, pd.DataFrame]]:

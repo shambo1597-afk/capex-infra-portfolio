@@ -25,6 +25,7 @@ from config import (
     LOCKED_PORTFOLIO_SYMBOLS,
     SELECTION_CONVICTION_TIERS,
     INVESTED_COUNT,
+    NEAR_STOP_PCT,
     TRADES_CSV,
     OUTPUT_DIR,
     PORTFOLIO_SYMBOLS,
@@ -51,7 +52,9 @@ from config import (
 )
 from fetch_data import TRI_REDOWNLOAD_INSTRUCTIONS, TriStaleness, assess_tri_staleness, load_benchmark_tri
 from fundamentals import get_fundamentals_summary
-from tracker import REPLACEMENT_PLAN_CSV, held_stocks, sold_stocks
+from tracker import (LEDGER_COLUMNS, REPLACEMENT_PLAN_CSV, held_stocks, publish_ledger, replacement_trades, roll_trades,
+                     save_ledger, sold_stocks, whatsapp_update)
+from tracker import run as run_tracker
 from rrg import CONVICTION_HIGH, CONVICTION_LOW, CONVICTION_MODERATE, QUADRANT_STYLE, conviction_tier
 
 QUADRANT_COLOURS = {q: s["color"] for q, s in QUADRANT_STYLE.items()}
@@ -524,6 +527,26 @@ def _status(symbol: str) -> str:
 portfolio_df["status"] = portfolio_df["symbol"].map(_status)
 
 
+def _commit_trades(new_ledger: pd.DataFrame, message: str, refresh: bool) -> None:
+    """Save the ledger, push it to GitHub for the evening alerts, recompute the P&L, and (for a change of
+    holdings) start a full refresh so the weights, stops and hedge follow the new stocks."""
+    problems = save_ledger(new_ledger)
+    if problems:
+        st.error("Not saved:\n\n" + "\n".join(f"- {p}" for p in problems))
+        return
+    pushed = publish_ledger(message)
+    try:
+        run_tracker()
+    except Exception as exc:  # noqa: BLE001 - the ledger is saved; the P&L catches up at the next refresh
+        st.warning(f"Trades saved, but recomputing the P&L failed ({exc}); it will update at the next refresh.")
+    if refresh:
+        start_background_refresh()
+    st.cache_data.clear()
+    st.session_state["trades_saved"] = f"Trades saved. {pushed}" + (
+        " A full refresh has started so the weights, stops and hedge follow the new holdings." if refresh else "")
+    st.rerun()
+
+
 # -----------------------------------------------------------------------------
 # DATA FRESHNESS & REFRESH (always visible under the header)
 # -----------------------------------------------------------------------------
@@ -732,8 +755,17 @@ with tab_overview:
                     + (f"\n\n_{rv['note']}_" if isinstance(rv.get("note"), str) else "")
                     + f"\n\nNet cost {_inr(float(rv['net_cost_inr']))} from cash ({_inr(float(rv['cash_inr']))} available"
                     + ("" if str(rv.get("cash_sufficient")) == "True" else "; NOT enough: use fewer lots")
-                    + "). Prices: NSE settlement today; record the fills in data/trades.csv."
+                    + "). Prices: NSE settlement today."
                 )
+                roll_rows = roll_trades(roll_df, pd.Timestamp.now(tz="Asia/Kolkata").strftime("%Y-%m-%d"))
+                if not roll_rows.empty:
+                    with st.form("record_roll"):
+                        st.markdown("**Done the roll? Record it** (edit the prices or quantities to your actual fills):")
+                        edited_roll = st.data_editor(roll_rows, hide_index=True, width="stretch",
+                                                     disabled=["instrument", "action", "note"])
+                        if st.form_submit_button("Record the put roll", type="primary"):
+                            _commit_trades(pd.concat([pd.read_csv(TRADES_CSV), edited_roll], ignore_index=True),
+                                           "Profit-lock put roll", refresh=False)
             elif rv.get("status") == "waiting":
                 st.caption(f"Profit lock: at +{float(rv['trigger_pct']):g}% the puts are rolled up to about "
                            f"{TAIL_HEDGE_OTM_PCT:g}% below the Nifty (now {float(rv['pnl_pct']):+.2f}%, "
@@ -746,8 +778,8 @@ with tab_overview:
                 st.caption("Profit lock: the puts have been rolled up (recorded in the ledger).")
             elif rv.get("status") == "no prices":
                 st.warning("Profit lock triggered, but NSE option prices for today are not available yet; refresh later.")
-        if isinstance(t.get("stops_breached"), str) and t["stops_breached"].strip():
-            plan = pd.read_csv(REPLACEMENT_PLAN_CSV) if REPLACEMENT_PLAN_CSV.exists() else pd.DataFrame()
+        plan = pd.read_csv(REPLACEMENT_PLAN_CSV) if REPLACEMENT_PLAN_CSV.exists() else pd.DataFrame()
+        if not plan.empty:  # stop hits not yet recorded in the ledger
             lines = []
             for _, r in plan.iterrows():
                 sell = (f"SELL {int(r['sell_shares']):,} {r['sell']} (closed ₹{r['sell_close']:,.2f}, stop "
@@ -759,9 +791,28 @@ with tab_overview:
                     buy = "no reserve stock passes the selection rule today: the money waits in the liquid fund"
                 note = f" _{r['note']}_" if isinstance(r.get("note"), str) and r["note"] else ""
                 lines.append(f"- {sell} → {buy}.{note}")
-            st.error(f"**Stop-loss hit: {t['stops_breached']}.** Replace it from the reserve list:\n\n"
+            st.error(f"**Stop-loss hit: {', '.join(plan['sell'])}.** Replace it from the reserve list:\n\n"
                      + ("\n".join(lines) if lines else "- see output/replacement_plan.csv")
-                     + "\n\nPrices are today's closes (the fill will be tomorrow's price). Record both trades in data/trades.csv.")
+                     + "\n\nPrices are today's closes (the fill will be tomorrow's price).")
+            if not plan.empty:
+                with st.form("record_replacement"):
+                    st.markdown("**Done the trades? Record them here** (enter the actual fill prices):")
+                    day = st.date_input("Trade date", value=pd.Timestamp.now(tz="Asia/Kolkata").date())
+                    fills = {}
+                    cols = st.columns(2)
+                    for _, r in plan.iterrows():
+                        fills[r["sell"]] = cols[0].number_input(f"Sold {r['sell']} at (₹)", value=float(r["sell_close"]),
+                                                                min_value=0.01, format="%.2f")
+                        if isinstance(r.get("buy"), str) and r["buy"]:
+                            fills[r["buy"]] = cols[1].number_input(f"Bought {r['buy']} at (₹)",
+                                                                   value=float(r["buy_close"]), min_value=0.01,
+                                                                   format="%.2f")
+                    if st.form_submit_button("Record these trades", type="primary"):
+                        new = replacement_trades(plan, day.isoformat(), fills)
+                        _commit_trades(pd.concat([pd.read_csv(TRADES_CSV), new], ignore_index=True),
+                                       f"Stop-loss replacement {day.isoformat()}: " +
+                                       ", ".join(f"{a} {i}" for a, i in zip(new["action"], new["instrument"])),
+                                       refresh=True)
         track = _out("tracker_daily.csv")
         if len(track) > 1:
             track["date"] = pd.to_datetime(track["date"])
@@ -779,8 +830,62 @@ with tab_overview:
                 st.dataframe(pos.rename(columns={
                     "symbol": "Stock", "shares": "Shares", "avg_cost": "Avg cost (₹)", "close": "Close (₹)",
                     "value_inr": "Value (₹)", "pnl_inr": "P&L (₹)", "pnl_pct": "P&L %", "stop_loss_price": "Stop (₹)",
-                    "at_risk_to_stop_inr": "At risk to stop (₹)", "stop_breached": "Stop breached"}),
+                    "at_risk_to_stop_inr": "At risk to stop (₹)", "stop_breached": "Stop breached",
+                    "near_stop": f"Within {NEAR_STOP_PCT:g}% of stop", "pct_above_stop": "% above stop"}),
                     hide_index=True, width="stretch", height=_fit_height(pos))
+        if not pos.empty and "near_stop" in pos and pos["near_stop"].any():
+            near = pos[pos["near_stop"]]
+            st.warning("**Close to the stop-loss:** " + "; ".join(
+                f"{r.symbol} closed ₹{r.close:,.2f}, only {r.pct_above_stop:.1f}% above its stop ₹{r.stop_loss_price:,.2f}"
+                for r in near.itertuples()) + ". If it closes at or below the stop, the reserve list replaces it.")
+
+    if st.session_state.get("trades_saved"):
+        st.success(st.session_state.pop("trades_saved"))
+    if tracker_summary.empty and not risk_df.empty:
+        near_pre = risk_df[risk_df["stop_loss_pct_below_current"] <= NEAR_STOP_PCT]
+        if not near_pre.empty:
+            st.warning("**Stop-loss very close:** " + "; ".join(
+                f"{r.symbol} (stop {r.stop_loss_pct_below_current:.1f}% below the price)" for r in near_pre.itertuples()))
+
+    # 0a. Trade ledger: record real fills and any trade without editing files
+    with st.expander("Trade ledger: record real fill prices and other trades"
+                     + ("" if TRADES_CSV.exists() else " (created at the snapshot close)")):
+        if not TRADES_CSV.exists():
+            st.caption(f"The ledger is created automatically at the {pd.Timestamp(EVALUATION_START_DATE):%d-%b-%Y} close "
+                       "with the 8 invested stocks at that day's closing prices and the Nifty puts. After that, correct "
+                       "the prices (and share counts) here to what you actually paid.")
+        else:
+            st.caption("Edit a cell to correct a price or quantity (for example your actual buy prices on the snapshot "
+                       "day), or add a row at the bottom for a new trade. Actions are BUY or SELL; stocks by NSE symbol, "
+                       "puts as 'NIFTY 2026-12-29 22000 PE'. Saving recomputes the P&L and pushes the ledger to GitHub.")
+            ledger_now = pd.read_csv(TRADES_CSV)
+            edited = st.data_editor(
+                ledger_now, num_rows="dynamic", hide_index=True, width="stretch", key="ledger_editor",
+                column_config={
+                    "action": st.column_config.SelectboxColumn("action", options=["BUY", "SELL"], required=True),
+                    "quantity": st.column_config.NumberColumn("quantity", min_value=1, step=1, required=True),
+                    "price": st.column_config.NumberColumn("price (₹)", min_value=0.01, format="%.2f", required=True),
+                    "date": st.column_config.TextColumn("date (YYYY-MM-DD)", required=True),
+                })
+            changed = not edited[LEDGER_COLUMNS].astype(str).reset_index(drop=True).equals(
+                ledger_now[LEDGER_COLUMNS].astype(str).reset_index(drop=True))
+            if st.button("Save ledger", disabled=not changed, type="primary" if changed else "secondary"):
+                try:
+                    holdings_changed = set(held_stocks(edited.dropna(how="all"))) != set(held_stocks(ledger_now))
+                except Exception:  # noqa: BLE001 - a half-filled row; save_ledger reports it
+                    holdings_changed = False
+                _commit_trades(edited, "Ledger edited on the dashboard", refresh=holdings_changed)
+
+    # 0c. One-tap update for the group chat
+    with st.expander("WhatsApp update for the group"):
+        plan_now = pd.read_csv(REPLACEMENT_PLAN_CSV) if REPLACEMENT_PLAN_CSV.exists() else pd.DataFrame()
+        roll_now = _out("hedge_roll.csv")
+        text = whatsapp_update(
+            dict(zip(tracker_summary["metric"], tracker_summary["value"])) if not tracker_summary.empty else None,
+            _out("tracker_positions.csv"), plan_now,
+            dict(zip(roll_now["field"], roll_now["value"])) if not roll_now.empty else None, risk_df)
+        st.code(text, language=None)
+        st.caption("Use the copy icon at the top right of the box, then paste into WhatsApp.")
 
     # 0b. Q2 results calendar: the days a stock can gap through its stop
     lc = _out("locked_portfolio_runup_catalyst_check.csv")
