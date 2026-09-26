@@ -44,6 +44,8 @@ from config import (
     NSE_PLEDGE_API_URL,
     NSE_PLEDGE_PAGE_URL,
     NSE_REQUEST_HEADERS,
+    SCREENER_DOWNLOAD_DATE,
+    SCREENER_RECORDS,
     SYMBOL_NAME,
     sector_of,
 )
@@ -758,6 +760,35 @@ def fetch_pledged_percentage(
     return parse_pledge_records(payload)
 
 
+SCREENER_FIELDS = {
+    "market_cap": "Market Capitalization",
+    "current_price": "Current Price",
+    "roce": "Return on capital employed",
+    "roe": "Return on equity",
+    "roce_3yr_avg": "Average return on capital employed 3Years",
+    "opm": "OPM",
+    "debt_to_equity": "Debt to equity",
+    "operating_cash_flow": "Cash from operations last year",
+    "operating_cash_flow_3yr": "Operating cash flow 3years",
+    "interest_coverage": "Interest Coverage Ratio",
+    "pledged_pct": "Pledged percentage",
+    "sales_growth_3yr": "Sales growth 3Years",
+    "profit_growth_3yr": "Profit growth 3Years",
+}
+
+
+def screener_record(symbol: str, row: Dict[str, Any]) -> Dict[str, Any]:
+    """A fundamentals record from one row of a Screener sector export (config.SCREENER_FILES).
+    Blank cells are missing values (None), which fail a screen criterion, never pass it."""
+    rec: Dict[str, Any] = {"symbol": symbol, "name": SYMBOL_NAME.get(symbol, symbol), "sector": sector_of(symbol)}
+    for field, column in SCREENER_FIELDS.items():
+        rec[field] = _clean_numeric(str(row.get(column, "") or "").strip())
+    rec["pledged_as_of"] = f"Screener {SCREENER_DOWNLOAD_DATE}"
+    rec["status"] = "OK"
+    rec["source"] = f"Screener export {SCREENER_DOWNLOAD_DATE}"
+    return rec
+
+
 def extract_stock_fundamentals(symbol: str, use_cache: bool = True) -> Dict[str, Any]:
     """
     Retrieve and parse all required fundamental metrics for a single stock symbol.
@@ -792,6 +823,9 @@ def extract_stock_fundamentals(symbol: str, use_cache: bool = True) -> Dict[str,
         "profit_growth_3yr": None,
         "status": "Data Unavailable",
     }
+
+    if symbol in SCREENER_RECORDS:  # the single source of truth: the Screener sector export
+        return screener_record(symbol, SCREENER_RECORDS[symbol])
 
     pledged_pct, pledged_as_of = fetch_pledged_percentage(symbol, use_cache=use_cache)
     default_record.update({"pledged_pct": pledged_pct, "pledged_as_of": pledged_as_of})

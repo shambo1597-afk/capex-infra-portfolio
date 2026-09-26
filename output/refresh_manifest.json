@@ -1,8 +1,8 @@
 {
   "as_of": "2026-09-26",
-  "started": "2026-09-26T11:57:25+05:30",
-  "status": "ok",
-  "pid": 951,
+  "started": "2026-09-26T19:21:52+05:30",
+  "status": "running",
+  "pid": 1414,
   "total_steps": 10,
   "step_names": [
     "Nifty 500 TRI (niftyindices.com)",
@@ -13,74 +13,24 @@
     "Candidate sweep",
     "RRG weekly tails",
     "Regression and hedge plan",
-    "Performance and CML",
-    "Live P&L of the Rs 1 crore"
+    "Live P&L of the Rs 1 crore",
+    "Performance and CML"
   ],
   "expected_seconds": {
     "Nifty 500 TRI (niftyindices.com)": 18,
     "Prices, technicals and risk summary": 6,
-    "Technical-first sector screens": 42,
-    "Review tables, RRG and plots": 182,
-    "Locked-portfolio run-up check": 4,
-    "Candidate sweep": 5,
-    "Regression and hedge plan": 7,
-    "Performance and CML": 90
+    "Technical-first sector screens": 41,
+    "Review tables, RRG and plots": 190,
+    "Locked-portfolio run-up check": 5,
+    "Candidate sweep": 6,
+    "RRG weekly tails": 21,
+    "Regression and hedge plan": 4,
+    "Performance and CML": 109,
+    "Live P&L of the Rs 1 crore": 1
   },
-  "steps": [
-    {
-      "name": "Nifty 500 TRI (niftyindices.com)",
-      "returncode": 0,
-      "seconds": 18
-    },
-    {
-      "name": "Prices, technicals and risk summary",
-      "returncode": 0,
-      "seconds": 6
-    },
-    {
-      "name": "Technical-first sector screens",
-      "returncode": 0,
-      "seconds": 41
-    },
-    {
-      "name": "Review tables, RRG and plots",
-      "returncode": 0,
-      "seconds": 190
-    },
-    {
-      "name": "Locked-portfolio run-up check",
-      "returncode": 0,
-      "seconds": 5
-    },
-    {
-      "name": "Candidate sweep",
-      "returncode": 0,
-      "seconds": 6
-    },
-    {
-      "name": "RRG weekly tails",
-      "returncode": 0,
-      "seconds": 21
-    },
-    {
-      "name": "Regression and hedge plan",
-      "returncode": 0,
-      "seconds": 4
-    },
-    {
-      "name": "Performance and CML",
-      "returncode": 0,
-      "seconds": 109
-    },
-    {
-      "name": "Live P&L of the Rs 1 crore",
-      "returncode": 0,
-      "seconds": 1
-    }
-  ],
-  "heartbeat": "2026-09-26T12:04:05+05:30",
-  "current_step": 10,
-  "current_step_name": "Live P&L of the Rs 1 crore",
-  "current_step_started": "2026-09-26T12:04:05+05:30",
-  "finished": "2026-09-26T12:04:05+05:30"
+  "steps": [],
+  "heartbeat": "2026-09-26T19:22:27+05:30",
+  "current_step": 1,
+  "current_step_name": "Nifty 500 TRI (niftyindices.com)",
+  "current_step_started": "2026-09-26T19:21:52+05:30"
 }

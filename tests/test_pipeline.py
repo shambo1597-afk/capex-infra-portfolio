@@ -17,9 +17,12 @@ from config import (
     PORTFOLIO_SYMBOLS,
     POWER_SECTOR_STOCKS,
     BUSINESS_FOCUS_NOTES,
-    NIFTY_INFRA_CONSTITUENTS_FILE,
-    THEME_ADDITIONS,
-    SECTOR_CONSTITUENT_FILES,
+    CAPITAL_GOODS_EXCLUDED_GROUPS,
+    CAPITAL_GOODS_EXCLUDED_INDUSTRIES,
+    NON_EQUITY_INSTRUMENTS,
+    SCREENER_FILES,
+    THEME_EXCLUSIONS,
+    UNIVERSE_MIN_MARKET_CAP_CR,
     SYMBOL_ALIASES,
     SYMBOL_NAME,
     sector_of,
@@ -35,42 +38,40 @@ from fetch_data import (
 class TestUniverseConfiguration:
     """Verify stock universe setup and symbol alias mapping."""
 
-    def test_universes_match_official_constituent_files(self):
-        """Each universe is its official niftyindices.com file plus the named theme additions
-        (appended, never hand-typed elsewhere), and every stock maps to exactly one sector."""
+    def test_universes_are_the_screener_exports_after_the_universe_rule(self):
+        """Each universe is exactly its Screener export filtered by the stated rule (NSE-listed, market
+        cap floor, theme industries, no InvITs, the theme exclusions), and every stock maps to one sector."""
         for sector, universe in (("Cement", CEMENT_STOCKS), ("Capital Goods", CAPITAL_GOODS_EPC_STOCKS),
                                  ("Power", POWER_SECTOR_STOCKS)):
-            official = pd.read_csv(SECTOR_CONSTITUENT_FILES[sector])["Symbol"].str.strip().tolist()
-            assert universe == official + [a["symbol"] for a in THEME_ADDITIONS.get(sector, [])]
+            raw = pd.read_csv(SCREENER_FILES[sector])
+            keep = raw["NSE Code"].notna() & (raw["Market Capitalization"] >= UNIVERSE_MIN_MARKET_CAP_CR)
+            if sector == "Capital Goods":
+                keep &= ~raw["Industry Group"].isin(CAPITAL_GOODS_EXCLUDED_GROUPS)
+                keep &= ~raw["Industry"].isin(CAPITAL_GOODS_EXCLUDED_INDUSTRIES)
+            keep &= ~raw["NSE Code"].isin(list(THEME_EXCLUSIONS) + list(NON_EQUITY_INSTRUMENTS))
+            assert universe == raw.loc[keep, "NSE Code"].str.strip().tolist()
             assert all(sector_of(sym) == sector for sym in universe)
-        assert (len(CEMENT_STOCKS), len(CAPITAL_GOODS_EPC_STOCKS), len(POWER_SECTOR_STOCKS)) == (16, 54, 21)
-        assert len(set(PORTFOLIO_SYMBOLS)) == len(PORTFOLIO_SYMBOLS) == 91
+        assert (len(CEMENT_STOCKS), len(CAPITAL_GOODS_EPC_STOCKS), len(POWER_SECTOR_STOCKS)) == (15, 102, 22)
+        assert len(set(PORTFOLIO_SYMBOLS)) == len(PORTFOLIO_SYMBOLS) == 139
         assert sector_of("NOT_A_SYMBOL") == "Other"
 
-    def test_theme_additions_are_documented(self):
-        infra_symbols = set(pd.read_csv(NIFTY_INFRA_CONSTITUENTS_FILE)["Symbol"].str.strip())
-        for sector, additions in THEME_ADDITIONS.items():
-            for add in additions:
-                sym = add["symbol"]
-                rows = [r for r in sector_universe(sector) if r["symbol"] == sym]
-                assert len(rows) == 1 and rows[0]["index"] == add["source"]
-                assert sym in BUSINESS_FOCUS_NOTES  # every addition records its business-fit check
-                if add["source"] == "Nifty Infrastructure":
-                    assert sym in infra_symbols
-                else:
-                    assert rows[0]["name"] == add["name"] == SYMBOL_NAME[sym]
+    def test_theme_exclusions_state_a_reason_under_the_rule(self):
+        for sym, reason in THEME_EXCLUSIONS.items():
+            assert reason[:3] in {"(1)", "(2)", "(3)", "(4)", "(5)"}  # one of the five stated categories
+            assert sym not in PORTFOLIO_SYMBOLS
+        for sym in BUSINESS_FOCUS_NOTES:
+            assert sym in PORTFOLIO_SYMBOLS  # notes describe universe members kept on a judgement
 
     def test_locked_portfolio(self):
-        expected_locked = ["WELCORP", "TDPOWERSYS", "APARINDS", "QPOWER", "FINCABLES", "CARBORUNIV",
-                           "BEML", "VOLTAMP", "USHAMART", "ACMESOLAR", "NUVOCO"]
+        expected_locked = ["WELCORP", "RPEL", "UTLSOLAR", "FINCABLES", "GREAVESCOT", "ACE", "CARBORUNIV",
+                           "GOODLUCK", "BEML", "ACMESOLAR"]
         assert LOCKED_PORTFOLIO_SYMBOLS == expected_locked
         assert list(LOCKED_PORTFOLIO) == expected_locked
-        # Every pick belongs to one of the three official universes, with name/sector from the files
         for sym, info in LOCKED_PORTFOLIO.items():
             assert sym in PORTFOLIO_SYMBOLS
             assert info["sector"] == sector_of(sym) and info["name"] == SYMBOL_NAME[sym]
         sectors = [info["sector"] for info in LOCKED_PORTFOLIO.values()]
-        assert (sectors.count("Cement"), sectors.count("Capital Goods"), sectors.count("Power")) == (1, 9, 1)
+        assert (sectors.count("Cement"), sectors.count("Capital Goods"), sectors.count("Power")) == (0, 9, 1)
 
     def test_sector_screen_picks_are_the_locked_portfolio(self):
         from sector_screen import CURRENT_PICKS

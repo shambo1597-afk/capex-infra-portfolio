@@ -29,100 +29,105 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 # PORTFOLIO STOCK UNIVERSE CONFIGURATION
 # -----------------------------------------------------------------------------
 
-# Official Nifty sector index constituent files, downloaded from niftyindices.com
-# (https://www.niftyindices.com/IndexConstituent/ind_nifty<Name>_list.csv) on 24-Sep-2026.
-# These files, plus the named THEME_ADDITIONS below, are the single source of truth for the
-# three sector universes.
-INDEX_CONSTITUENTS_DIR = DATA_DIR / "index_constituents"
-SECTOR_CONSTITUENT_FILES = {
-    "Cement": INDEX_CONSTITUENTS_DIR / "ind_niftyCement_list.csv",
-    "Capital Goods": INDEX_CONSTITUENTS_DIR / "ind_niftyCapitalGoods_list.csv",
-    "Power": INDEX_CONSTITUENTS_DIR / "ind_niftyPower_list.csv",
+# SINGLE SOURCE OF TRUTH: Screener.in sector exports (data/screener/, downloaded 26-Sep-2026, see
+# data/screener/SOURCE.md). They define the universe AND supply the fundamentals (market cap, ROCE,
+# OPM, debt/equity, interest cover, pledge %, operating cash flow), so no other list or scrape is used.
+# Universe rule (agreed with the group before any results were seen):
+#   - NSE-listed (an NSE code) with market cap >= UNIVERSE_MIN_MARKET_CAP_CR
+#   - Capital Goods without the Aerospace & Defense group and without the industries in
+#     CAPITAL_GOODS_EXCLUDED_INDUSTRIES (not capex/infrastructure products)
+#   - no infrastructure investment trusts (NON_EQUITY_INSTRUMENTS: units, not company shares)
+#   - no company whose main business is outside the theme (THEME_EXCLUSIONS, one stated rule
+#     applied to the whole universe, with the reason for each name)
+SCREENER_DIR = DATA_DIR / "screener"
+SCREENER_DOWNLOAD_DATE = "2026-09-26"
+SCREENER_FILES = {
+    "Cement": SCREENER_DIR / "cement.csv",
+    "Capital Goods": SCREENER_DIR / "capital_goods.csv",
+    "Power": SCREENER_DIR / "power.csv",
+}
+UNIVERSE_MIN_MARKET_CAP_CR = 5000
+CAPITAL_GOODS_EXCLUDED_GROUPS = {"Aerospace & Defense"}
+CAPITAL_GOODS_EXCLUDED_INDUSTRIES = {
+    "Packaging", "Rubber", "Glass - Industrial", "Aluminium, Copper & Zinc Products",
+    "Commercial Vehicles", "Tractors", "Dealers-Commercial Vehicles, Tractors, Construction Vehicles",
+}
+NON_EQUITY_INSTRUMENTS = {
+    "INDIGRID": "Infrastructure investment trust (InvIT units, not company shares)",
+    "PGINVIT": "Infrastructure investment trust (InvIT units, not company shares)",
+}
+# Theme rule: exclude companies whose main business is (1) electronics manufacturing or consumer
+# electronics, (2) automotive or consumer components, (3) defence or shipbuilding, (4) primary steel
+# making (a commodity metal, not equipment), or (5) packaging and films.
+THEME_EXCLUSIONS = {
+    "CPPLUS": "(1) CCTV and security electronics",
+    "SYRMA": "(1) electronics manufacturing services",
+    "KAYNES": "(1) electronics manufacturing services",
+    "AVALON": "(1) electronics manufacturing services",
+    "INDOMIM": "(2) metal-injection-moulded parts, mainly automotive and consumer",
+    "SPECTRUM": "(2) components for appliances and vehicles",
+    "KINGFA": "(2) engineering plastics for automotive and appliances",
+    "RAYMOND": "(2) engineering business after the demergers is mainly automotive and aerospace components",
+    "HAPPYFORGE": "(2) forgings, mainly automotive",
+    "MARINE": "(3) electrical systems for ships and naval vessels",
+    "MAZDOCK": "(3) defence shipbuilding",
+    "COCHINSHIP": "(3) defence and commercial shipbuilding",
+    "SWANDEF": "(3) defence shipbuilding",
+    "SHYAMMETL": "(4) primary steel and metals",
+    "GPIL": "(4) primary steel and iron ore",
+    "GALLANTT": "(4) primary steel",
+    "JAYNECOIND": "(4) primary steel and castings",
+    "SUNFLAG": "(4) alloy steel, mainly for automotive",
+    "GRWRHITECH": "(5) plastic films",
+    "TIMETECHNO": "(5) packaging and polymer products",
 }
 
 
-NIFTY_INFRA_CONSTITUENTS_FILE = INDEX_CONSTITUENTS_DIR / "ind_niftyinfralist.csv"  # downloaded 25-Sep-2026
-
-
-def _read_constituents(csv_path: Path, index_name: str) -> List[Dict[str, str]]:
-    """Rows (symbol, name, index) of an official constituent file; empty if the file is missing."""
-    if not csv_path.exists():
+def _read_screener(sector: str) -> List[Dict[str, object]]:
+    """Universe rows {symbol, name, index, industry, record} of one Screener export after the universe rule."""
+    path = SCREENER_FILES[sector]
+    if not path.exists():
         return []
-    with open(csv_path, newline="", encoding="utf-8-sig") as f:
-        return [{"symbol": row["Symbol"].strip(), "name": row["Company Name"].strip(), "index": index_name}
-                for row in csv.DictReader(f) if row.get("Symbol", "").strip()]
-
-
-_CONSTITUENTS = {sector: _read_constituents(path, f"Nifty {sector}")
-                 for sector, path in SECTOR_CONSTITUENT_FILES.items()}
-
-# THEME ADDITIONS: stocks outside the three official sector indices that join a sector universe
-# because their primary business fits the theme (Cement, Capital Goods/EPC or Power). Rule: the
-# business must fit the sector (checked by hand), and every addition carries a BUSINESS_FOCUS_NOTES
-# entry recording that check. Each addition is screened with its sector's thresholds and ranked
-# against that sector's universe, exactly like the index constituents.
-#   source "Nifty Infrastructure": taken from that index's official file (name from the file);
-#     of its 30 constituents, 12 are already in the sector universes and only LT and BHARATFORG
-#     fit the theme (the rest are ports, aviation, oil & gas, telecom, healthcare, realty, hotels).
-#   source "Theme addition": not in any index used here; the company name is given below.
-THEME_ADDITIONS = {
-    "Capital Goods": [
-        {"symbol": "LT", "source": "Nifty Infrastructure"},
-        {"symbol": "BHARATFORG", "source": "Nifty Infrastructure"},
-        {"symbol": "QPOWER", "source": "Theme addition", "name": "Quality Power Electrical Equipments Ltd."},
-        {"symbol": "RRKABEL", "source": "Theme addition", "name": "R R Kabel Ltd."},
-    ],
-}
-
-# Business-focus review notes (theme fit, conglomerate / classification concerns), shown in the
-# review tables' business_focus_note column. They are flags for a manual decision, not exclusions.
-BUSINESS_FOCUS_NOTES = {
-    "LT": (
-        "CONGLOMERATE CONCERN - manual review. NSE industry: Construction. Core business is EPC "
-        "(infrastructure and energy projects, hi-tech manufacturing), but consolidated revenue also "
-        "includes IT & technology services (listed subsidiaries LTIMindtree, L&T Technology Services) "
-        "and financial services (L&T Finance). Verify the latest segment split in the annual report."
-    ),
-    "BHARATFORG": (
-        "CLASSIFICATION CONCERN - manual review. NSE industry: Automobile and Auto Components, not "
-        "Capital Goods. Forgings serve automotive (commercial and passenger vehicles, including overseas "
-        "auto subsidiaries) as well as industrial, defence and aerospace customers. Verify the auto vs "
-        "non-auto revenue split before treating it as a capital-goods name."
-    ),
-    "QPOWER": (
-        "THEME ADDITION (not in an official Nifty sector index). Focused electrical-equipment maker for "
-        "power grids and transmission (reactors, transformers and related grid components), the same "
-        "line of business as VOLTAMP. Small company, listed in 2025; verify the export share and any "
-        "acquisitions in the annual report."
-    ),
-    "RRKABEL": (
-        "THEME ADDITION (not in an official Nifty sector index). Wires and cables make up most of "
-        "revenue, with a smaller consumer-electricals segment (fans, lighting, switches); the same core "
-        "business as FINCABLES, KEI and POLYCAB in the Nifty Capital Goods index. Verify the segment split."
-    ),
-    "GRASIM": (
-        "CONGLOMERATE CONCERN (same treatment as NAVA). Consolidated results include UltraTech (cement) "
-        "but also VSF and chemicals, paints, B2B e-commerce and financial services (Aditya Birla Capital)."
-    ),
-}
-
-
-def _add_theme_constituents() -> None:
-    infra = {r["symbol"]: r for r in _read_constituents(NIFTY_INFRA_CONSTITUENTS_FILE, "Nifty Infrastructure")}
-    for sector, additions in THEME_ADDITIONS.items():
-        present = {r["symbol"] for rows in _CONSTITUENTS.values() for r in rows}
-        for add in additions:
-            symbol = add["symbol"]
-            if symbol in present:
+    rows = []
+    with open(path, newline="", encoding="utf-8-sig") as f:
+        for row in csv.DictReader(f):
+            symbol = (row.get("NSE Code") or "").strip()
+            try:
+                mcap = float(row.get("Market Capitalization") or "nan")
+            except ValueError:
+                mcap = float("nan")
+            if not symbol or not mcap >= UNIVERSE_MIN_MARKET_CAP_CR:
                 continue
-            if add["source"] == "Nifty Infrastructure":
-                if symbol in infra:
-                    _CONSTITUENTS[sector].append(infra[symbol])
-            else:
-                _CONSTITUENTS[sector].append({"symbol": symbol, "name": add["name"], "index": add["source"]})
+            if sector == "Capital Goods" and (row["Industry Group"] in CAPITAL_GOODS_EXCLUDED_GROUPS
+                                              or row["Industry"] in CAPITAL_GOODS_EXCLUDED_INDUSTRIES):
+                continue
+            if symbol in NON_EQUITY_INSTRUMENTS or symbol in THEME_EXCLUSIONS:
+                continue
+            rows.append({"symbol": symbol, "name": row["Name"].strip(), "index": f"Screener: {row['Industry']}",
+                         "industry": row["Industry"], "record": row})
+    return rows
 
 
-_add_theme_constituents()
+_CONSTITUENTS = {sector: _read_screener(sector) for sector in SCREENER_FILES}
+
+# Screener row per symbol: the fundamentals source (fundamentals.extract_stock_fundamentals)
+SCREENER_RECORDS = {r["symbol"]: r["record"] for rows in _CONSTITUENTS.values() for r in rows}
+
+# Business-focus notes: why a borderline business was kept in the theme (shown in the review tables)
+BUSINESS_FOCUS_NOTES = {
+    "GREAVESCOT": (
+        "KEPT (borderline): engines, gensets and farm equipment are most of revenue; it also owns an "
+        "electric two-wheeler business (Greaves Electric Mobility). Verify the segment split."
+    ),
+    "UTLSOLAR": "KEPT: solar power equipment (panels, inverters, batteries), part of the power build-out.",
+    "RPEL": "KEPT: refractory ramming mass used inside steel plants' induction furnaces (an industrial consumable).",
+    "GRASIM": (
+        "CONGLOMERATE CONCERN. Consolidated results include UltraTech (cement) but also VSF and chemicals, "
+        "paints, B2B e-commerce and financial services (Aditya Birla Capital)."
+    ),
+    "NAVA": "CONGLOMERATE CONCERN: power generation plus ferro alloys and mining (Zambia).",
+    "RRKABEL": "Wires and cables are most of revenue, with a smaller consumer-electricals segment.",
+}
 
 CEMENT_STOCKS = [r["symbol"] for r in _CONSTITUENTS["Cement"]]
 CAPITAL_GOODS_EPC_STOCKS = [r["symbol"] for r in _CONSTITUENTS["Capital Goods"]]
@@ -130,9 +135,9 @@ POWER_SECTOR_STOCKS = [r["symbol"] for r in _CONSTITUENTS["Power"]]
 
 
 def sector_universe(sector: str) -> List[Dict[str, str]]:
-    """Every stock screened for a sector: its official index constituents plus its theme
-    additions (THEME_ADDITIONS), as rows {symbol, name, index}."""
-    return list(_CONSTITUENTS.get(sector, []))
+    """Every stock screened for a sector (the Screener export after the universe rule), as rows
+    {symbol, name, index, industry}."""
+    return [{k: r[k] for k in ("symbol", "name", "index", "industry")} for r in _CONSTITUENTS.get(sector, [])]
 
 
 # Symbol -> sector / company name lookups shared by every module
@@ -147,38 +152,40 @@ def sector_of(symbol: str) -> str:
 
 # -----------------------------------------------------------------------------
 # LOCKED PORTFOLIO
-# The final 11 picks (decided 26-Sep-2026), exactly what the selection rule in sector_screen.py
-# (select_portfolio; output/selection_ranking.csv, column rule_pick) gives, with no judgement calls:
-#   eligible = pass the HARD fundamental rules and a bullish trend with a real DI gap (>= 2);
-#   ranked by 6-month relative strength excluding the latest month, the ranking with the best (if
-#   modest) record in research/momentum_study.py;
-#   the best-ranked eligible Cement stock (SECTOR_MIN_HOLDINGS), so all three sub-themes are held,
-#   then the next best-ranked names up to PORTFOLIO_SIZE (11: inside the brief's limit of 15).
-# Sector rotation follows from the ranking: Capital Goods has the strongest sector momentum; Cement
-# the weakest, so it holds only its minimum. NUVOCO is the only Cement stock passing both the hard
-# rules and the trend test (soft exception: ROCE); it is the 11th name, so the top 10 of the ranking stay
-# (a strong stock is not dropped for sector coverage, and the extra, less-correlated name lowers
-# portfolio volatility and tracking error). The list is
-# frozen after 5-Oct-2026, so a stopped-out position's money is redeployed into the remaining holdings.
-# Soft-criteria exceptions (BEML: ROCE/OPM; NUVOCO: ROCE) are shown on the dashboard.
+# The 10 picks (decided with the group 26-Sep-2026), exactly what the selection rule in
+# sector_screen.py gives (select_portfolio; output/selection_ranking.csv, column rule_pick):
+#   eligible  = in the Screener universe (theme rule above), HARD fundamental rules pass, bullish
+#               trend with a real DI gap (>= 2), at least MIN_HISTORY_SESSIONS of prices;
+#   ranked    by 6-month relative strength vs the Nifty 500 excluding the latest month (momentum;
+#               research/momentum_study.py found a small positive but statistically inconclusive
+#               effect, so this is a stated method, not a proven edge);
+#   confirmed by the RRG: conviction High or Moderate (rrg.conviction_tier: not weakening/lagging in
+#               both views vs the Nifty 500 and vs the sector), so names whose momentum is visibly
+#               fading in both views are skipped (a judgement filter, not a back-tested one);
+#   the top PORTFOLIO_SIZE confirmed names. No sector minimums: Power has one holding (ACMESOLAR) and
+#   Cement none (its only confirmed uptrend, NUVOCO, ranks near the bottom); the group will ask the
+#   professor whether a Cement leg is required. Frozen after 5-Oct-2026: a stopped-out position's
+#   money is redeployed into the remaining holdings. Soft exceptions (shown on the dashboard): BEML
+#   (ROCE/OPM), GREAVESCOT (OPM), UTLSOLAR (operating cash flow).
 # -----------------------------------------------------------------------------
 
 LOCKED_PORTFOLIO_SYMBOLS = [
-    "WELCORP", "TDPOWERSYS", "APARINDS", "QPOWER", "FINCABLES",    # Capital Goods
-    "CARBORUNIV", "BEML", "VOLTAMP", "USHAMART",                   # Capital Goods
+    "WELCORP", "RPEL", "UTLSOLAR", "FINCABLES", "GREAVESCOT",      # Capital Goods
+    "ACE", "CARBORUNIV", "GOODLUCK", "BEML",                       # Capital Goods
     "ACMESOLAR",                                                   # Power
-    "NUVOCO",                                                      # Cement
 ]
 
-PORTFOLIO_SIZE = 11
-SECTOR_MIN_HOLDINGS = {"Cement": 1}  # every sub-theme of the Cement / Capital Goods / Power theme is held
+PORTFOLIO_SIZE = 10                          # within the brief's 8-15
+SECTOR_MIN_HOLDINGS: Dict[str, int] = {}     # none: picked on merit (the group may add a Cement leg)
+SELECTION_CONVICTION_TIERS = ("High", "Moderate")  # RRG confirmation of the momentum ranking
+MIN_HISTORY_SESSIONS = 240                   # about a year of NSE sessions, so 6-month RS is measurable
 
 LOCKED_PORTFOLIO = {
     symbol: {"sector": sector_of(symbol), "name": SYMBOL_NAME.get(symbol, symbol)}
     for symbol in LOCKED_PORTFOLIO_SYMBOLS
 }
 
-# Complete watchlist to fetch and analyze: every constituent of the three sector indices
+# Complete watchlist to fetch and analyze: the whole universe
 PORTFOLIO_SYMBOLS = CEMENT_STOCKS + CAPITAL_GOODS_EPC_STOCKS + POWER_SECTOR_STOCKS
 
 # Corporate Action / Symbol Change Alias Mapping
@@ -285,7 +292,7 @@ RISK_SUMMARY_OUTPUT_CSV = OUTPUT_DIR / "portfolio_risk_summary.csv"
 # -----------------------------------------------------------------------------
 
 CEMENT_SCREEN_CRITERIA = [
-    ("market_cap", ">", 1000, "Market Cap > 1000 (Rs Cr)"),
+    ("market_cap", ">=", 5000, "Market Cap >= 5000 (Rs Cr)"),
     ("roce", ">", 8, "ROCE > 8%"),
     ("opm", ">", 10, "OPM > 10%"),
     ("operating_cash_flow", ">", 0, "Cash from operations last year > 0 (Rs Cr)"),
@@ -294,7 +301,7 @@ CEMENT_SCREEN_CRITERIA = [
 ]
 
 CAPITAL_GOODS_SCREEN_CRITERIA = [
-    ("market_cap", ">", 1000, "Market Cap > 1000 (Rs Cr)"),
+    ("market_cap", ">=", 5000, "Market Cap >= 5000 (Rs Cr)"),
     ("roce", ">", 8, "ROCE > 8%"),
     ("opm", ">", 8, "OPM > 8%"),
     ("operating_cash_flow", ">", 0, "Cash from operations last year > 0 (Rs Cr)"),
@@ -315,7 +322,7 @@ CAPITAL_GOODS_SCREEN_CRITERIA = [
 FUNDAMENTAL_HARD_FIELDS = {"pledged_pct", "debt_to_equity", "interest_coverage", "market_cap"}
 
 POWER_SCREEN_CRITERIA = [
-    ("market_cap", ">", 2000, "Market Cap > 2000 (Rs Cr)"),
+    ("market_cap", ">=", 5000, "Market Cap >= 5000 (Rs Cr)"),
     ("roce", ">", 6, "ROCE > 6%"),
     ("interest_coverage", ">", 1.5, "Interest coverage > 1.5"),
     ("operating_cash_flow", ">", 0, "Cash from operations last year > 0 (Rs Cr)"),
@@ -328,17 +335,17 @@ POWER_SCREEN_CRITERIA = [
 
 SECTOR_SCREENS = {
     "Cement": {
-        "constituents_csv": SECTOR_CONSTITUENT_FILES["Cement"],
+        "source_csv": SCREENER_FILES["Cement"],
         "criteria": CEMENT_SCREEN_CRITERIA,
         "output_csv": OUTPUT_DIR / "cement_full_screen.csv",
     },
     "Capital Goods": {
-        "constituents_csv": SECTOR_CONSTITUENT_FILES["Capital Goods"],
+        "source_csv": SCREENER_FILES["Capital Goods"],
         "criteria": CAPITAL_GOODS_SCREEN_CRITERIA,
         "output_csv": OUTPUT_DIR / "capital_goods_full_screen.csv",
     },
     "Power": {
-        "constituents_csv": SECTOR_CONSTITUENT_FILES["Power"],
+        "source_csv": SCREENER_FILES["Power"],
         "criteria": POWER_SCREEN_CRITERIA,
         "output_csv": OUTPUT_DIR / "power_full_screen.csv",
     },

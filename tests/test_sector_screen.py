@@ -97,22 +97,24 @@ class TestSectorScreenConfig:
         """Lightened, current-year-only safety screens (no 3-year averages or growth)."""
         as_tuples = lambda crit: [(f, op, t) for f, op, t, _ in crit]  # noqa: E731
         assert as_tuples(CEMENT_SCREEN_CRITERIA) == [
-            ("market_cap", ">", 1000), ("roce", ">", 8), ("opm", ">", 10), ("operating_cash_flow", ">", 0),
+            ("market_cap", ">=", 5000), ("roce", ">", 8), ("opm", ">", 10), ("operating_cash_flow", ">", 0),
             ("debt_to_equity", "<", 1.5), ("pledged_pct", "<", 15)]
         assert as_tuples(CAPITAL_GOODS_SCREEN_CRITERIA) == [
-            ("market_cap", ">", 1000), ("roce", ">", 8), ("opm", ">", 8), ("operating_cash_flow", ">", 0),
+            ("market_cap", ">=", 5000), ("roce", ">", 8), ("opm", ">", 8), ("operating_cash_flow", ">", 0),
             ("debt_to_equity", "<", 1.5), ("pledged_pct", "<", 15)]
         assert as_tuples(POWER_SCREEN_CRITERIA) == [
-            ("market_cap", ">", 2000), ("roce", ">", 6), ("interest_coverage", ">", 1.5),
+            ("market_cap", ">=", 5000), ("roce", ">", 6), ("interest_coverage", ">", 1.5),
             ("operating_cash_flow", ">", 0), ("pledged_pct", "<", 15)]
         for crit in (CEMENT_SCREEN_CRITERIA, CAPITAL_GOODS_SCREEN_CRITERIA, POWER_SCREEN_CRITERIA):
             assert not {f for f, *_ in crit} & {"roce_3yr_avg", "sales_growth_3yr", "profit_growth_3yr", "operating_cash_flow_3yr"}
 
-    @pytest.mark.parametrize("sector, count", [("Cement", 16), ("Capital Goods", 50), ("Power", 21)])
-    def test_official_constituent_files(self, sector, count):
-        members = load_constituents(SECTOR_SCREENS[sector]["constituents_csv"])
-        assert len(members) == count
-        assert not members["Symbol"].duplicated().any()
+    @pytest.mark.parametrize("sector, rows", [("Cement", 42), ("Capital Goods", 887), ("Power", 49)])
+    def test_screener_source_files(self, sector, rows):
+        raw = pd.read_csv(SECTOR_SCREENS[sector]["source_csv"])
+        assert len(raw) == rows  # the full sector export, not a truncated page
+        assert not raw["NSE Code"].dropna().duplicated().any()
+        universe = load_sector_universe(sector)
+        assert not universe["Symbol"].duplicated().any() and universe["Index"].str.startswith("Screener: ").all()
 
 
 class TestFundamentalsParsers:

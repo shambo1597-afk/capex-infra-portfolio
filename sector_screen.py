@@ -4,15 +4,15 @@ Sector Screen: technical screen first, then fundamental safety screen.
 Implements the project brief's order ("Technical analysis, then financial analysis") identically
 for each sector:
 
-1. Universe: the official Nifty sector index constituents plus the named theme additions
-   (config.sector_universe / THEME_ADDITIONS): stocks whose business fits the sector, each with a
-   business-focus note.
+1. Universe: the Screener.in sector exports (config.SCREENER_FILES, the single source of truth)
+   after the universe rule (NSE-listed, market cap >= Rs 5,000 cr, theme industries and the theme
+   exclusions in config); fundamentals come from the same files.
 2. Technical screen on every constituent, using the existing indicator pipeline
    (analysis.evaluate_stock_technicals) on the complete NSE Bhavcopy history:
    passes when RS vs Nifty 500 (63 sessions) > +2 pp AND trend direction (+DI vs -DI) is Bullish.
    ADX is reported for tie-breaking but is not a cutoff.
-3. Fundamental safety screen, run live (fundamentals.get_fundamentals_summary, no cache) ONLY for
-   stocks that passed step 2, against that sector's criteria in config.py.
+3. Fundamental safety screen (fundamentals.get_fundamentals_summary: the Screener export's values)
+   ONLY for stocks that passed step 2, against that sector's criteria in config.py.
 
 Writes one CSV per sector (output/cement_full_screen.csv, output/capital_goods_full_screen.csv,
 output/power_full_screen.csv) listing every constituent.
@@ -43,7 +43,10 @@ from config import (
     FUNDAMENTAL_HARD_FIELDS,
     HIGH_TURNOVER_ROCE_MIN,
     LOCKED_PORTFOLIO_SYMBOLS,
+    MIN_HISTORY_SESSIONS,
     PORTFOLIO_SIZE,
+    SCREENER_DOWNLOAD_DATE,
+    SELECTION_CONVICTION_TIERS,
     SECTOR_MIN_HOLDINGS,
     OUTPUT_DIR,
     RRG_MOMENTUM_DAYS,
@@ -66,7 +69,7 @@ from indicators import (
     compute_rs_momentum,
     compute_sector_relative_strength,
 )
-from rrg import LEADING, classify_quadrant
+from rrg import LEADING, classify_quadrant, conviction_tier
 
 logger = logging.getLogger("sector_screen")
 
@@ -81,12 +84,17 @@ def load_constituents(csv_path: Path) -> pd.DataFrame:
 
 def load_sector_universe(sector: str) -> pd.DataFrame:
     """
-    Every stock screened for a sector (config.sector_universe): the official index constituents
-    plus the named theme additions (config.THEME_ADDITIONS), with columns Symbol, Company Name, Index.
+    Every stock screened for a sector (config.sector_universe: the Screener export after the universe
+    rule), with columns Symbol, Company Name, Index (the Screener industry).
     """
     rows = sector_universe(sector)
     return pd.DataFrame({"Symbol": [r["symbol"] for r in rows], "Company Name": [r["name"] for r in rows],
                          "Index": [r["index"] for r in rows]})
+
+
+def _fundamentals_date(record: dict) -> str:
+    """The date the fundamentals describe: the Screener export's download date, else today (live scrape)."""
+    return SCREENER_DOWNLOAD_DATE if record.get("source") else date.today().isoformat()
 
 
 def technical_screen_result(
@@ -163,7 +171,7 @@ def screen_sector(
             if isinstance(value, float) and math.isinf(value):
                 value = "inf"  # e.g. zero interest expense
             screen.at[i, col] = value
-        screen.at[i, "fundamentals_as_of"] = date.today().isoformat()
+        screen.at[i, "fundamentals_as_of"] = _fundamentals_date(record)
         screen.at[i, "fundamentals_status"] = record.get("status")
         screen.at[i, "pledged_as_of"] = record.get("pledged_as_of")
         screen.at[i, "passed_fundamental_screen"] = not failed
@@ -258,7 +266,7 @@ def build_review_table(
             "fundamentals_passed_count": len(criteria) - len(failed),
             "fundamentals_failed": "; ".join(failed),
             "fundamentals_status": record.get("status"),
-            "fundamentals_as_of": date.today().isoformat(),
+            "fundamentals_as_of": _fundamentals_date(record),
             "pledged_as_of": record.get("pledged_as_of"),
             "current_price": tech["current_price"],
             "latest_rsi": tech["latest_rsi"],
@@ -350,8 +358,11 @@ def add_evaluation_columns(table: pd.DataFrame, criteria: List[Tuple[str, str, f
     table["hard_fundamentals_pass"] = table[[f"pass_{f}" for f in hard]].eq(True).all(axis=1)
     table["soft_fundamental_fails"] = table.apply(
         lambda r: "; ".join(labels[f] for f in soft if not r.get(f"pass_{f}") == True), axis=1)  # noqa: E712
-    # Selection rule: hard rules pass, bullish trend with a real DI gap; ranked by rs_6m_skip1m
-    table["selection_eligible"] = table["hard_fundamentals_pass"] & (table["di_gap"] >= DI_GAP_THIN_THRESHOLD)
+    # Selection rule: hard rules pass, bullish trend with a real DI gap, a year of prices; ranked by rs_6m_skip1m
+    sessions = pd.to_numeric(table.get("price_sessions", pd.Series(MIN_HISTORY_SESSIONS, index=table.index)))
+    table["selection_eligible"] = (table["hard_fundamentals_pass"] & (table["di_gap"] >= DI_GAP_THIN_THRESHOLD)
+                                   & (sessions >= MIN_HISTORY_SESSIONS)
+                                   & (table["rs_6m_skip1m"].notna() if "rs_6m_skip1m" in table else True))
 
     table["full_standard_candidate"] = (
         table["fundamentals_clean"]
@@ -373,21 +384,27 @@ def build_selection_ranking(tables: Dict[str, pd.DataFrame]) -> pd.DataFrame:
     table = pd.concat(frames, ignore_index=True)
     table = table[table["selection_eligible"] == True].sort_values("rs_6m_skip1m", ascending=False)  # noqa: E712
     table["selection_rank"] = range(1, len(table) + 1)
+    table["conviction"] = [conviction_tier(a, b) for a, b in
+                           zip(table["rrg_quadrant_vs_nifty500"], table["rrg_quadrant_vs_sector"])]
     table["held"] = table["symbol"].isin(LOCKED_PORTFOLIO_SYMBOLS)
     table["rule_pick"] = table["symbol"].isin(select_portfolio(table))
     cols = ["selection_rank", "symbol", "company_name", "sector", "held", "rule_pick", "rs_6m_skip1m", "rs_score_vs_nifty500",
-            "di_gap", "latest_adx", "rrg_quadrant_vs_nifty500", "rrg_quadrant_vs_sector", "soft_fundamental_fails",
-            "business_focus_note"]
+            "di_gap", "latest_adx", "rrg_quadrant_vs_nifty500", "rrg_quadrant_vs_sector", "conviction",
+            "soft_fundamental_fails", "business_focus_note"]
     return table[cols].reset_index(drop=True)
 
 
 def select_portfolio(ranking: pd.DataFrame, size: int = PORTFOLIO_SIZE,
-                     sector_minimums: Optional[Dict[str, int]] = None) -> List[str]:
+                     sector_minimums: Optional[Dict[str, int]] = None,
+                     tiers: Optional[tuple] = SELECTION_CONVICTION_TIERS) -> List[str]:
     """
-    The selection rule's picks from a ranking (best first): for each sector in SECTOR_MIN_HOLDINGS,
-    its best-ranked eligible names up to the minimum; then the remaining slots by rank.
+    The selection rule's picks from a ranking (best first). Only names whose RRG conviction is in
+    `tiers` (High / Moderate: momentum still confirmed) are picked; for each sector in
+    SECTOR_MIN_HOLDINGS, its best-ranked such names up to the minimum; then the remaining slots by rank.
     """
     minimums = SECTOR_MIN_HOLDINGS if sector_minimums is None else sector_minimums
+    if tiers is not None and "conviction" in ranking.columns:
+        ranking = ranking[ranking["conviction"].isin(tiers)]
     picks: List[str] = []
     for sector, count in minimums.items():
         picks += ranking[ranking["sector"] == sector]["symbol"].head(count).tolist()
