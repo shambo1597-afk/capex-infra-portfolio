@@ -32,3 +32,14 @@ def test_committed_tails_end_at_the_review_table_values():
         assert heads.loc[sym, "rs"] == pytest.approx(review.loc[sym, "rs_score_vs_nifty500"], abs=0.01)
         assert heads.loc[sym, "momentum"] == pytest.approx(review.loc[sym, "rs_momentum_vs_nifty500"], abs=0.01)
         assert heads.loc[sym, "quadrant"] == review.loc[sym, "rrg_quadrant_vs_nifty500"]
+
+
+def test_smooth_path_passes_through_every_weekly_point():
+    import numpy as np
+    from rrg_tails import smooth_path
+    x, y = [0.0, 5.0, 3.0, 10.0, 12.0], [0.0, 4.0, -2.0, 1.0, 6.0]
+    cx, cy = smooth_path(x, y, x_scale=12, y_scale=8, samples=10)
+    for i in range(len(x)):  # points sit every `samples` steps along the curve
+        assert (cx[i * 10], cy[i * 10]) == pytest.approx((x[i], y[i]))
+    assert (cx[-1], cy[-1]) == pytest.approx((x[-1], y[-1]))  # the head is the actual latest value
+    assert len(cx) == (len(x) - 1) * 10 + 1 and np.isfinite(cx).all()

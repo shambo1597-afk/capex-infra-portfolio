@@ -116,6 +116,35 @@ def build_tails(stock_data: pd.DataFrame, benchmark: pd.DataFrame, sector_indice
             "sectors": pd.concat(sector_rows, ignore_index=True)[cols]}
 
 
+def smooth_path(x, y, x_scale: float = 1.0, y_scale: float = 1.0, samples: int = 16):
+    """
+    A smooth curve through every point (centripetal Catmull-Rom, which passes exactly through the
+    points and does not overshoot or loop between them). Only the drawing between the weekly points
+    is interpolated; each point, and so the latest one, stays exactly where the data puts it.
+    x_scale / y_scale put both axes on a comparable scale for the parameterisation.
+    """
+    p = np.column_stack([np.asarray(x, float) / x_scale, np.asarray(y, float) / y_scale])
+    if len(p) < 3:
+        return np.asarray(x, float), np.asarray(y, float)
+    p = np.vstack([2 * p[0] - p[1], p, 2 * p[-1] - p[-2]])  # reflected end points
+    out = [p[1]]
+    for i in range(1, len(p) - 2):
+        p0, p1, p2, p3 = p[i - 1], p[i], p[i + 1], p[i + 2]
+        t0 = 0.0
+        t1 = t0 + max(np.linalg.norm(p1 - p0) ** 0.5, 1e-9)
+        t2 = t1 + max(np.linalg.norm(p2 - p1) ** 0.5, 1e-9)
+        t3 = t2 + max(np.linalg.norm(p3 - p2) ** 0.5, 1e-9)
+        for t in np.linspace(t1, t2, samples + 1)[1:]:
+            a1 = (t1 - t) / (t1 - t0) * p0 + (t - t0) / (t1 - t0) * p1
+            a2 = (t2 - t) / (t2 - t1) * p1 + (t - t1) / (t2 - t1) * p2
+            a3 = (t3 - t) / (t3 - t2) * p2 + (t - t2) / (t3 - t2) * p3
+            b1 = (t2 - t) / (t2 - t0) * a1 + (t - t0) / (t2 - t0) * a2
+            b2 = (t3 - t) / (t3 - t1) * a2 + (t - t1) / (t3 - t1) * a3
+            out.append((t2 - t) / (t2 - t1) * b1 + (t - t1) / (t2 - t1) * b2)
+    out = np.array(out)
+    return out[:, 0] * x_scale, out[:, 1] * y_scale
+
+
 def plot_tails(tails: pd.DataFrame, title: str, out_path: Path, tail_names: Optional[List[str]] = None,
                emphasis: Optional[List[str]] = None, weeks: int = RRG_PLOT_TAIL_WEEKS) -> Path:
     """
@@ -156,14 +185,17 @@ def plot_tails(tails: pd.DataFrame, title: str, out_path: Path, tail_names: Opti
         head = t.iloc[-1]
         color = QUADRANT_STYLE.get(head["quadrant"], {"color": TEXT_MUTED})["color"]
         if name in with_tail and len(t) > 1:
-            n = len(t)
-            for i in range(1, n - 1):  # older segments fade
-                ax.plot(t["rs"].iloc[i - 1:i + 1], t["momentum"].iloc[i - 1:i + 1], color=color,
-                        alpha=0.3 + 0.6 * i / (n - 1), linewidth=1.6, zorder=2)
-            ax.annotate("", xy=(t["rs"].iloc[-1], t["momentum"].iloc[-1]),
-                        xytext=(t["rs"].iloc[-2], t["momentum"].iloc[-2]),
+            cx, cy = smooth_path(t["rs"], t["momentum"], x_span, y_span)
+            from matplotlib.collections import LineCollection
+            from matplotlib.colors import to_rgba
+
+            segments = np.stack([np.column_stack([cx[:-1], cy[:-1]]), np.column_stack([cx[1:], cy[1:]])], axis=1)
+            fade = np.linspace(0.2, 0.95, len(segments))  # older parts of the curve fade
+            ax.add_collection(LineCollection(segments, colors=[to_rgba(color, a) for a in fade], linewidths=1.8,
+                                             capstyle="butt", joinstyle="round", zorder=2))
+            ax.annotate("", xy=(cx[-1], cy[-1]), xytext=(cx[-2], cy[-2]),
                         arrowprops=dict(arrowstyle="-|>", color=color, lw=2, mutation_scale=14), zorder=3)
-            ax.scatter(t["rs"].iloc[:-1], t["momentum"].iloc[:-1], s=12, color=color, alpha=0.7, zorder=3)
+            ax.scatter(t["rs"].iloc[:-1], t["momentum"].iloc[:-1], s=14, color=color, alpha=0.8, zorder=3)
         big = name in emphasis
         ax.scatter([head["rs"]], [head["momentum"]], s=85 if big else 45, color=color,
                    edgecolors=TEXT_PRIMARY if big else SURFACE, linewidths=1.6, zorder=4)

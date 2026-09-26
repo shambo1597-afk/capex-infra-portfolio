@@ -56,6 +56,7 @@ from refresh_data import (
     refresh_state,
     start_background_refresh,
 )
+from rrg_tails import smooth_path
 from sector_screen import review_table_path
 
 # -----------------------------------------------------------------------------
@@ -1003,6 +1004,8 @@ with tab_technicals:
                            key="tails_weeks")
         dates = sorted(tails_df["date"].unique())[-(weeks + 1):]
         shown = tails_df[tails_df["date"].isin(dates)].dropna(subset=["rs", "momentum"])
+        x_span = max(shown["rs"].max() - shown["rs"].min(), 10.0)
+        y_span = max(shown["momentum"].max() - shown["momentum"].min(), 6.0)
         fig_rrg = go.Figure()
         for name in names:
             t = shown[shown["name"] == name].sort_values("date")
@@ -1012,11 +1015,15 @@ with tab_technicals:
             colour = QUADRANT_COLOURS.get(head["quadrant"], "#6b6a63")
             hover = "<b>" + name + "</b><br>%{customdata}<br>RS %{x:.1f} pp, momentum %{y:+.1f} pp<extra></extra>"
             if name in picked and len(t) > 1:
+                cx, cy = smooth_path(t["rs"], t["momentum"], x_span, y_span)
+                fig_rrg.add_trace(go.Scatter(x=cx, y=cy, mode="lines", showlegend=False, hoverinfo="skip",
+                                             line=dict(color=colour, width=2.2)))
                 fig_rrg.add_trace(go.Scatter(
-                    x=t["rs"], y=t["momentum"], mode="lines+markers", name=name, showlegend=False,
-                    line=dict(color=colour, width=2), customdata=pd.to_datetime(t["date"]).dt.strftime("%d-%b"),
-                    marker=dict(size=[6] * (len(t) - 1) + [15], color=colour,
-                                symbol=["circle"] * (len(t) - 1) + ["arrow"], angleref="previous",
+                    x=list(t["rs"].iloc[:-1]) + [cx[-2], cx[-1]], y=list(t["momentum"].iloc[:-1]) + [cy[-2], cy[-1]],
+                    mode="markers", name=name, showlegend=False,
+                    customdata=list(pd.to_datetime(t["date"]).dt.strftime("%d-%b").iloc[:-1]) + ["", pd.Timestamp(head["date"]).strftime("%d-%b")],
+                    marker=dict(size=[7] * (len(t) - 1) + [0, 16], color=colour,
+                                symbol=["circle"] * (len(t) - 1) + ["circle", "arrow"], angleref="previous",
                                 line=dict(color="#FFFFFF", width=1)),
                     hovertemplate=hover))
             else:
@@ -1038,7 +1045,8 @@ with tab_technicals:
         st.plotly_chart(fig_rrg, width="stretch")
         st.caption(
             f"Each dot is one week's close ({pd.Timestamp(dates[0]):%d-%b} to {pd.Timestamp(dates[-1]):%d-%b-%Y}); the arrow is "
-            "the latest week and shows the direction of rotation; colour = the current quadrant. Healthy rotation runs "
+            "the latest week and shows the direction of rotation; colour = the current quadrant. The curve is drawn "
+            "through the weekly points (only the line between them is interpolated; every dot is the actual value). Healthy rotation runs "
             "clockwise: IMPROVING → LEADING → WEAKENING → LAGGING. Same RS and momentum as the tables above (percentage "
             "points centred on 0, not StockCharts' proprietary JdK scale centred on 100; the quadrants mean the same). "
             "Our sub-themes are equal-weighted baskets of our universe; 'Our portfolio' uses the current weights."
