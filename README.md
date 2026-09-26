@@ -100,7 +100,7 @@ A production-grade, mathematically transparent data pipeline and quantitative sc
 
 Sector rotation follows from the rule: Cement has the weakest sector momentum, so it holds only its one-stock minimum, and the weakest earlier picks (JKCEMENT, TATAPOWER, APLAPOLLO) rotated out. Eleven names (inside the brief's limit of 15): the Cement holding is added rather than swapped for USHAMART, which keeps a stronger stock and lowers portfolio volatility and tracking error; PTCIL, 11th in the ranking, is the first name outside. The stock list is frozen after 5-Oct-2026 with no swaps in or out: a stopped-out position's money goes into the remaining holdings.
 
-**Weights and allocation.** Equal risk contribution (`weights.py`): each stock carries the same share of portfolio variance $w_i (\Sigma w)_i / w^\top \Sigma w = 1/N$, with every weight bounded 5-15% (`config.WEIGHT_MIN_PCT`, `WEIGHT_MAX_PCT`) and $\Sigma$ from one year of daily returns. It needs no return forecast (none is reliable, `research/momentum_study.py`) and gives volatile names less capital. The weights apply to the 95% equity sleeve (`config.EQUITY_ALLOCATION_PCT`) of the Rs 1 crore principal; the other 5% is the hedge budget. `output/portfolio_risk_summary.csv` gives the whole shares at the latest close, the amount invested and each stock's risk contribution. Recompute at the actual purchase prices.
+**Weights and allocation.** Equal risk contribution (`weights.py`): each stock carries the same share of portfolio variance $w_i (\Sigma w)_i / w^\top \Sigma w = 1/N$, with every weight bounded 5-15% (`config.WEIGHT_MIN_PCT`, `WEIGHT_MAX_PCT`) and $\Sigma$ from one year of daily returns. It needs no return forecast (none is reliable, `research/momentum_study.py`) and gives volatile names less capital. The weights apply to the 97% equity sleeve (`config.EQUITY_ALLOCATION_PCT`) of the Rs 1 crore principal; the other 3% is the hedge reserve (day-0 Nifty puts and one profit-trigger roll-up, see `risk_model.py`), held in a liquid ETF at the overnight rate until used. `output/portfolio_risk_summary.csv` gives the whole shares at the latest close, the amount invested and each stock's risk contribution. Recompute at the actual purchase prices.
 
 **Conviction tier** (dashboard badge, `rrg.conviction_tier`): **High** = LEADING vs both the Nifty 500 and the sector average; **Moderate** = LEADING in one view only, or IMPROVING in either; **Low conviction** = WEAKENING or LAGGING in both views.
 
@@ -172,6 +172,15 @@ Using a 20-day rolling window:
   All multiples are stated, adjustable assumptions in `config.py` (`STOP_LOSS_ATR_*`, `STOP_LOSS_SUPPORT_*`).
 
 ---
+
+### 7. Regression, Risk Decomposition & Hedging (`risk_model.py`)
+- **Single-index model** (daily, past year, vs the Nifty 500 TRI): $r_i - r_f = \alpha + \beta (r_m - r_f) + \varepsilon$. Total variance $= \beta^2 \sigma_m^2$ (explained, systematic: hedgeable with index derivatives) $+ \sigma_\varepsilon^2$ (unexplained, stock-specific: diversification and stop-losses). $R^2$ is the explained share. Portfolio: beta 1.13, $R^2$ 0.49; single stocks are 60-98% stock-specific.
+- **Multifactor model:** adds Brent crude (last US close before the Indian session, `config.CRUDE_TICKER`) and the 10-year G-sec clean-price return ($\approx -$duration $\times \Delta y$). They add about 0.5 pp of $R^2$ to the portfolio: the single-index beta is the right hedge basis.
+- **Hedge (Nifty 50, lot 65):** minimum-variance hedge ratio $h^* = \mathrm{cov}(r_p, r_{N50}) / \mathrm{var}(r_{N50})$, effectiveness $= R^2$; futures lots $= h^* V_P / (F \times \text{lot})$; tail hedge ratio $= \max(\beta_{\text{down days}}, h^*)$ sizes protective puts $= $ ratio $\times V_P / (S \times \text{lot})$, strike about 5% below spot, expiry covering the window (29-Dec-2026). **Decision:** puts from day 0 (about 0.7% of the principal), no futures hedge (it would cancel the market return, removes only a third of the variance, needs a roll and about Rs 11 lakh of margin); at +10% the puts are rolled up to lock in gains. Outputs: `output/regression_*.csv`, `output/hedge_*.csv`.
+- **Data:** `data/factors/daily_factors.csv` (Nifty 500 TRI, Nifty 50, 10-year G-sec, Nifty 1D Rate index, Brent) and `data/derivatives/nifty_fo_<date>.csv` (Nifty rows of the NSE F&O bhavcopy), both rebuilt by the refresh.
+
+### 8. Performance & Capital Market Line (`performance.py`)
+Daily $r_p = \sum_i w_i r_i$ with today's weights, compounded $R = \prod (1 + r_t) - 1$; annualised $(1+R)^{252/n} - 1$ (the simple $R \times 252/n$ is shown too: the gap is the compounding effect). Sharpe $= (R_p - R_f)/\sigma_p$, Treynor $= (R_p - R_f)/\beta$, Jensen's $\alpha = R_p - [R_f + \beta (R_m - R_f)]$, XIRR from dated cash flows (negative for a loss), $R_f$ = Nifty 1D Rate index. CML through the Nifty 500 TRI, with the 11 stocks, their long-only efficient frontier and tangency portfolio (`output/cml.png`). Until the 28-Sep snapshot these are a backtest of a portfolio chosen with hindsight.
 
 ## Project Structure
 
@@ -264,8 +273,8 @@ The web dashboard loads instantly from the existing CSV outputs already in the r
 1. **Portfolio Overview:** the 11 locked stocks grouped by sector, one row each with the RRG conviction badge and every field the brief requires: volatility, expected return (historical average, placeholder pending CAPM), weight (equal risk contribution), stop-loss with its method, ADX, RS vs Nifty 500, RSI and support/resistance; followed by the screen exceptions.
 2. **Fundamentals:** Fundamentals of the locked picks (Market Cap, Price, ROCE, 3-Yr Avg ROCE, ROE, Debt/Equity, Operating Cash Flow, OPM, Interest Coverage, Pledged %, 3-Yr Sales and Profit Growth) plus each sector's safety-screen thresholds, read from `config.SECTOR_SCREENS`, scraped directly from Screener.in company pages by `fundamentals.py` and cached under `data/fundamentals_cache/`.
 3. **Technicals:** technical table for the locked stocks (RSI, ADX, trend, DI gap, RS, both RRG quadrants, conviction tier, support/resistance), the embedded RRG plots (combined vs Nifty 500, and a per-sector selector), a separate **Risk, Sizing & Stop-Loss** section (volatility, placeholder expected return and weight, ATR, stop-loss and its method), and an interactive 1-year OHLCV line chart with horizontal Support and Resistance reference levels.
-4. **Risk & Hedging:** *(Module in Progress)* Beta regression, explained/unexplained risk decomposition, and hedge ratio analysis.
-5. **Performance:** *(Module in Progress)* Sharpe ratio, Treynor ratio, XIRR, and Capital Market Line (scheduled for 28th September snapshot).
+4. **Risk & Hedging:** allocation pie (stocks by sector, Nifty puts, cash), single-index beta with explained/unexplained risk per stock and for the portfolio, the multifactor model (market + crude + rates), and the hedge plan with its scenario chart.
+5. **Performance:** Sharpe, Treynor, Jensen's alpha, XIRR and the compounding effect for the last quarter and year (a backtest of today's portfolio until the 28-Sep snapshot), growth of Rs 1 crore vs the Nifty 500 TRI, and the Capital Market Line.
 
 ---
 

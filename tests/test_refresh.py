@@ -27,7 +27,9 @@ def test_every_step_uses_the_same_end_date():
     assert names[0] == refresh_data.TRI_STEP and names[1].startswith("Prices")  # prices before their readers
     for _, cmd in steps:
         assert "2026-10-03" in cmd
-    assert "--review" in steps[3][1] and "--tenth-sweep" in steps[-1][1]  # sweep reads the review tables
+    assert "--review" in steps[3][1] and "--tenth-sweep" in steps[5][1]  # sweep reads the review tables
+    # the regressions read the risk summary; performance reads the factor series they write
+    assert steps[-2][1][1] == "risk_model.py" and steps[-1][1][1] == "performance.py"
 
 
 class _Proc:
@@ -56,11 +58,11 @@ def test_successful_refresh(tmp_path):
 
 
 def test_tri_failure_is_a_warning_not_a_failed_refresh(tmp_path):
-    codes = iter([1, 0, 0, 0, 0, 0])  # niftyindices.com blocked, everything else fine
+    codes = iter([1] + [0] * 7)  # niftyindices.com blocked, everything else fine
     with patch.object(refresh_data, "MANIFEST_PATH", tmp_path / "m.json"), \
             patch("refresh_data.subprocess.Popen", side_effect=lambda *a, **k: _Proc(next(codes))):
         result = run_refresh(date(2026, 10, 3), on_output=lambda line: None)
-    assert result["status"] == "ok" and len(result["steps"]) == 6
+    assert result["status"] == "ok" and len(result["steps"]) == len(refresh_steps(date(2026, 10, 3)))
     assert len(result["warnings"]) == 1 and refresh_data.TRI_STEP in result["warnings"][0]
 
 
@@ -118,8 +120,8 @@ def test_manifest_records_progress_and_next_estimate(tmp_path):
         return _Proc(0)
     with patch.object(refresh_data, "MANIFEST_PATH", path), patch("refresh_data.subprocess.Popen", side_effect=popen):
         result = run_refresh(date(2026, 10, 3), on_output=lambda line: None)
-    assert [m["current_step"] for m in seen] == list(range(1, 7)) and all("heartbeat" in m for m in seen)
-    assert seen[0]["status"] == "running" and seen[0]["total_steps"] == 6
+    assert [m["current_step"] for m in seen] == list(range(1, len(refresh_steps(date(2026, 10, 3))) + 1)) and all("heartbeat" in m for m in seen)
+    assert seen[0]["status"] == "running" and seen[0]["total_steps"] == len(refresh_steps(date(2026, 10, 3)))
     assert result["status"] == "ok" and "finished" in result
     # The next refresh estimates its time from this one's step durations
     assert refresh_data._expected_seconds(result) == {s["name"]: s["seconds"] for s in result["steps"]}

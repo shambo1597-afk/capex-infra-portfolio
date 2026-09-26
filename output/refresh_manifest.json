@@ -1,24 +1,26 @@
 {
   "as_of": "2026-09-26",
-  "started": "2026-09-26T08:24:49+05:30",
+  "started": "2026-09-26T08:45:46+05:30",
   "status": "ok",
-  "pid": 552,
-  "total_steps": 6,
+  "pid": 865,
+  "total_steps": 8,
   "step_names": [
     "Nifty 500 TRI (niftyindices.com)",
     "Prices, technicals and risk summary",
     "Technical-first sector screens",
     "Review tables, RRG and plots",
     "Locked-portfolio run-up check",
-    "Candidate sweep"
+    "Candidate sweep",
+    "Regression and hedge plan",
+    "Performance and CML"
   ],
   "expected_seconds": {
-    "Nifty 500 TRI (niftyindices.com)": 147,
+    "Nifty 500 TRI (niftyindices.com)": 18,
     "Prices, technicals and risk summary": 6,
-    "Technical-first sector screens": 45,
-    "Review tables, RRG and plots": 190,
-    "Locked-portfolio run-up check": 4,
-    "Candidate sweep": 5
+    "Technical-first sector screens": 43,
+    "Review tables, RRG and plots": 186,
+    "Locked-portfolio run-up check": 5,
+    "Candidate sweep": 6
   },
   "steps": [
     {
@@ -34,27 +36,37 @@
     {
       "name": "Technical-first sector screens",
       "returncode": 0,
-      "seconds": 43
+      "seconds": 42
     },
     {
       "name": "Review tables, RRG and plots",
       "returncode": 0,
-      "seconds": 186
+      "seconds": 182
     },
     {
       "name": "Locked-portfolio run-up check",
       "returncode": 0,
-      "seconds": 5
+      "seconds": 4
     },
     {
       "name": "Candidate sweep",
       "returncode": 0,
-      "seconds": 6
+      "seconds": 5
+    },
+    {
+      "name": "Regression and hedge plan",
+      "returncode": 0,
+      "seconds": 7
+    },
+    {
+      "name": "Performance and CML",
+      "returncode": 0,
+      "seconds": 90
     }
   ],
-  "heartbeat": "2026-09-26T08:29:12+05:30",
-  "current_step": 6,
-  "current_step_name": "Candidate sweep",
-  "current_step_started": "2026-09-26T08:29:07+05:30",
-  "finished": "2026-09-26T08:29:12+05:30"
+  "heartbeat": "2026-09-26T08:51:40+05:30",
+  "current_step": 8,
+  "current_step_name": "Performance and CML",
+  "current_step_started": "2026-09-26T08:50:10+05:30",
+  "finished": "2026-09-26T08:51:40+05:30"
 }

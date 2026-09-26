@@ -395,9 +395,33 @@ TRADING_DAYS_PER_YEAR = 252
 
 PRINCIPAL_INR = 10_000_000  # Rs 1 crore
 
-# Share of the principal put into the stocks. The remaining 5% is the hedge budget (index put
-# premium or futures margin for the tail hedge), so the brief's >= 90% market exposure holds.
-EQUITY_ALLOCATION_PCT = 95.0
+# Share of the principal put into the stocks. The remaining 3% is the hedge reserve: the day-0
+# Nifty puts (~0.7%, risk_model.py) and one profit-trigger roll-up (~0.7%), plus whole-share rounding;
+# it waits in a liquid ETF at the overnight rate, not idle. Market exposure stays well above 90%.
+EQUITY_ALLOCATION_PCT = 97.0
+
+# Evaluation window: first snapshot 28-Sep-2026, three months to 28-Dec-2026
+EVALUATION_START_DATE = "2026-09-28"
+EVALUATION_END_DATE = "2026-12-28"
+
+# -----------------------------------------------------------------------------
+# REGRESSION & HEDGING (risk_model.py)
+# Factor series are built from NSE's daily index files (plus Brent from yfinance) and committed
+# as a small CSV, so the dashboard works without the raw download cache.
+# -----------------------------------------------------------------------------
+FACTORS_CSV = DATA_DIR / "factors" / "daily_factors.csv"
+DERIVATIVES_DIR = DATA_DIR / "derivatives"          # Nifty futures/options rows of the NSE F&O bhavcopy
+NSE_FO_BHAVCOPY_URL_TEMPLATE = ("https://nsearchives.nseindia.com/content/fo/"
+                                "BhavCopy_NSE_FO_0_0_0_{yyyymmdd}_F_0000.csv.zip")
+HEDGE_INDEX_NAME = "Nifty 50"                        # the hedge instrument's index (Nifty futures/options)
+HEDGE_INDEX_SYMBOL = "NIFTY"
+GSEC_INDEX_NAME = "Nifty 10 yr Benchmark G-Sec (Clean Price)"  # rate factor: price return ~ -duration x change in yield
+RISK_FREE_INDEX_NAME = "Nifty 1D Rate Index"         # overnight money-market rate (risk-free, cash sleeve)
+CRUDE_TICKER = "BZ=F"                                # Brent crude front-month futures (USD), via yfinance
+TAIL_QUANTILE = 0.10          # tail beta: regression on the worst 10% of Nifty 50 days
+TAIL_HEDGE_OTM_PCT = 5.0      # protective puts struck about 5% below spot: insure the tail, not every wobble
+HEDGE_PROFIT_TRIGGER_PCT = 10.0  # once the portfolio is up 10%, roll the puts up to lock in part of the gain
+FUTURES_MARGIN_PCT_ASSUMED = 12.0  # ASSUMPTION: SPAN + exposure margin on a short index future, % of notional
 
 # Stock weights (weights.py): equal risk contribution within the brief's bounds, from the
 # covariance of the trailing ~1 year of daily returns.

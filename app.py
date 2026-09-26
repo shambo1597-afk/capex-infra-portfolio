@@ -1067,39 +1067,233 @@ with tab_technicals:
 
 
 # =============================================================================
-# TAB 4: RISK & HEDGING (PLACEHOLDER ONLY)
+# TAB 4: RISK & HEDGING
 # =============================================================================
+@st.cache_data(show_spinner=False)
+def load_output_csv(name: str, file_mtime: float) -> pd.DataFrame:
+    """One CSV from output/ (empty if missing). file_mtime is only a cache key (see _file_mtime)."""
+    path = OUTPUT_DIR / name
+    return pd.read_csv(path) if path.exists() else pd.DataFrame()
+
+
+def _out(name: str) -> pd.DataFrame:
+    return load_output_csv(name, _file_mtime(OUTPUT_DIR / name))
+
+
+def _fit_height(df: pd.DataFrame) -> int:
+    """Table height showing every row without an inner scrollbar."""
+    return 38 + 35 * len(df)
+
+
+SECTOR_CHART_COLORS = {"Capital Goods": "#B45309", "Power": "#047857", "Cement": "#1D4ED8"}
+
 with tab_risk:
-    st.markdown(
-        """
-        <div class="placeholder-container">
-            <span class="placeholder-badge">Module in Progress</span>
-            <div class="placeholder-text">
-                Beta regression, explained/unexplained risk decomposition, and hedge
-                ratio analysis are in progress and will appear here.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    single_df = _out("regression_single_index.csv")
+    multi_df = _out("regression_multifactor.csv")
+    plan_df = _out("hedge_plan.csv")
+    puts_df = _out("hedge_put_candidates.csv")
+    scen_df = _out("hedge_scenarios.csv")
+    if single_df.empty or plan_df.empty:
+        st.info("Regression and hedge outputs not found. Press the refresh button (or run `python risk_model.py`).")
+    else:
+        plan = dict(zip(plan_df["metric"], plan_df["value"]))
+        notes = dict(zip(plan_df["metric"], plan_df["note"].fillna("")))
+
+        # 1. Allocation of the Rs 1 crore
+        st.markdown("### Allocation of the ₹1 crore")
+        put_cost = float(plan.get("Puts: cost (Rs)", 0))
+        alloc_rows = []
+        if not risk_df.empty:
+            for sector, value in risk_df.groupby("sector")["invested_inr"].sum().items():
+                alloc_rows.append((f"{sector} stocks", value, SECTOR_CHART_COLORS.get(sector, "#64748B")))
+        stocks_total = sum(v for _, v, _ in alloc_rows)
+        alloc_rows.append(("Nifty puts (tail hedge)", put_cost, "#475569"))
+        alloc_rows.append(("Cash (liquid ETF, overnight rate)", PRINCIPAL_INR - stocks_total - put_cost, "#94A3B8"))
+        a_col1, a_col2 = st.columns([1.1, 1])
+        with a_col1:
+            pie = go.Figure(go.Pie(
+                labels=[r[0] for r in alloc_rows], values=[r[1] for r in alloc_rows], hole=0.5, sort=False,
+                marker=dict(colors=[r[2] for r in alloc_rows], line=dict(color="#FFFFFF", width=2)),
+                texttemplate="%{label}<br>%{percent:.1%}", textposition="outside",
+                hovertemplate="%{label}<br>₹%{value:,.0f} (%{percent})<extra></extra>"))
+            pie.update_layout(height=360, margin=dict(l=10, r=10, t=10, b=10), showlegend=False,
+                              template="plotly_white",
+                              annotations=[dict(text=f"{stocks_total / PRINCIPAL_INR * 100:.1f}%<br>in stocks",
+                                                showarrow=False, font=dict(size=14))])
+            st.plotly_chart(pie, width="stretch")
+        with a_col2:
+            st.dataframe(pd.DataFrame({
+                "Bucket": [r[0] for r in alloc_rows],
+                "₹": [f"₹{r[1]:,.0f}" for r in alloc_rows],
+                "% of principal": [f"{r[1] / PRINCIPAL_INR * 100:.2f}%" for r in alloc_rows],
+            }), hide_index=True, width="stretch", height=_fit_height(alloc_rows))
+            st.caption(
+                f"Market exposure: {stocks_total / PRINCIPAL_INR * 100:.1f}% in stocks (brief: at least 90%). "
+                f"The {100 - EQUITY_ALLOCATION_PCT:g}% reserve pays for the day-0 puts and one profit-trigger roll-up; "
+                "until then it sits in a liquid ETF earning the overnight rate, and it also funds redeployment "
+                "after a stop-loss exit. No commodity or other ETF: none has a clear role (copper and aluminium "
+                "are input costs for the cable and transformer makers; gold's crash-protection job is done more "
+                "directly by the Nifty puts)."
+            )
+
+        # 2. Single-index model
+        st.markdown("### Beta: explained and unexplained risk (single-index model vs Nifty 500 TRI)")
+        st.caption(
+            "Daily regression over the past year: r_i - r_f = α + β (r_m - r_f) + ε. Total variance = β²·var(r_m) "
+            "(explained, systematic: hedgeable with index futures/options) + var(ε) (unexplained, stock-specific: "
+            "handled by diversification and the stop-losses). R² is the explained share. The portfolio row "
+            "shows diversification at work: each stock is 60-98% stock-specific risk, the portfolio about half."
+        )
+        port_row = single_df[single_df["symbol"] == "PORTFOLIO"]
+        if not port_row.empty:
+            pr = port_row.iloc[0]
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Portfolio beta (Nifty 500)", f"{pr['beta']:.2f}", help=f"standard error {pr['beta_se']:.2f}")
+            c2.metric("R² (explained share)", f"{pr['explained_risk_pct']:.0f}%")
+            c3.metric("Systematic volatility", f"{pr['systematic_vol_pct']:.1f}%")
+            c4.metric("Stock-specific volatility", f"{pr['unsystematic_vol_pct']:.1f}%")
+        st.dataframe(single_df.rename(columns={
+            "symbol": "Stock", "observations": "Days", "alpha_annual_pct": "Alpha (ann. %)", "alpha_t": "Alpha t",
+            "beta": "Beta", "beta_se": "Beta s.e.", "r_squared": "R²", "total_vol_pct": "Total vol %",
+            "systematic_vol_pct": "Systematic vol %", "unsystematic_vol_pct": "Unsystematic vol %",
+            "explained_risk_pct": "Explained %", "unexplained_risk_pct": "Unexplained %"}),
+            hide_index=True, width="stretch", height=_fit_height(single_df))
+
+        # 3. Multifactor model
+        st.markdown("### Multifactor model: market + crude + interest rates")
+        st.caption(
+            "Adds the daily change in Brent crude (last US close before the Indian session) and the 10-year G-sec "
+            "price return (≈ -duration × change in yield: positive = yields fell) to the market factor. "
+            "Compare R² with the single-index model; |t| > 2 marks a factor that matters."
+        )
+        if not multi_df.empty:
+            mp = multi_df[multi_df["symbol"] == "PORTFOLIO"]
+            if not mp.empty:
+                m = mp.iloc[0]
+                st.markdown(
+                    f"**Portfolio:** R² {m['r2_single_index']:.3f} (single index) → {m['r2_multifactor']:.3f} "
+                    f"(multifactor), adjusted R² {m['adj_r2_single_index']:.3f} → {m['adj_r2_multifactor']:.3f}. "
+                    f"Crude beta {m['beta_crude']:+.3f} (t {m['t_crude']:+.2f}), G-sec beta {m['beta_gsec']:+.3f} "
+                    f"(t {m['t_gsec']:+.2f}). Crude and rates add almost nothing beyond the market for this "
+                    "portfolio, so the single-index beta is the right basis for the hedge."
+                )
+            st.dataframe(multi_df.rename(columns={
+                "symbol": "Stock", "observations": "Days", "beta_market": "β market", "t_market": "t",
+                "beta_crude": "β crude", "t_crude": "t ", "beta_gsec": "β G-sec", "t_gsec": "t  ",
+                "r2_single_index": "R² single", "r2_multifactor": "R² multi", "adj_r2_single_index": "Adj R² single",
+                "adj_r2_multifactor": "Adj R² multi", "r2_gain_pp": "R² gain (pp)"}),
+                hide_index=True, width="stretch", height=_fit_height(multi_df))
+
+        # 4. Hedge plan
+        st.markdown("### Hedge plan (Nifty 50 derivatives)")
+        h1, h2, h3, h4 = st.columns(4)
+        h1.metric("Min-variance hedge ratio h*", f"{float(plan['Minimum-variance hedge ratio h*']):.2f}",
+                  help=notes.get("Minimum-variance hedge ratio h*"))
+        h2.metric("Hedge effectiveness (R²)", f"{float(plan['Hedge effectiveness (R^2)']) * 100:.0f}%",
+                  help=notes.get("Hedge effectiveness (R^2)"))
+        h3.metric("Tail hedge ratio", f"{float(plan['Tail hedge ratio']):.2f}", help=notes.get("Tail hedge ratio"))
+        h4.metric("Puts cost", f"₹{float(plan['Puts: cost (Rs)']):,.0f}",
+                  help=notes.get("Puts: cost (Rs)"))
+        st.markdown(
+            f"""
+**Decision: tail-hedge with puts from day 0; no futures hedge.**
+- **Day 0:** buy **{int(float(plan['Puts: lots']))} lots of {plan['Puts: contract']}** at ₹{float(plan['Puts: premium']):,.2f}
+  (lot {int(float(plan['Nifty lot size']))}), about ₹{float(plan['Puts: cost (Rs)']):,.0f}. Lots = tail hedge ratio × portfolio value /
+  (Nifty × lot). The tail hedge ratio is the portfolio's beta on Nifty down days: stocks fall together in a sell-off.
+  One expiry covers the whole window, so there is no roll.
+- **Why not futures:** a full futures hedge ({int(float(plan['Futures: lots for a full hedge (rounded)']))} lots) would cancel the market
+  return we are positioned to earn, remove only {float(plan['Hedge effectiveness (R^2)']) * 100:.0f}% of the variance (the rest is stock-specific),
+  needs a roll before the window ends, and ties up about ₹{float(plan['Futures: margin needed (Rs, assumed)']):,.0f} of margin (assumed
+  {notes.get('Futures: margin needed (Rs, assumed)', '').split('ASSUMPTION ')[-1].split(' of')[0]} of notional). Forwards on the index are not available to us; exchange futures are the standardised forward.
+- **After a profit (not greedy):** {notes.get('Profit trigger', '')}.
+- **After a loss (not fearful):** no discretionary hedging; stock-specific falls are cut by each stock's stop-loss, and a market crash
+  is covered by the puts.
+"""
+        )
+        if not scen_df.empty:
+            fig_s = go.Figure()
+            fig_s.add_trace(go.Scatter(x=scen_df["nifty50_move_pct"], y=scen_df["unhedged_pnl_pct"], mode="lines+markers",
+                                       name="Unhedged", line=dict(color="#94A3B8", width=2), marker=dict(size=8),
+                                       hovertemplate="Nifty %{x:+}%: %{y:+.2f}% of principal<extra>Unhedged</extra>"))
+            fig_s.add_trace(go.Scatter(x=scen_df["nifty50_move_pct"], y=scen_df["hedged_pnl_pct"], mode="lines+markers",
+                                       name="With puts", line=dict(color="#1D4ED8", width=2), marker=dict(size=8),
+                                       hovertemplate="Nifty %{x:+}%: %{y:+.2f}% of principal<extra>With puts</extra>"))
+            fig_s.update_layout(height=340, template="plotly_white", hovermode="x unified",
+                                xaxis_title="Nifty 50 move to expiry (%)", yaxis_title="Portfolio P&L (% of ₹1 crore)",
+                                margin=dict(l=10, r=10, t=30, b=10), legend=dict(orientation="h", y=1.08))
+            st.plotly_chart(fig_s, width="stretch")
+            st.caption("Market-driven P&L only (beta × Nifty move; the down-day beta for falls). Stock-specific moves come on top "
+                       "and are handled by the stop-losses.")
+        with st.expander("Hedge plan details, put strikes compared, scenario table"):
+            st.dataframe(plan_df, hide_index=True, width="stretch", height=_fit_height(plan_df))
+            st.dataframe(puts_df, hide_index=True, width="stretch", height=_fit_height(puts_df))
+            st.dataframe(scen_df, hide_index=True, width="stretch", height=_fit_height(scen_df))
 
 
 # =============================================================================
-# TAB 5: PERFORMANCE (PLACEHOLDER ONLY)
+# TAB 5: PERFORMANCE
 # =============================================================================
 with tab_performance:
     render_tri_staleness_banner(tri_df, tri_staleness)
-
-    st.markdown(
-        """
-        <div class="placeholder-container">
-            <span class="placeholder-badge">Module in Progress</span>
-            <div class="placeholder-text">
-                Sharpe ratio, Treynor ratio, XIRR, and the Capital Market Line will
-                appear here once the portfolio's first performance snapshot (28th September)
-                is available.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    perf_df = _out("performance_summary.csv")
+    growth_df = _out("performance_growth.csv")
+    if perf_df.empty:
+        st.info("Performance outputs not found. Press the refresh button (or run `python performance.py`).")
+    else:
+        st.markdown(
+            "<span class='placeholder-badge' style='margin-bottom:0;'>Backtest until the 28-Sep snapshot</span> "
+            "<span style='font-size:0.82rem;'>These windows hold <strong>today's</strong> portfolio and weights over past "
+            "prices. The stocks were chosen for strong past returns, so the figures are hindsight, not a forecast. "
+            "Live tracking starts from the 28-Sep-2026 snapshot.</span>",
+            unsafe_allow_html=True,
+        )
+        show = perf_df.set_index("window").T
+        labels = {
+            "start": "Start", "end": "End", "sessions": "Sessions",
+            "portfolio_return_pct": "Portfolio return (%)", "benchmark_return_pct": "Nifty 500 TRI return (%)",
+            "excess_return_pp": "Excess return (pp)",
+            "portfolio_annualised_compound_pct": "Portfolio annualised, compounded (%)",
+            "portfolio_annualised_simple_pct": "Portfolio annualised, simple (%)",
+            "compounding_effect_pp": "Compounding effect (pp)",
+            "benchmark_annualised_pct": "Nifty 500 annualised (%)", "risk_free_annualised_pct": "Risk-free, 1D rate (%)",
+            "portfolio_vol_pct": "Portfolio volatility (%)", "benchmark_vol_pct": "Nifty 500 volatility (%)",
+            "beta_vs_nifty500": "Beta vs Nifty 500", "sharpe_portfolio": "Sharpe: portfolio",
+            "sharpe_benchmark": "Sharpe: Nifty 500", "treynor_portfolio_pct": "Treynor: portfolio (%)",
+            "treynor_benchmark_pct": "Treynor: Nifty 500 (%)", "jensen_alpha_pct": "Jensen's alpha (%)",
+            "xirr_portfolio_pct": "XIRR: portfolio (%)", "xirr_benchmark_pct": "XIRR: Nifty 500 (%)",
+        }
+        show.index = [labels.get(i, i) for i in show.index]
+        st.dataframe(show.astype(str), width="stretch", height=_fit_height(show))
+        st.caption(
+            "r(p) = Σ wᵢ rᵢ each day (current weights), compounded: R = Π(1 + r_t) - 1. Annualised (compounded) = "
+            "(1 + R)^(252/n) - 1; the simple figure R × 252/n understates it, and the gap is the compounding effect. "
+            "Sharpe = (R_p - R_f) / σ_p (reward per unit of total risk); Treynor = (R_p - R_f) / β (per unit of market "
+            "risk); Jensen's alpha = R_p - [R_f + β (R_m - R_f)]. XIRR solves Σ CF / (1 + r)^(days/365) = 0 for the "
+            "dated cash flows (invest at the start, value at the end); a loss gives a negative XIRR, annualised the same way. "
+            "Risk-free = Nifty 1D Rate index."
+        )
+        if not growth_df.empty:
+            g = growth_df.copy()
+            g["date"] = pd.to_datetime(g["date"])
+            fig_g = go.Figure()
+            fig_g.add_trace(go.Scatter(x=g["date"], y=g["portfolio"] * PRINCIPAL_INR / 1e5, name="Portfolio (today's weights)",
+                                       line=dict(color="#B45309", width=2),
+                                       hovertemplate="%{x|%d-%b-%Y}: ₹%{y:,.2f} L<extra>Portfolio</extra>"))
+            fig_g.add_trace(go.Scatter(x=g["date"], y=g["nifty500_tri"] * PRINCIPAL_INR / 1e5, name="Nifty 500 TRI",
+                                       line=dict(color="#1D4ED8", width=2),
+                                       hovertemplate="%{x|%d-%b-%Y}: ₹%{y:,.2f} L<extra>Nifty 500 TRI</extra>"))
+            fig_g.update_layout(height=360, template="plotly_white", hovermode="x unified",
+                                yaxis_title="Value of ₹1 crore (₹ lakh)", margin=dict(l=10, r=10, t=30, b=10),
+                                legend=dict(orientation="h", y=1.08))
+            st.plotly_chart(fig_g, width="stretch")
+            st.caption("Growth of ₹1 crore over the past year with daily compounding (backtest).")
+        st.markdown("### Capital Market Line")
+        cml_png = OUTPUT_DIR / "cml.png"
+        if cml_png.exists():
+            st.image(str(cml_png), width="stretch")
+        st.caption(
+            "CML: E[r] = r_f + (E[r_m] - r_f)/σ_m × σ, through the Nifty 500 TRI. Over the past year the market returned less "
+            "than the risk-free rate, so the CML slopes down (negative market Sharpe). Our portfolio plots far above it; "
+            "the dashed line through the tangency portfolio of the 11 stocks is the best risk-return trade-off they offered. "
+            "Ex-post: a chart of the past, not a forecast."
+        )
