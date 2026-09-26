@@ -45,7 +45,9 @@ from config import (
 )
 from fetch_data import TRI_REDOWNLOAD_INSTRUCTIONS, TriStaleness, assess_tri_staleness, load_benchmark_tri
 from fundamentals import get_fundamentals_summary
-from rrg import CONVICTION_HIGH, CONVICTION_LOW, CONVICTION_MODERATE, conviction_tier
+from rrg import CONVICTION_HIGH, CONVICTION_LOW, CONVICTION_MODERATE, QUADRANT_STYLE, conviction_tier
+
+QUADRANT_COLOURS = {q: s["color"] for q, s in QUADRANT_STYLE.items()}
 from refresh_data import (
     latest_expected_session,
     load_manifest,
@@ -985,6 +987,63 @@ with tab_technicals:
         f"{RRG_MOMENTUM_SMOOTHING_DAYS} sessions minus the same average {RRG_MOMENTUM_DAYS} sessions earlier (pp). "
         "Locked stocks are ringed and bold. Regenerate with `python rrg.py --as-of <date>` after a pipeline run."
     )
+    st.markdown("##### Rotation over time (weekly tails)")
+    tail_view = st.radio("Show", ["Our holdings", "Sector rotation (NSE sectors + our sub-themes)"], horizontal=True,
+                         key="rrg_tail_view", label_visibility="collapsed")
+    tails_df = _out("rrg_tails_holdings.csv" if tail_view == "Our holdings" else "rrg_tails_sectors.csv")
+    if tails_df.empty:
+        st.info("RRG tails not found. Press the refresh button (or run `python rrg_tails.py`).")
+    else:
+        names = list(dict.fromkeys(tails_df["name"]))
+        default = names if tail_view == "Our holdings" else [n for n in names if n.startswith("Our ")]
+        tc1, tc2 = st.columns([3, 1])
+        picked = tc1.multiselect("Tails for", names, default=default, key=f"tails_pick_{tail_view}")
+        n_dates = tails_df["date"].nunique()
+        weeks = tc2.slider("Tail length (weeks)", 1, max(n_dates - 1, 1), min(4, max(n_dates - 1, 1)),
+                           key="tails_weeks")
+        dates = sorted(tails_df["date"].unique())[-(weeks + 1):]
+        shown = tails_df[tails_df["date"].isin(dates)].dropna(subset=["rs", "momentum"])
+        fig_rrg = go.Figure()
+        for name in names:
+            t = shown[shown["name"] == name].sort_values("date")
+            if t.empty:
+                continue
+            head = t.iloc[-1]
+            colour = QUADRANT_COLOURS.get(head["quadrant"], "#6b6a63")
+            hover = "<b>" + name + "</b><br>%{customdata}<br>RS %{x:.1f} pp, momentum %{y:+.1f} pp<extra></extra>"
+            if name in picked and len(t) > 1:
+                fig_rrg.add_trace(go.Scatter(
+                    x=t["rs"], y=t["momentum"], mode="lines+markers", name=name, showlegend=False,
+                    line=dict(color=colour, width=2), customdata=pd.to_datetime(t["date"]).dt.strftime("%d-%b"),
+                    marker=dict(size=[6] * (len(t) - 1) + [15], color=colour,
+                                symbol=["circle"] * (len(t) - 1) + ["arrow"], angleref="previous",
+                                line=dict(color="#FFFFFF", width=1)),
+                    hovertemplate=hover))
+            else:
+                fig_rrg.add_trace(go.Scatter(
+                    x=[head["rs"]], y=[head["momentum"]], mode="markers", name=name, showlegend=False,
+                    marker=dict(size=8, color=colour, opacity=0.6), customdata=[pd.Timestamp(head["date"]).strftime("%d-%b")],
+                    hovertemplate=hover))
+            fig_rrg.add_annotation(x=head["rs"], y=head["momentum"], text=name, showarrow=False, xshift=8, yshift=9,
+                                   xanchor="left", font=dict(size=11, color="#1f1f1e" if name in picked else "#6b6a63"))
+        for label, x, y, xa, ya in [("LEADING", 1, 1, "right", "top"), ("WEAKENING", 1, 0, "right", "bottom"),
+                                    ("LAGGING", 0, 0, "left", "bottom"), ("IMPROVING", 0, 1, "left", "top")]:
+            fig_rrg.add_annotation(x=x, y=y, xref="paper", yref="paper", text=f"<b>{label}</b>", showarrow=False,
+                                   xanchor=xa, yanchor=ya, font=dict(size=14, color=QUADRANT_COLOURS[label]))
+        fig_rrg.add_hline(y=0, line_color="#6b6a63", line_width=1)
+        fig_rrg.add_vline(x=0, line_color="#6b6a63", line_width=1)
+        fig_rrg.update_layout(height=620, template="plotly_white", margin=dict(l=10, r=10, t=30, b=10),
+                              xaxis_title=f"RS vs Nifty 500 ({TECHNICAL_RS_LOOKBACK_DAYS}-session return spread, pp)",
+                              yaxis_title="RS-Momentum (pp)")
+        st.plotly_chart(fig_rrg, width="stretch")
+        st.caption(
+            f"Each dot is one week's close ({pd.Timestamp(dates[0]):%d-%b} to {pd.Timestamp(dates[-1]):%d-%b-%Y}); the arrow is "
+            "the latest week and shows the direction of rotation; colour = the current quadrant. Healthy rotation runs "
+            "clockwise: IMPROVING → LEADING → WEAKENING → LAGGING. Same RS and momentum as the tables above (percentage "
+            "points centred on 0, not StockCharts' proprietary JdK scale centred on 100; the quadrants mean the same). "
+            "Our sub-themes are equal-weighted baskets of our universe; 'Our portfolio' uses the current weights."
+        )
+
     rrg_left, rrg_right = st.columns(2)
     with rrg_left:
         combined_png = OUTPUT_DIR / "rrg_all_vs_nifty500.png"

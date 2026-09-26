@@ -58,7 +58,7 @@ def test_successful_refresh(tmp_path):
 
 
 def test_tri_failure_is_a_warning_not_a_failed_refresh(tmp_path):
-    codes = iter([1] + [0] * 8)  # niftyindices.com blocked, everything else fine
+    codes = iter([1] + [0] * 9)  # niftyindices.com blocked, everything else fine
     with patch.object(refresh_data, "MANIFEST_PATH", tmp_path / "m.json"), \
             patch("refresh_data.subprocess.Popen", side_effect=lambda *a, **k: _Proc(next(codes))):
         result = run_refresh(date(2026, 10, 3), on_output=lambda line: None)

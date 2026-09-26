@@ -380,6 +380,9 @@ Outputs `output/cement_full_screen.csv`, `output/capital_goods_full_screen.csv` 
 
 `clean_candidate` = all fundamental criteria pass, technically attractive (RS > +2 pp and Bullish), and no recent spike.
 
+### RRG weekly tails (`rrg_tails.py`)
+StockCharts-style tails: the same RS and RS-Momentum (so the latest point equals the review tables) at the last session of each of the past 8 weeks, joined into a path that shows the direction of rotation. Two views: our holdings, and sector rotation (NSE sector indices from the daily index files, our three sub-themes as equal-weighted baskets of the universe, and the portfolio at its current weights). Axes are percentage points centred on 0, not the proprietary JdK RS-Ratio centred on 100; the quadrants mean the same. Outputs `output/rrg_tails_{holdings,sectors}.{csv,png}`; interactive on the Technicals tab (pick names, tail length).
+
 ### Relative Rotation Graph & full evaluation standard
 
 `python sector_screen.py --review --as-of 2026-09-24` rebuilds all three review tables with the same standard applied to every constituent, and redraws the RRG plots (`python rrg.py --as-of 2026-09-24` redraws them from the committed tables).

@@ -375,6 +375,12 @@ RRG_MOMENTUM_DAYS = 10
 # move flipped a stock's RRG tier on ~17% of days (WELCORP and FINCABLES fell from High to Low
 # on 25-Sep-2026 and back); a 5-session average halves the flip rate while staying responsive.
 RRG_MOMENTUM_SMOOTHING_DAYS = 5
+# RRG tails (rrg_tails.py): weekly points over the past 8 weeks, and the NSE sector indices shown
+# with our sub-themes on the sector-rotation RRG
+RRG_TAIL_WEEKS = 8        # weekly points kept (dashboard slider range)
+RRG_PLOT_TAIL_WEEKS = 4   # tail length on the static PNGs (longer tails tangle)
+RRG_SECTOR_INDICES = ["Nifty Auto", "Nifty Bank", "Nifty IT", "Nifty Metal", "Nifty Pharma", "Nifty FMCG",
+                      "Nifty Realty", "Nifty Energy", "Nifty Infrastructure", "Nifty India Defence"]
 
 # |+DI - -DI| below this is a thin, borderline trend whichever way it points: the direction
 # label can flip on a single bar (e.g. JKCEMENT +DI 19.50 vs -DI 18.95)

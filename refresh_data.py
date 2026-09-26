@@ -13,10 +13,11 @@ Steps (each a separate process):
   3. sector_screen.py --review        review tables (live fundamentals, RRG) and RRG plots
   4. sector_screen.py --locked-check  run-up / results-date check of the locked stocks
   5. sector_screen.py --tenth-sweep   candidate sweep over the rest of the universe
-  6. risk_model.py                    factor series, regressions, Nifty F&O prices and the hedge plan
-  7. performance.py                   Sharpe, Treynor, XIRR, growth series and the CML plot
-  8. tracker.py                       live value and P&L of the Rs 1 crore from the 28-Sep snapshot
-Steps 1-8 are required: the refresh stops at the first failure among them.
+  6. rrg_tails.py                     weekly RRG tails: holdings and sector rotation (NSE sector indices)
+  7. risk_model.py                    factor series, regressions, Nifty F&O prices and the hedge plan
+  8. performance.py                   Sharpe, Treynor, XIRR, growth series and the CML plot
+  9. tracker.py                       live value and P&L of the Rs 1 crore from the 28-Sep snapshot
+Steps 1-9 are required: the refresh stops at the first failure among them.
 
 Every step uses the same end date, so all files describe the same price window. Progress and the
 outcome are written to output/refresh_manifest.json (current step, a heartbeat every few seconds,
@@ -62,6 +63,7 @@ def refresh_steps(as_of: date) -> List[Tuple[str, List[str]]]:
         ("Review tables, RRG and plots", [py, "sector_screen.py", "--review", "--as-of", end]),
         ("Locked-portfolio run-up check", [py, "sector_screen.py", "--locked-check", "--as-of", end]),
         ("Candidate sweep", [py, "sector_screen.py", "--tenth-sweep", "--as-of", end]),
+        ("RRG weekly tails", [py, "rrg_tails.py", "--as-of", end]),
         ("Regression and hedge plan", [py, "risk_model.py", "--as-of", end]),
         ("Performance and CML", [py, "performance.py", "--as-of", end]),
         ("Live P&L of the Rs 1 crore", [py, "tracker.py", "--as-of", end]),
