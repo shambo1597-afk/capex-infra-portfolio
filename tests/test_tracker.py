@@ -136,3 +136,74 @@ def test_a_same_strike_top_up_is_not_the_roll():
     s = {"pnl_pct": 10.5, "stocks_inr": 1.07e7, "cash_inr": 2.6e5}
     out = dict(tracker.plan_put_roll(s, topped, pd.Timestamp("2026-11-10"), _fo(), 1.12)[lambda d: d["field"] != "trade"].values)
     assert out["status"] == "TRIGGERED"  # the Nifty has since risen: the real roll-up is still available
+
+
+# ---------------------------------------------------------------------------
+# 15 tracked, 8 invested: holdings and the stop-loss replacement rule
+# ---------------------------------------------------------------------------
+
+def _positions(rows):
+    return pd.DataFrame([{"symbol": s, "shares": n, "close": c, "stop_loss_price": stop, "stop_breached": c <= stop}
+                         for s, n, c, stop in rows])
+
+
+def _ranking(symbols, conviction="High"):
+    return pd.DataFrame({"symbol": symbols, "conviction": conviction})
+
+
+def test_holdings_before_and_after_the_snapshot():
+    from config import INITIAL_HOLDINGS, LOCKED_PORTFOLIO_SYMBOLS
+    assert tracker.held_stocks(None) == INITIAL_HOLDINGS
+    a, b, c = LOCKED_PORTFOLIO_SYMBOLS[0], LOCKED_PORTFOLIO_SYMBOLS[1], LOCKED_PORTFOLIO_SYMBOLS[9]
+    ledger = pd.DataFrame([
+        {"date": "2026-09-28", "instrument": b, "action": "BUY", "quantity": 10, "price": 1.0, "note": ""},
+        {"date": "2026-09-28", "instrument": a, "action": "BUY", "quantity": 10, "price": 1.0, "note": ""},
+        {"date": "2026-09-28", "instrument": "NIFTY 2026-12-29 22000 PE", "action": "BUY", "quantity": 65, "price": 1.0,
+         "note": ""},
+        {"date": "2026-10-10", "instrument": b, "action": "SELL", "quantity": 10, "price": 1.0, "note": "stop"},
+        {"date": "2026-10-10", "instrument": c, "action": "BUY", "quantity": 5, "price": 2.0, "note": "replacement"},
+    ])
+    assert tracker.held_stocks(ledger) == [a, c]  # list order, options and sold stocks left out
+    assert tracker.sold_stocks(ledger) == {b}
+
+
+def test_no_replacement_without_a_stop_hit():
+    pos = _positions([("WELCORP", 100, 500.0, 450.0)])
+    plan = tracker.plan_replacements(pos, pd.DataFrame(columns=tracker.LEDGER_COLUMNS), _ranking(["GOODLUCK"]),
+                                     pd.Series({"GOODLUCK": 100.0}))
+    assert plan.empty
+
+
+def test_stopped_stock_is_replaced_by_the_first_qualifying_reserve_stock():
+    from config import INITIAL_HOLDINGS, RESERVE_SYMBOLS
+    held = INITIAL_HOLDINGS
+    pos = _positions([(s, 100, 500.0, 450.0) for s in held[1:]] + [(held[0], 200, 440.0, 450.0)])
+    closes = pd.Series({s: (300.0 if s == RESERVE_SYMBOLS[1] else 100.0) for s in RESERVE_SYMBOLS})
+    # The first reserve stock no longer passes the selection rule; the second does
+    ranking = pd.concat([_ranking([RESERVE_SYMBOLS[0]], "Low"), _ranking(RESERVE_SYMBOLS[1:])])
+    plan = tracker.plan_replacements(pos, pd.DataFrame(columns=tracker.LEDGER_COLUMNS), ranking, closes)
+    assert len(plan) == 1
+    r = plan.iloc[0]
+    assert r["sell"] == held[0] and r["proceeds_inr"] == 200 * 440.0
+    assert r["buy"] == RESERVE_SYMBOLS[1] and r["buy_rank"] == 10
+    assert r["buy_shares"] == 88000 // 300 and r["cash_left_inr"] == pytest.approx(88000 - 293 * 300.0)
+    assert RESERVE_SYMBOLS[0] in r["note"]
+
+
+def test_two_stops_take_the_queue_in_turn_and_sold_stocks_never_return():
+    from config import INITIAL_HOLDINGS, RESERVE_SYMBOLS
+    held = INITIAL_HOLDINGS
+    pos = _positions([(held[0], 10, 90.0, 95.0), (held[1], 10, 90.0, 95.0)] + [(s, 10, 100.0, 95.0) for s in held[2:]])
+    ledger = pd.DataFrame([{"date": "2026-10-01", "instrument": RESERVE_SYMBOLS[0], "action": "SELL", "quantity": 1,
+                            "price": 1.0, "note": "stopped out earlier"}])
+    plan = tracker.plan_replacements(pos, ledger, _ranking(RESERVE_SYMBOLS), pd.Series({s: 50.0 for s in RESERVE_SYMBOLS}))
+    assert plan["buy"].tolist() == RESERVE_SYMBOLS[1:3]
+
+
+def test_proceeds_wait_in_cash_when_no_reserve_stock_qualifies():
+    from config import INITIAL_HOLDINGS, RESERVE_SYMBOLS
+    pos = _positions([(INITIAL_HOLDINGS[0], 10, 90.0, 95.0)])
+    plan = tracker.plan_replacements(pos, pd.DataFrame(columns=tracker.LEDGER_COLUMNS),
+                                     _ranking(RESERVE_SYMBOLS, "Low"), pd.Series({s: 50.0 for s in RESERVE_SYMBOLS}))
+    r = plan.iloc[0]
+    assert pd.isna(r["buy"]) and r["buy_shares"] == 0 and r["cash_left_inr"] == 900.0

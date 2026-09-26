@@ -2,7 +2,7 @@
 
 `capital_goods_full_review_table.csv` lists every Nifty Capital Goods constituent (102 rows,
 none excluded), with live fundamentals and technicals as of 25-Sep-2026 (price window
-26-Sep-2025 to 25-Sep-2026). It is sorted by `fundamentals_passed_count` (descending),
+27-Sep-2025 to 25-Sep-2026). It is sorted by `fundamentals_passed_count` (descending),
 then `sector_rank` (ascending).
 
 ## Two relative strength measures

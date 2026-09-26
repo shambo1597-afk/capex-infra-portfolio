@@ -1,4 +1,4 @@
-selection_rank,symbol,company_name,sector,held,rule_pick,rs_6m_skip1m,rs_score_vs_nifty500,di_gap,latest_adx,rrg_quadrant_vs_nifty500,rrg_quadrant_vs_sector,conviction,soft_fundamental_fails,business_focus_note
+selection_rank,symbol,company_name,sector,locked,rule_pick,rs_6m_skip1m,rs_score_vs_nifty500,di_gap,latest_adx,rrg_quadrant_vs_nifty500,rrg_quadrant_vs_sector,conviction,soft_fundamental_fails,business_focus_note
 1,WELCORP,Welspun Corp,Capital Goods,True,True,185.19,89.2,13.87,42.51,LEADING,LEADING,High,,
 2,RPEL,Raghav Product.,Capital Goods,True,True,179.48,48.35,6.49,29.49,WEAKENING,LEADING,Moderate,,KEPT: refractory ramming mass used inside steel plants' induction furnaces (an industrial consumable).
 3,SBCL,Shivalik Bimetal,Capital Goods,True,True,152.23,56.29,10.91,34.27,WEAKENING,LEADING,Moderate,,
@@ -15,13 +15,13 @@ selection_rank,symbol,company_name,sector,held,rule_pick,rs_6m_skip1m,rs_score_v
 14,CARBORUNIV,Carborundum Uni.,Capital Goods,True,True,32.35,8.99,30.95,29.12,LEADING,IMPROVING,Moderate,,
 15,GOODLUCK,Goodluck India,Capital Goods,True,True,29.86,8.66,10.54,25.32,LEADING,IMPROVING,Moderate,,
 16,BEML,BEML Ltd,Capital Goods,True,True,24.49,20.87,2.72,25.75,LEADING,LEADING,High,ROCE > 8%; OPM > 8%,
-17,BANSALWIRE,Bansal Wire Inds,Capital Goods,False,False,22.81,-1.99,3.07,15.78,LAGGING,IMPROVING,Moderate,OPM > 8%,
+17,BANSALWIRE,Bansal Wire Inds,Capital Goods,True,True,22.81,-1.99,3.07,15.78,LAGGING,IMPROVING,Moderate,OPM > 8%,
 18,SCHNEIDER,Schneider Elect.,Capital Goods,False,False,21.49,-15.07,3.26,12.61,LAGGING,LAGGING,Low,,
 19,VOLTAMP,Volt.Transform.,Capital Goods,False,False,18.25,7.96,2.41,23.25,WEAKENING,LAGGING,Low,,
-20,TEXRAIL,Texmaco Rail,Capital Goods,False,False,15.22,18.58,21.72,29.63,LEADING,LEADING,High,,
-21,SHANTIGEAR,Shanthi Gears,Capital Goods,False,False,14.92,53.06,11.4,47.01,LEADING,LEADING,High,,
-22,USHAMART,Usha Martin,Capital Goods,False,False,14.08,8.84,8.56,16.72,LEADING,IMPROVING,Moderate,,
-23,AJAXENGG,Ajax Engineering,Capital Goods,False,False,14.02,13.98,15.98,16.03,LEADING,LEADING,High,,
+20,TEXRAIL,Texmaco Rail,Capital Goods,True,True,15.22,18.58,21.72,29.63,LEADING,LEADING,High,,
+21,SHANTIGEAR,Shanthi Gears,Capital Goods,True,True,14.92,53.06,11.4,47.01,LEADING,LEADING,High,,
+22,USHAMART,Usha Martin,Capital Goods,True,True,14.08,8.84,8.56,16.72,LEADING,IMPROVING,Moderate,,
+23,AJAXENGG,Ajax Engineering,Capital Goods,True,True,14.02,13.98,15.98,16.03,LEADING,LEADING,High,,
 24,GMMPFAUDLR,GMM Pfaudler,Capital Goods,False,False,9.91,91.59,33.21,68.1,LEADING,LEADING,High,,
 25,PTCIL,PTC Industries,Capital Goods,False,False,9.49,28.58,6.19,41.86,LEADING,LEADING,High,Cash from operations last year > 0 (Rs Cr),
 26,ENRIN,Siemens Ener.Ind,Capital Goods,False,False,9.35,-5.83,3.92,14.94,IMPROVING,IMPROVING,Moderate,,

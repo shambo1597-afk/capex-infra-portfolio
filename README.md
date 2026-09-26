@@ -84,28 +84,35 @@ A production-grade, mathematically transparent data pipeline and quantitative sc
 
 That leaves **139 stocks: Cement 15, Capital Goods 102, Power 22**. The review tables' `source_index` column shows each stock's Screener industry, and `business_focus_note` records the borderline theme calls (`GREAVESCOT`, `UTLSOLAR`, `RPEL`, `GRASIM`, `NAVA`, `RRKABEL`). Theme is the only constraint on the list: there are no per-sector quotas.
 
-**Locked portfolio (10 stocks, `config.LOCKED_PORTFOLIO`; the list is frozen after 5-Oct-2026).** The selection rule (`sector_screen.select_portfolio`; column `rule_pick` of `output/selection_ranking.csv`, rebuilt by every review run):
+**Locked list (15 stocks tracked, money in 8; `config.LOCKED_PORTFOLIO`; the list is frozen after 5-Oct-2026).** The selection rule (`sector_screen.select_portfolio`; column `rule_pick` of `output/selection_ranking.csv`, rebuilt by every review run):
 
 1. **Hard fundamental rules pass** (`config.FUNDAMENTAL_HARD_FIELDS`): pledged shares < 15%, debt/equity < 1.5, interest cover, market cap. These can turn a bad quarterly result into a crash, so they are never waived. Soft criteria (ROCE, OPM, one year's operating cash flow) describe business quality over years and matter little over 3 months; failing them is a displayed exception.
 2. **At least one year of trading history** (`config.MIN_HISTORY_SESSIONS` = 240 sessions), so every stock has a full year for the risk model and the 6-month ranking.
 3. **Bullish trend with a real DI gap** (+DI minus -DI of at least 2).
 4. **Ranked by 6-month relative strength vs the Nifty 500, excluding the latest month** (momentum from the literature, Jegadeesh & Titman; the 2020-2026 backtest in `research/momentum_study.py` is inconclusive for every signal tested, so no claim beyond the literature is made).
-5. **RRG conviction High or Moderate** (`config.SELECTION_CONVICTION_TIERS`): stocks WEAKENING or LAGGING against both the Nifty 500 and their sector average are skipped. Picks run down the ranking to 10 names (`config.PORTFOLIO_SIZE`; the brief allows 8-15).
+5. **RRG conviction High or Moderate** (`config.SELECTION_CONVICTION_TIERS`): stocks WEAKENING or LAGGING against both the Nifty 500 and their sector average are skipped. Picks run down the ranking to 15 names (`config.PORTFOLIO_SIZE`, the brief's maximum), listed in rank order.
 
-| Rank | Stock | Sector | Conviction | Note |
-| :---: | :--- | :--- | :--- | :--- |
-| 1 | `WELCORP` | Capital Goods | High | |
-| 2 | `RPEL` | Capital Goods | Moderate | refractory ramming mass for steel plants |
-| 3 | `SBCL` | Capital Goods | Moderate | bimetal and shunt parts for smart meters, electrical, EV |
-| 8 | `ACMESOLAR` | Power | High | |
-| 10 | `FINCABLES` | Capital Goods | High | |
-| 11 | `GREAVESCOT` | Capital Goods | High | soft exception: OPM |
-| 13 | `ACE` | Capital Goods | High | |
-| 14 | `CARBORUNIV` | Capital Goods | Moderate | |
-| 15 | `GOODLUCK` | Capital Goods | Moderate | |
-| 16 | `BEML` | Capital Goods | High | soft exception: ROCE / OPM |
+| Rank | Stock | Sector | Conviction | Status | Note |
+| :---: | :--- | :--- | :--- | :--- | :--- |
+| 1 | `WELCORP` | Capital Goods | High | invested, 12.42% |  |
+| 2 | `RPEL` | Capital Goods | Moderate | invested, 9.82% | refractory ramming mass for steel plants |
+| 3 | `SBCL` | Capital Goods | Moderate | invested, 11.04% | bimetal and shunt parts for smart meters, electrical, EV |
+| 8 | `ACMESOLAR` | Power | High | invested, 15.00% | the only Power stock |
+| 10 | `FINCABLES` | Capital Goods | High | invested, 11.52% |  |
+| 11 | `GREAVESCOT` | Capital Goods | High | invested, 10.71% | soft exception: OPM |
+| 13 | `ACE` | Capital Goods | High | invested, 14.50% |  |
+| 14 | `CARBORUNIV` | Capital Goods | Moderate | invested, 15.00% |  |
+| 15 | `GOODLUCK` | Capital Goods | Moderate | reserve #1 |  |
+| 16 | `BEML` | Capital Goods | High | reserve #2 | soft exception: ROCE / OPM |
+| 17 | `BANSALWIRE` | Capital Goods | Moderate | reserve #3 | soft exception: OPM |
+| 20 | `TEXRAIL` | Capital Goods | High | reserve #4 |  |
+| 21 | `SHANTIGEAR` | Capital Goods | High | reserve #5 |  |
+| 22 | `USHAMART` | Capital Goods | Moderate | reserve #6 |  |
+| 23 | `AJAXENGG` | Capital Goods | High | reserve #7 |  |
 
-`UTLSOLAR` (High conviction, 6-month RS +118%) was in an earlier draft but has only 211 sessions of prices, under the one-year rule, so the rule's pick `SBCL` holds the place (group decision 26-Sep-2026). No Cement stock makes the top 10: NUVOCO passes every rule but ranks #32 (6-month RS +1%). Whether a Cement leg is required is a question for the professor. Why 10 and not 15: the next five confirmed names (BANSALWIRE, TEXRAIL, SHANTIGEAR, USHAMART, AJAXENGG, all Capital Goods) have 6-month RS of +14% to +23% against +152% to +185% for the top three; adding them cut one-year backtest volatility only from 23.6% to 22.3% (their returns move with the rest) while halving the weights of the strongest names.
+**Money in 8, 15 tracked (group decision 26-Sep-2026).** The money goes into the top 8 (`config.INVESTED_COUNT`, `INITIAL_HOLDINGS`), the brief's minimum; the other 7 (`RESERVE_SYMBOLS`) are tracked with no money, in rank order. **Replacement rule** (`tracker.plan_replacements`, `output/replacement_plan.csv`, shown as an alert on the dashboard): when a holding closes at or below its stop-loss it is sold, and the sale proceeds buy whole shares of the first reserve stock that still passes the selection rule that day (listed in `output/selection_ranking.csv` with conviction High or Moderate); a reserve stock that fails the rule that day is skipped but stays in the queue, and a stock that has been sold never comes back. If no reserve stock qualifies, the proceeds wait in the liquid fund. Several stops on one day take the queue in turn. The trades are recorded in `data/trades.csv`; from then on the risk summary, weights, hedge and performance use the new holdings (`tracker.current_holdings`).
+
+`UTLSOLAR` (High conviction, 6-month RS +118%) was in an earlier draft but has only 211 sessions of prices, under the one-year rule, so the rule's pick `SBCL` holds the place (group decision 26-Sep-2026). No Cement stock makes the 15: NUVOCO passes every rule but ranks #32 (6-month RS +1%). Whether a Cement leg is required is a question for the professor. With 8 stocks the 15% weight cap binds for the two least volatile (ACMESOLAR, CARBORUNIV), so they carry a little less than 1/8 of the risk each.
 
 **Weights and allocation.** Equal risk contribution (`weights.py`): each stock carries the same share of portfolio variance $w_i (\Sigma w)_i / w^\top \Sigma w = 1/N$, with every weight bounded 5-15% (`config.WEIGHT_MIN_PCT`, `WEIGHT_MAX_PCT`) and $\Sigma$ from one year of daily returns. It needs no return forecast (none is reliable, `research/momentum_study.py`) and gives volatile names less capital. The weights apply to the 97% equity sleeve (`config.EQUITY_ALLOCATION_PCT`) of the Rs 1 crore principal; the other 3% is the hedge reserve (day-0 Nifty puts and one profit-trigger roll-up, see `risk_model.py`), held in a liquid ETF at the overnight rate until used. `output/portfolio_risk_summary.csv` gives the whole shares at the latest close, the amount invested and each stock's risk contribution. Recompute at the actual purchase prices.
 
@@ -189,7 +196,7 @@ Using a 20-day rolling window:
 - **Data:** `data/factors/daily_factors.csv` (Nifty 500 TRI, Nifty 50, 10-year G-sec, Nifty 1D Rate index, Brent) and `data/derivatives/nifty_fo_<date>.csv` (Nifty rows of the NSE F&O bhavcopy), both rebuilt by the refresh.
 
 ### 8. Performance & Capital Market Line (`performance.py`)
-Daily $r_p = \sum_i w_i r_i$ with today's weights, compounded $R = \prod (1 + r_t) - 1$; annualised $(1+R)^{252/n} - 1$ (the simple $R \times 252/n$ is shown too: the gap is the compounding effect). Sharpe $= (R_p - R_f)/\sigma_p$, Treynor $= (R_p - R_f)/\beta$, Jensen's $\alpha = R_p - [R_f + \beta (R_m - R_f)]$, XIRR from dated cash flows (negative for a loss), $R_f$ = Nifty 1D Rate index. CML through the Nifty 500 TRI, with the 10 stocks, their long-only efficient frontier, the tangency portfolio and the **global minimum variance portfolio (GMVP)**, long-only and within the 5-15% limits (`output/cml.png`). `output/portfolio_weights_compared*.csv` compares our weights with the GMVPs and the tangency portfolio (volatility, return, Sharpe, effective number of stocks $1/\sum w^2$, largest weight). Until the 28-Sep snapshot these are a backtest of a portfolio chosen with hindsight. From 20 trading days after the snapshot, a **Live** column adds the same metrics for the real portfolio (`performance.live_metrics`, from `output/tracker_daily.csv`: stocks + puts + cash vs the same Rs 1 crore in the Nifty 500 TRI, the liquid fund as risk-free).
+Daily $r_p = \sum_i w_i r_i$ with today's weights, compounded $R = \prod (1 + r_t) - 1$; annualised $(1+R)^{252/n} - 1$ (the simple $R \times 252/n$ is shown too: the gap is the compounding effect). Sharpe $= (R_p - R_f)/\sigma_p$, Treynor $= (R_p - R_f)/\beta$, Jensen's $\alpha = R_p - [R_f + \beta (R_m - R_f)]$, XIRR from dated cash flows (negative for a loss), $R_f$ = Nifty 1D Rate index. CML through the Nifty 500 TRI, with the invested stocks, their long-only efficient frontier, the tangency portfolio and the **global minimum variance portfolio (GMVP)**, long-only and within the 5-15% limits (`output/cml.png`). `output/portfolio_weights_compared*.csv` compares our weights with the GMVPs and the tangency portfolio (volatility, return, Sharpe, effective number of stocks $1/\sum w^2$, largest weight). Until the 28-Sep snapshot these are a backtest of a portfolio chosen with hindsight. From 20 trading days after the snapshot, a **Live** column adds the same metrics for the real portfolio (`performance.live_metrics`, from `output/tracker_daily.csv`: stocks + puts + cash vs the same Rs 1 crore in the Nifty 500 TRI, the liquid fund as risk-free).
 
 **Q2 results calendar (Overview tab).** Each holding's September-quarter results date from NSE's board-meeting announcements (re-fetched when the cache is a day old): `reported` once the meeting has passed, else the announced date, else an estimate (last year's date + 364 days, the same weekday), labelled as such (`sector_screen.results_calendar_fields`, columns `q2_results_*` of `output/locked_portfolio_runup_catalyst_check.csv`). A warning appears when a holding reports within 7 days: results day is when a price can gap through its stop.
 

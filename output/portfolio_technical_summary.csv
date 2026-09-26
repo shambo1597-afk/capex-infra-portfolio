@@ -21,7 +21,7 @@ AIAENG,Capital Goods,3919.4,34.85,23.95,Bearish (Downtrend),-19.12,3886.0,3920.0
 AJAXENGG,Capital Goods,607.75,64.64,16.03,Bullish (Uptrend),13.98,605.05,607.95
 APARINDS,Capital Goods,17776.0,53.73,28.73,Bullish (Uptrend),12.92,16199.0,18132.0
 APLAPOLLO,Capital Goods,2214.7,57.13,28.58,Bullish (Uptrend),25.62,2107.6,2235.2
-ASTRAL,Capital Goods,1399.0,39.65,21.86,Bearish (Downtrend),3.99,1397.0,1415.2
+ASTRAL,Capital Goods,1399.0,39.65,21.86,Bearish (Downtrend),3.99,1397.0,1425.0
 ATLANTAELE,Capital Goods,1625.9,41.55,20.37,Bearish (Downtrend),-7.37,1625.0,1778.9
 AZAD,Capital Goods,2728.0,50.71,18.19,Bullish (Uptrend),39.22,2677.8,2735.0
 BHEL,Capital Goods,418.95,47.68,19.37,Bearish (Downtrend),2.98,408.15,420.95
@@ -88,7 +88,7 @@ RHIM,Capital Goods,386.45,57.51,16.32,Bullish (Uptrend),5.34,383.3,387.55
 SAATVIKGL,Capital Goods,427.45,52.1,17.33,Bullish (Uptrend),-5.83,427.25,427.5
 SCHNEIDER,Capital Goods,1209.5,47.01,12.61,Bullish (Uptrend),-15.07,1185.0,1210.0
 SHAKTIPUMP,Capital Goods,466.9,41.51,15.79,Bearish (Downtrend),-19.1,465.0,515.5
-SHANTIGEAR,Capital Goods,666.55,63.39,47.01,Bullish (Uptrend),53.06,514.7,704.0
+SHANTIGEAR,Capital Goods,666.55,63.39,47.01,Bullish (Uptrend),53.06,510.2,704.0
 SBCL,Capital Goods,1154.5,62.19,34.27,Bullish (Uptrend),56.29,986.5,1155.9
 SIEMENS,Capital Goods,3877.0,48.13,15.94,Bearish (Downtrend),10.23,3875.3,3885.0
 ENRIN,Capital Goods,3313.0,55.9,14.94,Bullish (Uptrend),-5.83,3265.0,3328.6
@@ -136,5 +136,5 @@ POWERGRID,Power,269.5,51.72,13.86,Bullish (Uptrend),-4.13,268.75,271.5
 RPOWER,Power,20.57,30.48,12.81,Bearish (Downtrend),-13.06,20.51,22.9
 SJVN,Power,61.76,28.22,25.44,Bearish (Downtrend),-12.25,61.21,67.51
 TATAPOWER,Power,367.5,49.53,22.8,Bullish (Uptrend),-3.19,365.15,372.35
-TORNTPOWER,Power,1254.6,43.15,19.66,Bearish (Downtrend),-9.8,1243.8,1255.9
+TORNTPOWER,Power,1254.6,43.15,19.66,Bearish (Downtrend),-9.8,1243.8,1287.5
 VEDPOWER,Power,32.95,45.39,25.74,Bearish (Downtrend),-18.49,31.56,37.71

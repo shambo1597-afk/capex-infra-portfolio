@@ -36,6 +36,7 @@ from config import (
     CAPITAL_GOODS_EPC_STOCKS,
     DEFAULT_TRI_CSV_PATH,
     HISTORICAL_OHLCV_CSV,
+    INITIAL_HOLDINGS,
     LOCKED_PORTFOLIO_SYMBOLS,
     PORTFOLIO_SYMBOLS,
     POWER_SECTOR_STOCKS,
@@ -138,7 +139,8 @@ def display_project_header(tri_source: str = "manual") -> None:
     print(f" [*] Capital Goods universe ({len(CAPITAL_GOODS_EPC_STOCKS)}): {', '.join(CAPITAL_GOODS_EPC_STOCKS)}")
     print(f" [*] Power universe ({len(POWER_SECTOR_STOCKS)}):         {', '.join(POWER_SECTOR_STOCKS)}")
     print("-" * 115)
-    print(f" [*] FINAL LOCKED PORTFOLIO ({len(LOCKED_PORTFOLIO_SYMBOLS)} stocks): {', '.join(LOCKED_PORTFOLIO_SYMBOLS)}")
+    print(f" [*] LOCKED LIST ({len(LOCKED_PORTFOLIO_SYMBOLS)} tracked): {', '.join(LOCKED_PORTFOLIO_SYMBOLS)}")
+    print(f" [*] Invested ({len(INITIAL_HOLDINGS)} at the snapshot): {', '.join(INITIAL_HOLDINGS)}; the rest are the stop-loss reserve")
     print("-" * 115)
     print(" [*] Benchmark 1 (Price Return):       Nifty 500 (NSE official daily index closes)")
     tri_desc = "Local Nifty 500 TRI CSV (manual)" if tri_source == "manual" else "Automated Browser Fetch (niftyindices.com)"
@@ -261,9 +263,13 @@ def run_pipeline() -> int:
         from tracker import ledger_positions
         held_shares = ledger_positions(pd.read_csv(TRADES_CSV))
 
+    # Risk, weights and stops cover the stocks the money is in: the top INVESTED_COUNT of the 15
+    # before the snapshot, the ledger's holdings after it (a stopped-out stock is replaced from the reserve)
+    from tracker import current_holdings
     risk_df = generate_portfolio_risk_summary(
         stock_data=stock_df,
         technical_summary=summary_df,
+        symbols=current_holdings(),
         output_csv_path=RISK_SUMMARY_OUTPUT_CSV,
         previous_stops=previous_stops,
         held_shares=held_shares,

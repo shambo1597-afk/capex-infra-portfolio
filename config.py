@@ -151,9 +151,10 @@ def sector_of(symbol: str) -> str:
 
 
 # -----------------------------------------------------------------------------
-# LOCKED PORTFOLIO
-# The 10 picks (decided with the group 26-Sep-2026), exactly what the selection rule in
-# sector_screen.py gives (select_portfolio; output/selection_ranking.csv, column rule_pick):
+# LOCKED PORTFOLIO: 15 tracked stocks, money in the top 8, the other 7 in reserve
+# The 15 picks (decided with the group 26-Sep-2026), exactly what the selection rule in
+# sector_screen.py gives (select_portfolio; output/selection_ranking.csv, column rule_pick),
+# listed in rank order:
 #   eligible  = in the Screener universe (theme rule above), HARD fundamental rules pass, bullish
 #               trend with a real DI gap (>= 2), at least MIN_HISTORY_SESSIONS of prices;
 #   ranked    by 6-month relative strength vs the Nifty 500 excluding the latest month (momentum;
@@ -162,21 +163,27 @@ def sector_of(symbol: str) -> str:
 #   confirmed by the RRG: conviction High or Moderate (rrg.conviction_tier: not weakening/lagging in
 #               both views vs the Nifty 500 and vs the sector), so names whose momentum is visibly
 #               fading in both views are skipped (a judgement filter, not a back-tested one);
-#   the top PORTFOLIO_SIZE confirmed names. No sector minimums: Power has one holding (ACMESOLAR) and
-#   Cement none (its only confirmed uptrend, NUVOCO, ranks near the bottom); the group will ask the
-#   professor whether a Cement leg is required. Frozen after 5-Oct-2026: a stopped-out position's
-#   money is redeployed into the remaining holdings. Soft exceptions (shown on the dashboard): BEML
-#   (ROCE/OPM), GREAVESCOT (OPM). UTLSOLAR (211 sessions of prices) fails the one-year history rule
-#   and was replaced by the rule's pick SBCL (group decision 26-Sep-2026).
+#   the top PORTFOLIO_SIZE confirmed names.
+# The list of 15 is frozen after 5-Oct-2026; all 15 are tracked. The money goes into the top
+# INVESTED_COUNT (INITIAL_HOLDINGS); the rest are the reserve, in rank order (RESERVE_SYMBOLS).
+# When a holding closes at or below its stop-loss, it is sold and its proceeds buy the first reserve
+# stock that still passes the selection rule that day (tracker.plan_replacements); a stock that has
+# been sold never comes back. No sector minimums: Power has one stock (ACMESOLAR) and Cement none
+# (its best confirmed uptrend, NUVOCO, ranks #32); the group will ask the professor whether a Cement
+# leg is required. Soft exceptions (shown on the dashboard): BEML (ROCE/OPM), GREAVESCOT (OPM),
+# BANSALWIRE (OPM). UTLSOLAR (211 sessions of prices) fails the one-year history rule and was
+# replaced by the rule's pick SBCL (group decision 26-Sep-2026).
 # -----------------------------------------------------------------------------
 
 LOCKED_PORTFOLIO_SYMBOLS = [
-    "WELCORP", "RPEL", "SBCL", "FINCABLES", "GREAVESCOT",          # Capital Goods
-    "ACE", "CARBORUNIV", "GOODLUCK", "BEML",                       # Capital Goods
-    "ACMESOLAR",                                                   # Power
+    "WELCORP", "RPEL", "SBCL", "ACMESOLAR", "FINCABLES", "GREAVESCOT", "ACE", "CARBORUNIV",  # invested
+    "GOODLUCK", "BEML", "BANSALWIRE", "TEXRAIL", "SHANTIGEAR", "USHAMART", "AJAXENGG",       # reserve
 ]
 
-PORTFOLIO_SIZE = 10                          # within the brief's 8-15
+PORTFOLIO_SIZE = 15                          # the brief's maximum; all 15 are tracked
+INVESTED_COUNT = 8                           # the brief's minimum holds the money
+INITIAL_HOLDINGS = LOCKED_PORTFOLIO_SYMBOLS[:INVESTED_COUNT]
+RESERVE_SYMBOLS = LOCKED_PORTFOLIO_SYMBOLS[INVESTED_COUNT:]  # replacement queue, in rank order
 SECTOR_MIN_HOLDINGS: Dict[str, int] = {}     # none: picked on merit (the group may add a Cement leg)
 SELECTION_CONVICTION_TIERS = ("High", "Moderate")  # RRG confirmation of the momentum ranking
 MIN_HISTORY_SESSIONS = 240                   # about a year of NSE sessions, so 6-month RS is measurable
@@ -416,7 +423,7 @@ EQUITY_ALLOCATION_PCT = 97.0
 
 # Evaluation window: first snapshot 28-Sep-2026, three months to 28-Dec-2026. tracker.py values the
 # Rs 1 crore from the snapshot close using the trade ledger TRADES_CSV (editable: record real fills,
-# stop-loss exits and redeployments there).
+# stop-loss exits and their reserve replacements there).
 EVALUATION_START_DATE = "2026-09-28"
 EVALUATION_END_DATE = "2026-12-28"
 TRADES_CSV = DATA_DIR / "trades.csv"

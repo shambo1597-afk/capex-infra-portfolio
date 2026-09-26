@@ -2,10 +2,15 @@ symbol,rs_score_vs_nifty500,rs_last_10d,recent_10day_contribution_pct,recent_spi
 WELCORP,89.2,3.52,3.9,False,,not announced,,2025-10-30,2026-10-29,estimate,33,2026-07-24
 RPEL,48.35,-1.0,-2.1,False,,not announced,,2025-10-27,2026-10-26,estimate,30,2026-07-15
 SBCL,56.29,5.34,9.5,False,,not announced,,2025-11-12,2026-11-11,estimate,46,2026-08-06
+ACMESOLAR,18.51,13.01,70.3,True,,not announced,,2025-11-03,2026-11-02,estimate,37,2026-07-29
 FINCABLES,25.61,4.52,17.6,False,,not announced,,2025-11-11,2026-11-10,estimate,45,2026-08-11
 GREAVESCOT,13.76,22.79,165.6,True,,not announced,,2025-11-04,2026-11-03,estimate,38,2026-08-04
 ACE,26.23,10.92,41.6,False,,not announced,,2025-11-06,2026-11-05,estimate,40,2026-07-20
 CARBORUNIV,8.99,18.79,209.0,True,,not announced,,2025-10-30,2026-10-29,estimate,33,2026-08-07
 GOODLUCK,8.66,3.02,34.9,False,,not announced,,2025-11-08,2026-11-07,estimate,42,2026-08-06
 BEML,20.87,1.89,9.1,False,,not announced,,2025-11-05,2026-11-04,estimate,39,2026-08-07
-ACMESOLAR,18.51,13.01,70.3,True,,not announced,,2025-11-03,2026-11-02,estimate,37,2026-07-29
+BANSALWIRE,-1.99,4.73,,False,,not announced,,2025-11-04,2026-11-03,estimate,38,2026-07-22
+TEXRAIL,18.58,8.23,44.3,False,,not announced,,2025-11-11,2026-11-10,estimate,45,2026-08-03
+SHANTIGEAR,53.06,-6.6,-12.4,False,,not announced,,2025-10-24,2026-10-23,estimate,27,2026-07-29
+USHAMART,8.84,6.17,69.8,True,,not announced,,2025-11-08,2026-11-07,estimate,42,2026-07-27
+AJAXENGG,13.98,4.62,33.0,False,,not announced,,2025-11-13,2026-11-12,estimate,47,2026-08-05

@@ -1,17 +1,15 @@
 name,kind,sigma,expected_return
-WELCORP,stock,0.426271,1.311989
-RPEL,stock,0.529514,1.127202
-SBCL,stock,0.558307,0.931972
-FINCABLES,stock,0.437361,0.687367
-GREAVESCOT,stock,0.446479,0.181868
-ACE,stock,0.335411,0.185882
-CARBORUNIV,stock,0.344400,0.395786
-GOODLUCK,stock,0.438386,0.402602
-BEML,stock,0.391046,0.042703
-ACMESOLAR,stock,0.378916,0.589825
-Our portfolio,portfolio,0.236253,0.573193
-Nifty 500 TRI (market),market,0.141546,0.014313
-Tangency (max Sharpe of the 11),tangency,0.286214,1.042833
-GMVP (long-only),gmvp,0.221115,0.543088
-GMVP (5-15% limits),gmvp_bounded,0.229867,0.586034
-Risk-free (1D rate),risk_free,0.000000,0.052220
+WELCORP,stock,0.426534,1.335027
+RPEL,stock,0.530597,1.126169
+SBCL,stock,0.554853,1.004258
+ACMESOLAR,stock,0.377741,0.551005
+FINCABLES,stock,0.437552,0.712443
+GREAVESCOT,stock,0.446875,0.203602
+ACE,stock,0.336068,0.190355
+CARBORUNIV,stock,0.344946,0.406346
+Our portfolio,portfolio,0.238824,0.662287
+Nifty 500 TRI (market),market,0.141831,0.013196
+Tangency (max Sharpe of the 11),tangency,0.289500,1.068841
+GMVP (long-only),gmvp,0.223189,0.565458
+GMVP (5-15% limits),gmvp_bounded,0.236713,0.666072
+Risk-free (1D rate),risk_free,0.000000,0.051976

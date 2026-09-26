@@ -60,15 +60,21 @@ def test_sector_screens_match_review_tables(review):
 
 
 def test_locked_portfolio_outputs(review, technical_summary):
+    from tracker import current_holdings
     risk = pd.read_csv(RISK_SUMMARY_OUTPUT_CSV)
-    assert risk["symbol"].tolist() == LOCKED_PORTFOLIO_SYMBOLS
+    holdings = current_holdings()  # the invested stocks: top 8 of the 15 until a stop-loss replacement
+    assert risk["symbol"].tolist() == holdings
     prices = technical_summary.set_index("symbol")["current_price"]
-    assert (risk.set_index("symbol")["current_price"] == prices.loc[LOCKED_PORTFOLIO_SYMBOLS]).all()
+    assert (risk.set_index("symbol")["current_price"] == prices.loc[holdings]).all()
     from config import WEIGHT_MAX_PCT, WEIGHT_MIN_PCT
     assert risk["weight_pct"].between(WEIGHT_MIN_PCT, WEIGHT_MAX_PCT).all()
     assert abs(risk["weight_pct"].sum() - 100) < 0.05
-    # Equal risk contribution: every stock carries ~1/N of portfolio variance (no bound binds here)
-    assert (risk["risk_contribution_pct"] - 100 / len(LOCKED_PORTFOLIO_SYMBOLS)).abs().max() < 0.1
+    # Equal risk contribution: the stocks inside the weight limits carry the same share of portfolio
+    # variance; a stock held at the 15% cap carries less (with 8 stocks the cap binds for the least volatile)
+    free = risk[risk["weight_pct"].between(WEIGHT_MIN_PCT + 0.01, WEIGHT_MAX_PCT - 0.01)]
+    capped = risk[risk["weight_pct"] >= WEIGHT_MAX_PCT - 0.01]
+    assert len(free) >= 2 and free["risk_contribution_pct"].max() - free["risk_contribution_pct"].min() < 0.5
+    assert (capped["risk_contribution_pct"] <= free["risk_contribution_pct"].min() + 0.5).all()
 
     check = pd.read_csv(OUTPUT_DIR / "locked_portfolio_runup_catalyst_check.csv")
     assert check["symbol"].tolist() == LOCKED_PORTFOLIO_SYMBOLS
@@ -126,7 +132,7 @@ def test_selection_ranking_matches_review_tables(review):
     eligible = review[review["selection_eligible"] == True]  # noqa: E712
     assert sorted(ranking["symbol"]) == sorted(eligible["symbol"])
     assert ranking["rs_6m_skip1m"].is_monotonic_decreasing
-    assert (ranking["held"] == ranking["symbol"].isin(LOCKED_PORTFOLIO_SYMBOLS)).all()
+    assert (ranking["locked"] == ranking["symbol"].isin(LOCKED_PORTFOLIO_SYMBOLS)).all()
 
 
 def test_holdings_are_exactly_the_selection_rule_picks():
@@ -135,3 +141,8 @@ def test_holdings_are_exactly_the_selection_rule_picks():
     ranking = pd.read_csv(OUTPUT_DIR / "selection_ranking.csv")
     assert len(LOCKED_PORTFOLIO_SYMBOLS) == PORTFOLIO_SIZE
     assert set(ranking[ranking["rule_pick"]]["symbol"]) == set(LOCKED_PORTFOLIO_SYMBOLS)
+    # Listed in rank order, so the money goes into the best-ranked INVESTED_COUNT and the reserve queue
+    # is the rest in rank order
+    from config import INITIAL_HOLDINGS, INVESTED_COUNT
+    picks = ranking[ranking["rule_pick"]]["symbol"].tolist()
+    assert picks == LOCKED_PORTFOLIO_SYMBOLS and INITIAL_HOLDINGS == picks[:INVESTED_COUNT]

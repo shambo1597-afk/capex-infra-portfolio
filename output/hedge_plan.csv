@@ -1,25 +1,25 @@
 metric,value,note
 Prices as of,2026-09-25,NSE F&O bhavcopy
-Portfolio value hedged (Rs),9693405,stocks at the latest close (97% sleeve)
+Portfolio value hedged (Rs),9696049,stocks at the latest close (97% sleeve)
 Nifty 50 spot,23140.5,
 Nifty lot size,65,NSE contract specification
-Regression sessions,246,"daily returns, portfolio vs Nifty 50"
-Minimum-variance hedge ratio h*,1.058,"cov(r_p, r_N50) / var(r_N50) = beta vs Nifty 50"
-Hedge effectiveness (R^2),0.36,share of portfolio variance a full futures hedge removes
-Downside beta (Nifty 50 down days),1.21,
-Tail beta (worst 10% of days),1.063,25 days with Nifty 50 <= -1.03%; s.e. 0.46
-Tail hedge ratio,1.21,"max(downside beta, h*): puts sized on the sell-off beta; the worst-10% beta is too noisy (few days)"
+Regression sessions,245,"daily returns, portfolio vs Nifty 50"
+Minimum-variance hedge ratio h*,0.994,"cov(r_p, r_N50) / var(r_N50) = beta vs Nifty 50"
+Hedge effectiveness (R^2),0.313,share of portfolio variance a full futures hedge removes
+Downside beta (Nifty 50 down days),1.083,
+Tail beta (worst 10% of days),0.873,25 days with Nifty 50 <= -1.03%; s.e. 0.51
+Tail hedge ratio,1.083,"max(downside beta, h*): puts sized on the sell-off beta; the worst-10% beta is too noisy (few days)"
 Futures: contract,NIFTY FUT 2026-11-23,longest listed expiry; a hedge to 2026-12-28 needs a roll
 Futures: price,23377.1,
-Futures: lots for a full hedge (exact),6.75,h* x value / (futures price x lot)
-Futures: lots for a full hedge (rounded),7,achieved hedge ratio 1.10
-Futures: notional (Rs),10636580,
-"Futures: margin needed (Rs, assumed)",1276390,ASSUMPTION 12% of notional; exceeds the hedge budget
+Futures: lots for a full hedge (exact),6.34,h* x value / (futures price x lot)
+Futures: lots for a full hedge (rounded),6,achieved hedge ratio 0.94
+Futures: notional (Rs),9117069,
+"Futures: margin needed (Rs, assumed)",1094048,ASSUMPTION 12% of notional; exceeds the hedge budget
 Puts: contract,NIFTY 2026-12-29 22000 PE,expiry covers the evaluation window
 Puts: premium,146.5,settlement price
-Puts: lots,8,tail hedge ratio x value / (spot x lot)
-Puts: cost (Rs),76180,0.76% of the principal
+Puts: lots,7,tail hedge ratio x value / (spot x lot)
+Puts: cost (Rs),66658,0.67% of the principal
 Puts: strike below spot (%),4.93,
-Hedge budget (Rs),306595,principal minus the stocks
-Cash after puts (Rs),230415,parked at the overnight rate (liquid ETF) for redeployment and the profit-trigger roll
+Hedge budget (Rs),303951,principal minus the stocks
+Cash after puts (Rs),237293,parked at the overnight rate (liquid ETF) for redeployment and the profit-trigger roll
 Profit trigger,+10%,"portfolio up 10%: roll the puts up to about 5% below the new Nifty level, funded from cash, to lock in part of the gain"

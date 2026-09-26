@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 
 from analysis import RISK_SUMMARY_COLUMNS, generate_portfolio_risk_summary
-from config import LOCKED_PORTFOLIO_SYMBOLS
+from config import INITIAL_HOLDINGS
 from stoploss import (
     apply_trailing_stop,
     compute_annualized_volatility,
@@ -170,8 +170,8 @@ class TestPortfolioRiskSummary:
 
     def test_locked_portfolio_without_data_falls_back_to_equal_weight(self):
         risk = generate_portfolio_risk_summary(pd.DataFrame(), pd.DataFrame(), output_csv_path=None)
-        assert risk["symbol"].tolist() == LOCKED_PORTFOLIO_SYMBOLS
-        assert (risk["weight_pct"] == round(100 / len(LOCKED_PORTFOLIO_SYMBOLS), 2)).all()
+        assert risk["symbol"].tolist() == INITIAL_HOLDINGS  # the invested stocks by default
+        assert (risk["weight_pct"] == round(100 / len(INITIAL_HOLDINGS), 2)).all()
         assert (risk["stop_loss_method"] == "unavailable").all()  # no data: no stop, no crash
 
 

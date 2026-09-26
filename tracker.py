@@ -6,7 +6,9 @@ what the portfolio holds. It is created once, at the close of the first session 
 EVALUATION_START_DATE: the stocks at that close with the current weights of the equity sleeve, and
 the tail-hedge puts of the hedge plan at that day's NSE settlement price. Everything later (real
 purchase prices, stop-loss exits, redeployments, the profit-trigger put roll) is recorded by editing
-the ledger; the tracker never trades on its own.
+the ledger; the tracker never trades on its own. The stocks held are the ledger's (the top
+INVESTED_COUNT of the 15 at the snapshot); when one closes at or below its stop, plan_replacements
+names the reserve stock its proceeds buy (output/replacement_plan.csv).
 
 Each session the portfolio is valued as
     stocks (shares x NSE close) + puts (lots x lot size x NSE settlement price) + cash,
@@ -35,6 +37,9 @@ from config import (
     RISK_SUMMARY_OUTPUT_CSV,
     HEDGE_MAX_ROLLS,
     HEDGE_PROFIT_TRIGGER_PCT,
+    INITIAL_HOLDINGS,
+    LOCKED_PORTFOLIO_SYMBOLS,
+    SELECTION_CONVICTION_TIERS,
     TAIL_HEDGE_OTM_PCT,
     TRADES_CSV,
 )
@@ -46,6 +51,8 @@ TRACKER_SUMMARY_CSV = OUTPUT_DIR / "tracker_summary.csv"
 TRACKER_POSITIONS_CSV = OUTPUT_DIR / "tracker_positions.csv"
 PUT_MARKS_CSV = DERIVATIVES_DIR / "option_marks.csv"
 HEDGE_ROLL_CSV = OUTPUT_DIR / "hedge_roll.csv"
+REPLACEMENT_PLAN_CSV = OUTPUT_DIR / "replacement_plan.csv"
+SELECTION_RANKING_CSV = OUTPUT_DIR / "selection_ranking.csv"
 MIN_DAYS_FOR_XIRR = 30  # annualising a few days' return gives meaningless four-digit rates
 LEDGER_COLUMNS = ["date", "instrument", "action", "quantity", "price", "note"]
 _OPTION = re.compile(r"^NIFTY (\d{4}-\d{2}-\d{2}) (\d+(?:\.\d+)?) (PE|CE)$")
@@ -99,6 +106,70 @@ def ledger_positions(ledger: pd.DataFrame) -> Dict[str, float]:
     signs = np.where(ledger["action"].str.upper() == "BUY", 1, -1)
     net = pd.Series(signs * ledger["quantity"].astype(float)).groupby(ledger["instrument"].values).sum()
     return {k: v for k, v in net.items() if v}
+
+
+def held_stocks(ledger: Optional[pd.DataFrame]) -> list:
+    """Stocks with shares held (net of sales), in LOCKED_PORTFOLIO order; before the snapshot, INITIAL_HOLDINGS."""
+    if ledger is None:
+        return list(INITIAL_HOLDINGS)
+    held = [inst for inst, qty in ledger_positions(ledger).items() if qty > 0 and not parse_option(inst)]
+    order = {s: i for i, s in enumerate(LOCKED_PORTFOLIO_SYMBOLS)}
+    return sorted(held, key=lambda s: (order.get(s, len(order)), s))
+
+
+def current_holdings() -> list:
+    """The stocks the money is in now: from the trade ledger once it exists, else INITIAL_HOLDINGS."""
+    return held_stocks(pd.read_csv(TRADES_CSV) if TRADES_CSV.exists() else None)
+
+
+def sold_stocks(ledger: Optional[pd.DataFrame]) -> set:
+    """Stocks the ledger shows a sale of: a stopped-out stock is never bought back."""
+    if ledger is None or ledger.empty:
+        return set()
+    sells = ledger[ledger["action"].str.upper() == "SELL"]["instrument"]
+    return {inst for inst in sells if not parse_option(inst)}
+
+
+def plan_replacements(positions: pd.DataFrame, ledger: pd.DataFrame, ranking: pd.DataFrame,
+                      closes: pd.Series) -> pd.DataFrame:
+    """
+    Stop-loss replacement rule. Each holding that closed at or below its stop is sold; the sale
+    proceeds (shares x today's close, an estimate of tomorrow's fill) buy whole shares of the first
+    stock in the reserve queue (LOCKED_PORTFOLIO order after the holdings) that is not held, has
+    never been sold, and still passes the selection rule today: listed in `ranking` (the eligible
+    stocks of output/selection_ranking.csv) with conviction in SELECTION_CONVICTION_TIERS. With no
+    such stock the proceeds wait in the liquid fund. Several stops on one day take the queue in turn.
+    """
+    columns = ["sell", "sell_shares", "sell_close", "stop_loss_price", "proceeds_inr", "buy", "buy_rank",
+               "buy_close", "buy_shares", "buy_inr", "cash_left_inr", "note"]
+    if positions.empty or not positions["stop_breached"].any():
+        return pd.DataFrame(columns=columns)
+    held = set(positions["symbol"])
+    sold = sold_stocks(ledger)
+    ok = ranking[ranking["conviction"].isin(SELECTION_CONVICTION_TIERS)] if "conviction" in ranking else ranking
+    passing = set(ok["symbol"])
+    queue = [s for s in LOCKED_PORTFOLIO_SYMBOLS if s not in held and s not in sold]
+    skipped = [s for s in queue if s not in passing]
+    queue = [s for s in queue if s in passing]
+    rows = []
+    for _, p in positions[positions["stop_breached"]].iterrows():
+        proceeds = float(p["shares"]) * float(p["close"])
+        row = {"sell": p["symbol"], "sell_shares": int(p["shares"]), "sell_close": float(p["close"]),
+               "stop_loss_price": float(p["stop_loss_price"]), "proceeds_inr": round(proceeds, 2)}
+        if queue:
+            buy = queue.pop(0)
+            price = float(closes[buy])
+            n = int(proceeds // price)
+            row.update({"buy": buy, "buy_rank": LOCKED_PORTFOLIO_SYMBOLS.index(buy) + 1, "buy_close": price,
+                        "buy_shares": n, "buy_inr": round(n * price, 2),
+                        "cash_left_inr": round(proceeds - n * price, 2),
+                        "note": ("skipped (fails the selection rule today): " + ", ".join(skipped)) if skipped else ""})
+        else:
+            row.update({"buy": None, "buy_rank": None, "buy_close": None, "buy_shares": 0, "buy_inr": 0.0,
+                        "cash_left_inr": round(proceeds, 2),
+                        "note": "no reserve stock passes the selection rule today: the proceeds wait in the liquid fund"})
+        rows.append(row)
+    return pd.DataFrame(rows, columns=columns)
 
 
 def initial_trades(snapshot: pd.Timestamp, closes: pd.Series, weights_pct: pd.Series, put_contract: Optional[str],
@@ -335,7 +406,7 @@ def run(as_of: Optional[date] = None, fetch=None) -> Optional[Dict[str, pd.DataF
     end = closes.index[closes.index <= end].max()
     ledger = ensure_ledger(closes, end, fetch)
     if ledger is None:
-        for path in (TRACKER_DAILY_CSV, TRACKER_SUMMARY_CSV, TRACKER_POSITIONS_CSV, HEDGE_ROLL_CSV):
+        for path in (TRACKER_DAILY_CSV, TRACKER_SUMMARY_CSV, TRACKER_POSITIONS_CSV, HEDGE_ROLL_CSV, REPLACEMENT_PLAN_CSV):
             path.unlink(missing_ok=True)
         return None
     factors = load_factor_series()
@@ -366,7 +437,12 @@ def run(as_of: Optional[date] = None, fetch=None) -> Optional[Dict[str, pd.DataF
         fo = (fetch or (lambda d: fetch_nifty_derivatives(d, use_cache=True, save=False)))(end.date())
     roll = plan_put_roll(s, ledger, end, fo, ratio)
     roll.to_csv(HEDGE_ROLL_CSV, index=False)
-    return {"daily": daily, "positions": positions, "summary": summary, "roll": roll}
+
+    # Stop-loss replacement: sell the stopped stock, buy the next reserve stock that still qualifies
+    ranking = pd.read_csv(SELECTION_RANKING_CSV) if SELECTION_RANKING_CSV.exists() else pd.DataFrame(columns=["symbol"])
+    replacements = plan_replacements(positions, ledger, ranking, closes.loc[end])
+    replacements.to_csv(REPLACEMENT_PLAN_CSV, index=False)
+    return {"daily": daily, "positions": positions, "summary": summary, "roll": roll, "replacements": replacements}
 
 
 if __name__ == "__main__":
@@ -381,3 +457,5 @@ if __name__ == "__main__":
         print(out["summary"].to_string(index=False))
         print(out["positions"].to_string(index=False))
         print(out["roll"].to_string(index=False))
+        if not out["replacements"].empty:
+            print(out["replacements"].to_string(index=False))

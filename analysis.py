@@ -18,7 +18,7 @@ import pandas as pd
 
 from config import (
     EQUITY_ALLOCATION_PCT,
-    LOCKED_PORTFOLIO_SYMBOLS,
+    INITIAL_HOLDINGS,
     PRINCIPAL_INR,
     RISK_SUMMARY_OUTPUT_CSV,
     STOP_LOSS_ATR_MULTIPLE,
@@ -319,7 +319,7 @@ def generate_portfolio_risk_summary(
         stock_data (pd.DataFrame): Consolidated historical OHLCV (Bhavcopy) data.
         technical_summary (pd.DataFrame): Output of generate_portfolio_summary(); supplies
             current_price and the support-based stop candidate (nearest_support).
-        symbols (List[str], optional): Stocks to include. Defaults to LOCKED_PORTFOLIO_SYMBOLS.
+        symbols (List[str], optional): Stocks to include. Defaults to INITIAL_HOLDINGS (the invested stocks).
         output_csv_path (Path, optional): Destination CSV; None skips saving.
         previous_stops (dict, optional): symbol -> stop from the previous review. A stop is
             only ever raised: a higher previous stop is kept ("trailed"), and one at or above
@@ -329,7 +329,7 @@ def generate_portfolio_risk_summary(
         pd.DataFrame: The risk summary, one row per symbol.
     """
     if symbols is None:
-        symbols = LOCKED_PORTFOLIO_SYMBOLS
+        symbols = INITIAL_HOLDINGS
 
     # Weights: equal risk contribution within WEIGHT_MIN_PCT..WEIGHT_MAX_PCT (weights.py). They are
     # weights of the equity sleeve (EQUITY_ALLOCATION_PCT of PRINCIPAL_INR); shares are whole shares of

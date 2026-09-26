@@ -15,12 +15,12 @@ Definitions (daily data, TRADING_DAYS_PER_YEAR sessions a year, risk-free = Nift
 The windows before the 28-Sep-2026 snapshot are a BACKTEST of today's portfolio (chosen with
 hindsight: its stocks were picked for strong past returns), not realised performance.
 
-GMVP: the global minimum variance portfolio of the 10 stocks (the leftmost point of the efficient
+GMVP: the global minimum variance portfolio of the invested stocks (the leftmost point of the efficient
 frontier), long-only and within the brief's 5-15% weight limits, compared with our weights and the
 tangency portfolio (volatility, mean return, Sharpe, effective number of stocks = 1 / sum w^2).
 
 CML: the line from the risk-free rate through the market portfolio (Nifty 500 TRI) in (sigma, E[r])
-space, E[r] = r_f + (E[r_m] - r_f) / sigma_m x sigma. Plotted with the 10 stocks, the long-only
+space, E[r] = r_f + (E[r_m] - r_f) / sigma_m x sigma. Plotted with the invested stocks, the long-only
 efficient frontier of the 11, its tangency (maximum-Sharpe) portfolio, and our portfolio.
 """
 
@@ -232,7 +232,7 @@ def plot_cml(cml: Dict[str, object], path=CML_PNG) -> None:
     ax.plot(xs * 100, (rf + tan_sharpe * xs) * 100, color="#2ca02c", lw=1.2, ls="--",
             label=f"Capital allocation line through the tangency (Sharpe {tan_sharpe:.2f})")
     ax.plot(frontier["sigma"] * 100, frontier["expected_return"] * 100, color="#555", lw=1.5,
-            label="Efficient frontier of the 10 stocks (long-only)")
+            label="Efficient frontier of the invested stocks (long-only)")
     styles = {"stock": ("o", "#999999", 40), "portfolio": ("*", "#d62728", 260), "market": ("s", "#1f77b4", 90),
               "tangency": ("D", "#2ca02c", 80), "risk_free": ("o", "#000000", 50),
               "gmvp": ("^", "#7c3aed", 90), "gmvp_bounded": ("v", "#7c3aed", 90)}

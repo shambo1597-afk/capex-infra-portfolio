@@ -396,9 +396,9 @@ def build_selection_ranking(tables: Dict[str, pd.DataFrame]) -> pd.DataFrame:
     table["selection_rank"] = range(1, len(table) + 1)
     table["conviction"] = [conviction_tier(a, b) for a, b in
                            zip(table["rrg_quadrant_vs_nifty500"], table["rrg_quadrant_vs_sector"])]
-    table["held"] = table["symbol"].isin(LOCKED_PORTFOLIO_SYMBOLS)
+    table["locked"] = table["symbol"].isin(LOCKED_PORTFOLIO_SYMBOLS)  # in the 15 tracked
     table["rule_pick"] = table["symbol"].isin(select_portfolio(table))
-    cols = ["selection_rank", "symbol", "company_name", "sector", "held", "rule_pick", "rs_6m_skip1m", "rs_score_vs_nifty500",
+    cols = ["selection_rank", "symbol", "company_name", "sector", "locked", "rule_pick", "rs_6m_skip1m", "rs_score_vs_nifty500",
             "di_gap", "latest_adx", "rrg_quadrant_vs_nifty500", "rrg_quadrant_vs_sector", "conviction",
             "soft_fundamental_fails", "business_focus_note"]
     return table[cols].reset_index(drop=True)

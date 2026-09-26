@@ -23,6 +23,9 @@ from config import (
     HISTORICAL_OHLCV_CSV,
     LOCKED_PORTFOLIO,
     LOCKED_PORTFOLIO_SYMBOLS,
+    SELECTION_CONVICTION_TIERS,
+    INVESTED_COUNT,
+    TRADES_CSV,
     OUTPUT_DIR,
     PORTFOLIO_SYMBOLS,
     EQUITY_ALLOCATION_PCT,
@@ -48,6 +51,7 @@ from config import (
 )
 from fetch_data import TRI_REDOWNLOAD_INSTRUCTIONS, TriStaleness, assess_tri_staleness, load_benchmark_tri
 from fundamentals import get_fundamentals_summary
+from tracker import REPLACEMENT_PLAN_CSV, held_stocks, sold_stocks
 from rrg import CONVICTION_HIGH, CONVICTION_LOW, CONVICTION_MODERATE, QUADRANT_STYLE, conviction_tier
 
 QUADRANT_COLOURS = {q: s["color"] for q, s in QUADRANT_STYLE.items()}
@@ -501,6 +505,24 @@ if not risk_df.empty:
 portfolio_df = portfolio_df.merge(rrg_df, on="symbol", how="left")
 missing_symbols = sorted(set(LOCKED_PORTFOLIO_SYMBOLS) - set(portfolio_df["symbol"]))
 
+# Status of each of the 15: the money is in the holdings (top 8 until a stop-loss replacement), the rest
+# wait in the reserve queue in rank order; a stopped-out stock never comes back
+_ledger = pd.read_csv(TRADES_CSV) if TRADES_CSV.exists() else None
+HELD = held_stocks(_ledger)
+SOLD = sold_stocks(_ledger)
+RESERVE_QUEUE = [s for s in LOCKED_PORTFOLIO_SYMBOLS if s not in HELD and s not in SOLD]
+
+
+def _status(symbol: str) -> str:
+    if symbol in HELD:
+        return "Invested"
+    if symbol in SOLD:
+        return "Sold (stop-loss)"
+    return f"Reserve #{RESERVE_QUEUE.index(symbol) + 1}" if symbol in RESERVE_QUEUE else "—"
+
+
+portfolio_df["status"] = portfolio_df["symbol"].map(_status)
+
 
 # -----------------------------------------------------------------------------
 # DATA FRESHNESS & REFRESH (always visible under the header)
@@ -725,7 +747,21 @@ with tab_overview:
             elif rv.get("status") == "no prices":
                 st.warning("Profit lock triggered, but NSE option prices for today are not available yet; refresh later.")
         if isinstance(t.get("stops_breached"), str) and t["stops_breached"].strip():
-            st.error(f"Stop-loss breached: {t['stops_breached']}. Sell per the rule and record the trade in data/trades.csv.")
+            plan = pd.read_csv(REPLACEMENT_PLAN_CSV) if REPLACEMENT_PLAN_CSV.exists() else pd.DataFrame()
+            lines = []
+            for _, r in plan.iterrows():
+                sell = (f"SELL {int(r['sell_shares']):,} {r['sell']} (closed ₹{r['sell_close']:,.2f}, stop "
+                        f"₹{r['stop_loss_price']:,.2f}; about {_inr(r['proceeds_inr'])})")
+                if isinstance(r.get("buy"), str) and r["buy"]:
+                    buy = (f"BUY {int(r['buy_shares']):,} {r['buy']} (reserve, rank #{int(r['buy_rank'])} of 15; "
+                           f"₹{r['buy_close']:,.2f}, about {_inr(r['buy_inr'])}); {_inr(r['cash_left_inr'])} stays in cash")
+                else:
+                    buy = "no reserve stock passes the selection rule today: the money waits in the liquid fund"
+                note = f" _{r['note']}_" if isinstance(r.get("note"), str) and r["note"] else ""
+                lines.append(f"- {sell} → {buy}.{note}")
+            st.error(f"**Stop-loss hit: {t['stops_breached']}.** Replace it from the reserve list:\n\n"
+                     + ("\n".join(lines) if lines else "- see output/replacement_plan.csv")
+                     + "\n\nPrices are today's closes (the fill will be tomorrow's price). Record both trades in data/trades.csv.")
         track = _out("tracker_daily.csv")
         if len(track) > 1:
             track["date"] = pd.to_datetime(track["date"])
@@ -789,20 +825,20 @@ with tab_overview:
         st.markdown(
             f"""
             <div class="metric-card">
-                <div class="metric-title">Portfolio Universe</div>
-                <div class="metric-value">{len(LOCKED_PORTFOLIO)} Stocks</div>
-                <div class="metric-sub">Locked for coursework defense</div>
+                <div class="metric-title">Locked list</div>
+                <div class="metric-value">{len(LOCKED_PORTFOLIO)} tracked &bull; {len(HELD)} invested</div>
+                <div class="metric-sub">{len(RESERVE_QUEUE)} in reserve: a stopped-out stock is replaced by the next one</div>
             </div>
             """,
             unsafe_allow_html=True,
         )
     with m_col2:
-        sector_counts = pd.Series([v["sector"] for v in LOCKED_PORTFOLIO.values()]).value_counts()
+        sector_counts = pd.Series([LOCKED_PORTFOLIO[s_]["sector"] for s_ in HELD if s_ in LOCKED_PORTFOLIO]).value_counts()
         sector_breakdown = " &bull; ".join(f"{sec} ({sector_counts.get(sec, 0)})" for sec in SECTOR_SCREENS)
         st.markdown(
             f"""
             <div class="metric-card">
-                <div class="metric-title">Sector Allocation</div>
+                <div class="metric-title">Sectors of the invested stocks</div>
                 <div class="metric-value">{len(SECTOR_SCREENS)} Sectors</div>
                 <div class="metric-sub">{sector_breakdown}</div>
             </div>
@@ -870,8 +906,9 @@ with tab_overview:
         "Capital Goods": "badge-capital-goods",
         "Power": "badge-power",
     }
+    invested_df = portfolio_df[portfolio_df["status"] == "Invested"]
     for sec in SECTOR_SCREENS:
-        sec_df = portfolio_df[portfolio_df["sector"] == sec]
+        sec_df = invested_df[invested_df["sector"] == sec]
         if sec_df.empty:
             continue
         st.markdown(
@@ -883,6 +920,33 @@ with tab_overview:
             unsafe_allow_html=True,
         )
         st.markdown(portfolio_table_html(sec_df), unsafe_allow_html=True)
+
+    # 3b. The reserve: tracked, no money yet; the first one still passing the selection rule replaces
+    # a stopped-out holding
+    reserve_df = portfolio_df[portfolio_df["status"] != "Invested"].copy()
+    if not reserve_df.empty:
+        ranking_path = OUTPUT_DIR / "selection_ranking.csv"
+        ranking = pd.read_csv(ranking_path) if ranking_path.exists() else pd.DataFrame(columns=["symbol", "conviction"])
+        rk = ranking.set_index("symbol")
+        passes = reserve_df["symbol"].map(lambda s_: s_ in rk.index and rk.loc[s_, "conviction"] in SELECTION_CONVICTION_TIERS)
+        st.markdown(f"### Reserve list ({len(RESERVE_QUEUE)} stocks, tracked, no money yet)")
+        st.caption(f"The money is in the top {INVESTED_COUNT} of the {len(LOCKED_PORTFOLIO_SYMBOLS)}. When a holding "
+                   "closes at or below its stop-loss, its sale proceeds buy the first reserve stock that still passes "
+                   "the selection rule that day (hard fundamentals, bullish trend with DI gap ≥ 2, one year of prices, "
+                   "RRG conviction High or Moderate). A stock that has been sold never comes back.")
+        show_res = pd.DataFrame({
+            "Queue": reserve_df["status"],
+            "Stock": reserve_df["symbol"],
+            "Name": reserve_df["display_name"],
+            "Sector": reserve_df["sector"],
+            "Price (₹)": reserve_df["current_price"].map(lambda x: f"{x:,.2f}" if pd.notna(x) else "—"),
+            "6-month RS (skip 1m)": reserve_df["symbol"].map(
+                lambda s_: f"{rk.loc[s_, 'rs_6m_skip1m']:+.1f} pp" if s_ in rk.index else "—"),
+            "Trend (DI gap)": reserve_df["di_gap"].map(lambda x: f"{x:+.2f}" if pd.notna(x) else "—"),
+            "Conviction": reserve_df["conviction_tier"].fillna("—"),
+            "Would be bought today?": passes.map({True: "Yes", False: "No: fails the rule today"}),
+        })
+        st.dataframe(show_res, hide_index=True, width="stretch", height=_fit_height(show_res))
 
     # 4. Screen exceptions: locked stocks that do not pass every screen (from the review tables)
     exceptions = []
@@ -1019,6 +1083,7 @@ with tab_technicals:
     # 1. Full Technical Summary Table with subtle trend_direction color tinting
     tech_table_df = pd.DataFrame({
         "Symbol": portfolio_df["symbol"],
+        "Status": portfolio_df["status"],
         "Name": portfolio_df["display_name"],
         "Sector": portfolio_df["sector"],
         "Current Price (₹)": portfolio_df["current_price"].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) else "—"),
@@ -1161,7 +1226,7 @@ with tab_technicals:
                 <strong>Expected return</strong> is CAPM: risk-free (Nifty 1D Rate, last quarter) + beta vs the Nifty 500 ×
                 {MARKET_RISK_PREMIUM_PCT:g}% India equity risk premium ({MARKET_RISK_PREMIUM_SOURCE}); the past year's average
                 return is shown next to it for comparison only (it is not a forecast). <strong>Weight</strong> is final: equal risk contribution within {WEIGHT_MIN_PCT:g}-{WEIGHT_MAX_PCT:g}%
-                (each of the {len(LOCKED_PORTFOLIO_SYMBOLS)} stocks carries the same share of portfolio variance, from one year
+                (each of the {len(HELD)} invested stocks carries the same share of portfolio variance, from one year
                 of daily returns). It needs no return forecast, which no signal provides reliably (research/momentum_study.py).
             </span>
             """,
@@ -1360,8 +1425,8 @@ with tab_risk:
             st.caption(
                 f"Market exposure: {stocks_total / PRINCIPAL_INR * 100:.1f}% in stocks (brief: at least 90%). "
                 f"The {100 - EQUITY_ALLOCATION_PCT:g}% reserve pays for the day-0 puts and one profit-trigger roll-up; "
-                "until then it sits in a liquid ETF earning the overnight rate, and it also funds redeployment "
-                "after a stop-loss exit. No commodity or other ETF: none has a clear role (copper and aluminium "
+                "until then it sits in a liquid ETF earning the overnight rate. A stop-loss exit is replaced from the reserve list "
+                "with its own sale proceeds (the rounding stays here). No commodity or other ETF: none has a clear role (copper and aluminium "
                 "are input costs for the cable and transformer makers; gold's crash-protection job is done more "
                 "directly by the Nifty puts)."
             )
@@ -1610,7 +1675,7 @@ with tab_performance:
         st.caption(
             "CML: E[r] = r_f + (E[r_m] - r_f)/σ_m × σ, through the Nifty 500 TRI. Over the past year the market returned less "
             "than the risk-free rate, so the CML slopes down (negative market Sharpe). Our portfolio plots far above it; "
-            "the dashed line through the tangency portfolio of the 10 stocks is the best risk-return trade-off they offered. "
+            "the dashed line through the tangency portfolio of the invested stocks is the best risk-return trade-off they offered. "
             "Ex-post: a chart of the past, not a forecast."
         )
         cmp_stats = _out("portfolio_weights_compared_stats.csv")
@@ -1618,7 +1683,7 @@ with tab_performance:
         if not cmp_stats.empty:
             st.markdown("### Global minimum variance portfolio (GMVP) vs our weights")
             st.caption(
-                "GMVP = the combination of the 10 stocks with the lowest possible volatility (the leftmost point of the "
+                "GMVP = the combination of the invested stocks with the lowest possible volatility (the leftmost point of the "
                 "efficient frontier, purple triangles on the chart), long-only and within the brief's weight limits. "
                 "Effective number of stocks = 1 / Σw² (how many equal positions the portfolio behaves like). Our equal-risk "
                 "weights give up a little volatility against the GMVP for broader diversification; the tangency portfolio "
