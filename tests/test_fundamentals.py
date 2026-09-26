@@ -190,3 +190,18 @@ class TestFundamentalsScreenCheck:
             generate_fundamentals_screen_check(["VOLTAMP", "FINCABLES"], output_csv_path=out)
         assert out.exists() and out.read_text().count("\n") == 3
 
+
+
+def test_empty_pledge_reply_does_not_overwrite_a_real_disclosure(tmp_path, monkeypatch):
+    import json
+    import fundamentals
+    cache = tmp_path / "XYZ.pledge.json"
+    real = {"comNameList": [{"a": 1}], "data": [{"shp": "30-Jun-2026", "percPromoterShares": "24.55"}]}
+    cache.write_text(json.dumps(real))
+
+    def fake_fetch(url, cache_path, label, use_cache=True, attempts=4):
+        cache_path.write_text(json.dumps({"comNameList": [], "data": []}))  # an NSE outage reply
+        return {"comNameList": [], "data": []}
+    monkeypatch.setattr(fundamentals, "_fetch_nse_json", fake_fetch)
+    assert fundamentals.fetch_pledged_percentage("XYZ", cache_dir=tmp_path, use_cache=False) == (24.55, "30-Jun-2026")
+    assert json.loads(cache.read_text()) == real

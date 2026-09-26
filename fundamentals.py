@@ -735,8 +735,22 @@ def fetch_pledged_percentage(
     not be reached, so a screen treats it as missing (a fail), never as zero.
     """
     url = NSE_PLEDGE_API_URL.format(symbol=urllib.parse.quote(symbol.upper(), safe=""))
-    payload = _fetch_nse_json(url, Path(cache_dir) / f"{symbol.upper()}.pledge.json", f"pledge data for {symbol}",
-                              use_cache=use_cache, attempts=attempts)
+    cache = Path(cache_dir) / f"{symbol.upper()}.pledge.json"
+    previous = None
+    if cache.exists():
+        try:
+            previous = json.loads(cache.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            previous = None
+    payload = _fetch_nse_json(url, cache, f"pledge data for {symbol}", use_cache=use_cache, attempts=attempts)
+    # NSE answers {"data": []} both for "no pledge disclosed" and, at times, for every symbol (an outage).
+    # An empty reply never overwrites a cached record that had data: keep the last real disclosure.
+    if (isinstance(payload, dict) and not payload.get("data")
+            and isinstance(previous, dict) and previous.get("data")):
+        logger.warning("NSE returned no pledge records for %s but the cache has a disclosure; keeping the cache.",
+                       symbol)
+        payload = previous
+        cache.write_text(json.dumps(previous), encoding="utf-8")
     if payload is None:
         return None, None
     if not isinstance(payload, dict) or "data" not in payload:
