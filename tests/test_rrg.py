@@ -150,6 +150,15 @@ class TestHardSoftAndSelection:
         assert ranking["symbol"].tolist() == ["C", "A"] and ranking["selection_rank"].tolist() == [1, 2]
         assert ranking.set_index("symbol").loc["C", "sector"] == "Power"
 
+    def test_select_portfolio_holds_the_sector_minimum_then_fills_by_rank(self):
+        from sector_screen import select_portfolio
+        ranking = pd.DataFrame({"symbol": ["A", "B", "C", "D", "E"],
+                                "sector": ["Capital Goods", "Capital Goods", "Power", "Cement", "Cement"]})
+        assert select_portfolio(ranking, size=3, sector_minimums={"Cement": 1}) == ["D", "A", "B"]
+        assert select_portfolio(ranking, size=3, sector_minimums={}) == ["A", "B", "C"]
+        # a sector with no eligible stock cannot fill its minimum: the slot goes by rank
+        assert select_portfolio(ranking.head(3), size=3, sector_minimums={"Cement": 1}) == ["A", "B", "C"]
+
 
 class TestEvaluationColumns:
     def test_di_gap_and_thin_flag_either_direction(self):

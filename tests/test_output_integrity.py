@@ -122,7 +122,9 @@ def test_selection_ranking_matches_review_tables(review):
     assert (ranking["held"] == ranking["symbol"].isin(LOCKED_PORTFOLIO_SYMBOLS)).all()
 
 
-def test_holdings_are_exactly_the_top_of_the_selection_ranking():
-    """The final portfolio is the top N of the ranking: no judgement-call exceptions."""
+def test_holdings_are_exactly_the_selection_rule_picks():
+    """The final portfolio is what the selection rule picks from the ranking: no judgement-call exceptions."""
+    from config import PORTFOLIO_SIZE
     ranking = pd.read_csv(OUTPUT_DIR / "selection_ranking.csv")
-    assert set(ranking.head(len(LOCKED_PORTFOLIO_SYMBOLS))["symbol"]) == set(LOCKED_PORTFOLIO_SYMBOLS)
+    assert len(LOCKED_PORTFOLIO_SYMBOLS) == PORTFOLIO_SIZE
+    assert set(ranking[ranking["rule_pick"]]["symbol"]) == set(LOCKED_PORTFOLIO_SYMBOLS)

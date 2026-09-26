@@ -147,23 +147,31 @@ def sector_of(symbol: str) -> str:
 
 # -----------------------------------------------------------------------------
 # LOCKED PORTFOLIO
-# The final 10 picks (decided 26-Sep-2026): exactly the top 10 of the selection rule in
-# sector_screen.py (output/selection_ranking.csv), with no judgement calls: pass the HARD fundamental
-# rules, bullish trend with a real DI gap (>= 2), ranked by 6-month relative strength excluding the
-# latest month, the ranking with the best (if modest) record in research/momentum_study.py.
-# Sector rotation follows from the rule: Cement (weakest sector momentum) and TATAPOWER / JKCEMENT /
-# APLAPOLLO (weakest 6-month RS among the earlier picks) rotated out, leaving Capital Goods (strongest
-# sector momentum) plus ACMESOLAR, the one holding with low correlation to the rest. Ten names (the
-# group's decision, inside the brief's 7-10): the list is frozen after 5-Oct-2026, so a stopped-out
-# position's money is redeployed into the remaining holdings. Soft-criteria exception (BEML: ROCE/OPM)
-# is shown on the dashboard. Names and sectors come from the constituent files.
+# The final 11 picks (decided 26-Sep-2026), exactly what the selection rule in sector_screen.py
+# (select_portfolio; output/selection_ranking.csv, column rule_pick) gives, with no judgement calls:
+#   eligible = pass the HARD fundamental rules and a bullish trend with a real DI gap (>= 2);
+#   ranked by 6-month relative strength excluding the latest month, the ranking with the best (if
+#   modest) record in research/momentum_study.py;
+#   the best-ranked eligible Cement stock (SECTOR_MIN_HOLDINGS), so all three sub-themes are held,
+#   then the next best-ranked names up to PORTFOLIO_SIZE (11: inside the brief's limit of 15).
+# Sector rotation follows from the ranking: Capital Goods has the strongest sector momentum; Cement
+# the weakest, so it holds only its minimum. NUVOCO is the only Cement stock passing both the hard
+# rules and the trend test (soft exception: ROCE); it is the 11th name, so the top 10 of the ranking stay
+# (a strong stock is not dropped for sector coverage, and the extra, less-correlated name lowers
+# portfolio volatility and tracking error). The list is
+# frozen after 5-Oct-2026, so a stopped-out position's money is redeployed into the remaining holdings.
+# Soft-criteria exceptions (BEML: ROCE/OPM; NUVOCO: ROCE) are shown on the dashboard.
 # -----------------------------------------------------------------------------
 
 LOCKED_PORTFOLIO_SYMBOLS = [
     "WELCORP", "TDPOWERSYS", "APARINDS", "QPOWER", "FINCABLES",    # Capital Goods
     "CARBORUNIV", "BEML", "VOLTAMP", "USHAMART",                   # Capital Goods
     "ACMESOLAR",                                                   # Power
+    "NUVOCO",                                                      # Cement
 ]
+
+PORTFOLIO_SIZE = 11
+SECTOR_MIN_HOLDINGS = {"Cement": 1}  # every sub-theme of the Cement / Capital Goods / Power theme is held
 
 LOCKED_PORTFOLIO = {
     symbol: {"sector": sector_of(symbol), "name": SYMBOL_NAME.get(symbol, symbol)}

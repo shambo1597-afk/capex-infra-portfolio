@@ -42,6 +42,8 @@ from config import (
     FUNDAMENTAL_HARD_FIELDS,
     HIGH_TURNOVER_ROCE_MIN,
     LOCKED_PORTFOLIO_SYMBOLS,
+    PORTFOLIO_SIZE,
+    SECTOR_MIN_HOLDINGS,
     OUTPUT_DIR,
     RRG_MOMENTUM_DAYS,
     RRG_MOMENTUM_SMOOTHING_DAYS,
@@ -371,10 +373,29 @@ def build_selection_ranking(tables: Dict[str, pd.DataFrame]) -> pd.DataFrame:
     table = table[table["selection_eligible"] == True].sort_values("rs_6m_skip1m", ascending=False)  # noqa: E712
     table["selection_rank"] = range(1, len(table) + 1)
     table["held"] = table["symbol"].isin(LOCKED_PORTFOLIO_SYMBOLS)
-    cols = ["selection_rank", "symbol", "company_name", "sector", "held", "rs_6m_skip1m", "rs_score_vs_nifty500",
+    table["rule_pick"] = table["symbol"].isin(select_portfolio(table))
+    cols = ["selection_rank", "symbol", "company_name", "sector", "held", "rule_pick", "rs_6m_skip1m", "rs_score_vs_nifty500",
             "di_gap", "latest_adx", "rrg_quadrant_vs_nifty500", "rrg_quadrant_vs_sector", "soft_fundamental_fails",
             "business_focus_note"]
     return table[cols].reset_index(drop=True)
+
+
+def select_portfolio(ranking: pd.DataFrame, size: int = PORTFOLIO_SIZE,
+                     sector_minimums: Optional[Dict[str, int]] = None) -> List[str]:
+    """
+    The selection rule's picks from a ranking (best first): for each sector in SECTOR_MIN_HOLDINGS,
+    its best-ranked eligible names up to the minimum; then the remaining slots by rank.
+    """
+    minimums = SECTOR_MIN_HOLDINGS if sector_minimums is None else sector_minimums
+    picks: List[str] = []
+    for sector, count in minimums.items():
+        picks += ranking[ranking["sector"] == sector]["symbol"].head(count).tolist()
+    for symbol in ranking["symbol"]:
+        if len(picks) >= size:
+            break
+        if symbol not in picks:
+            picks.append(symbol)
+    return picks
 
 
 def run_review_table(sector: str, output_csv: Path, as_of: Optional[date] = None) -> pd.DataFrame:
