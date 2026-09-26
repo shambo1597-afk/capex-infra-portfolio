@@ -52,8 +52,9 @@ from config import (
 )
 from fetch_data import TRI_REDOWNLOAD_INSTRUCTIONS, TriStaleness, assess_tri_staleness, load_benchmark_tri
 from fundamentals import get_fundamentals_summary
-from tracker import (LEDGER_COLUMNS, REPLACEMENT_PLAN_CSV, held_stocks, publish_ledger, replacement_trades, roll_trades,
-                     save_ledger, sold_stocks, whatsapp_update)
+from tracker import (LEDGER_COLUMNS, REPLACEMENT_PLAN_CSV, TRACKER_SUMMARY_CSV, held_stocks, ledger_fingerprint,
+                     publish_ledger, publish_ledger_via_api, replacement_trades, roll_trades, save_ledger, sold_stocks,
+                     whatsapp_update)
 from tracker import run as run_tracker
 from rrg import CONVICTION_HIGH, CONVICTION_LOW, CONVICTION_MODERATE, QUADRANT_STYLE, conviction_tier
 
@@ -489,6 +490,44 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# -----------------------------------------------------------------------------
+# DEPLOYMENT: local (full control) or Streamlit Community Cloud (shared with the group)
+# -----------------------------------------------------------------------------
+
+def _secret(name: str, default=None):
+    try:
+        return st.secrets.get(name, default)
+    except Exception:  # noqa: BLE001 - no secrets file when run locally
+        return default
+
+
+# Streamlit Community Cloud runs apps from /mount/src/<repo>; the DEPLOYMENT secret can force either mode
+ON_CLOUD = str(_secret("DEPLOYMENT", "cloud" if Path(__file__).resolve().as_posix().startswith("/mount/src")
+                       else "local")).lower() == "cloud"
+GITHUB_TOKEN = _secret("GITHUB_TOKEN")
+EDIT_PASSWORD = _secret("EDIT_PASSWORD")
+
+
+REFRESH_HINT = ("The web app updates automatically each weekday evening after the NSE close." if ON_CLOUD
+                else "Click Refresh all data to update.")
+
+
+def can_edit() -> bool:
+    """Locally anyone at the keyboard can record trades; on the shared web app only after the edit password."""
+    return (not ON_CLOUD) or bool(st.session_state.get("edit_unlocked"))
+
+
+# The P&L outputs follow the trade ledger: if the ledger changed since they were computed (a trade saved
+# on the web app, then the app reloaded from GitHub), recompute them once
+if TRADES_CSV.exists():
+    try:
+        _summary = pd.read_csv(TRACKER_SUMMARY_CSV) if TRACKER_SUMMARY_CSV.exists() else pd.DataFrame(columns=["metric"])
+        _done = dict(zip(_summary["metric"], _summary.get("value", pd.Series(dtype=object))))
+        if _done.get("ledger_sha1") != ledger_fingerprint():
+            run_tracker()
+    except Exception as _exc:  # noqa: BLE001 - show the stale figures rather than no page
+        st.warning(f"The P&L could not be recomputed from the latest trades ({_exc}); showing the last figures.")
+
 # Load data assets
 summary_df = load_summary_data(_file_mtime(SUMMARY_OUTPUT_CSV))
 ohlcv_df = load_historical_ohlcv(_file_mtime(HISTORICAL_OHLCV_CSV))
@@ -534,16 +573,26 @@ def _commit_trades(new_ledger: pd.DataFrame, message: str, refresh: bool) -> Non
     if problems:
         st.error("Not saved:\n\n" + "\n".join(f"- {p}" for p in problems))
         return
-    pushed = publish_ledger(message)
+    if GITHUB_TOKEN:
+        pushed = publish_ledger_via_api(message, GITHUB_TOKEN)
+    elif ON_CLOUD:
+        pushed = ("NOT saved to GitHub (no GITHUB_TOKEN secret): the web app will forget this trade when it "
+                  "restarts. Add the secret, then save again.")
+    else:
+        pushed = publish_ledger(message)
     try:
         run_tracker()
     except Exception as exc:  # noqa: BLE001 - the ledger is saved; the P&L catches up at the next refresh
         st.warning(f"Trades saved, but recomputing the P&L failed ({exc}); it will update at the next refresh.")
-    if refresh:
+    follow_up = ""
+    if refresh and not ON_CLOUD:
         start_background_refresh()
+        follow_up = " A full refresh has started so the weights, stops and hedge follow the new holdings."
+    elif refresh:
+        follow_up = (" The weights, stop-loss and hedge of the new stock appear after this evening's automatic "
+                     "refresh (about 7:30 pm IST).")
     st.cache_data.clear()
-    st.session_state["trades_saved"] = f"Trades saved. {pushed}" + (
-        " A full refresh has started so the weights, stops and hedge follow the new holdings." if refresh else "")
+    st.session_state["trades_saved"] = f"Trades saved. {pushed}{follow_up}"
     st.rerun()
 
 
@@ -592,11 +641,13 @@ def render_data_freshness() -> None:
             f"Prices through <strong>{price_date:%d-%b-%Y}</strong> &bull; "
             f"Fundamentals fetched <strong>{fund_date:%d-%b-%Y}</strong> &bull; "
             f"Nifty 500 TRI through <strong>{tri_last:%d-%b-%Y}</strong></div>"
-            if price_date and fund_date and tri_last else "<div>Some pipeline outputs are missing: click Refresh all data.</div>",
+            if price_date and fund_date and tri_last else f"<div>Some pipeline outputs are missing. {REFRESH_HINT}</div>",
             unsafe_allow_html=True,
         )
     with button_col:
-        if st.button("Refresh all data", disabled=state == "running", width="stretch",
+        if ON_CLOUD:
+            st.caption("Refreshed automatically every weekday evening after the NSE close (about 7:30 pm IST).")
+        elif st.button("Refresh all data", disabled=state == "running", width="stretch",
                      help="Re-downloads NSE prices, Screener.in fundamentals and new Nifty 500 TRI sessions, "
                           "then rebuilds every table and chart (about 5-10 minutes; needs internet). It runs in "
                           "the background: you can keep using or close this page."):
@@ -621,11 +672,11 @@ def render_data_freshness() -> None:
     elif state == "stalled":
         st.error(f"The refresh started at {pd.Timestamp(manifest['started']):%H:%M} IST stopped responding "
                  f"(no progress for over a minute) and will not finish; the app or computer was probably closed "
-                 f"or restarted. Click Refresh all data to run it again.")
+                 f"or restarted. {REFRESH_HINT}")
     elif state == "failed":
         st.error(f"The last data refresh failed at step: {manifest.get('failed_step')} "
                  f"(finished {pd.Timestamp(manifest['finished']):%d-%b %H:%M} IST). Some tables may be from different "
-                 "runs; click Refresh all data to try again.")
+                 f"runs. {REFRESH_HINT}")
         with st.expander("Show error details"):
             st.code("\n".join(manifest.get("error_tail") or read_log_tail(20)), language=None)
     elif state == "ok":
@@ -640,7 +691,7 @@ def render_data_freshness() -> None:
             st.warning(f"Last refresh: {warning}")
     if state != "running" and behind > 0:
         st.warning(f"Prices are {behind} trading day{'s' if behind > 1 else ''} old (latest expected session: "
-                   f"{expected:%d-%b-%Y}; exchange holidays are not modelled). Click Refresh all data to update.")
+                   f"{expected:%d-%b-%Y}; exchange holidays are not modelled). {REFRESH_HINT}")
 
 
 render_data_freshness()
@@ -758,7 +809,9 @@ with tab_overview:
                     + "). Prices: NSE settlement today."
                 )
                 roll_rows = roll_trades(roll_df, pd.Timestamp.now(tz="Asia/Kolkata").strftime("%Y-%m-%d"))
-                if not roll_rows.empty:
+                if not roll_rows.empty and not can_edit():
+                    st.caption("To record the roll, unlock editing in the Trade ledger section below.")
+                if not roll_rows.empty and can_edit():
                     with st.form("record_roll"):
                         st.markdown("**Done the roll? Record it** (edit the prices or quantities to your actual fills):")
                         edited_roll = st.data_editor(roll_rows, hide_index=True, width="stretch",
@@ -794,7 +847,9 @@ with tab_overview:
             st.error(f"**Stop-loss hit: {', '.join(plan['sell'])}.** Replace it from the reserve list:\n\n"
                      + ("\n".join(lines) if lines else "- see output/replacement_plan.csv")
                      + "\n\nPrices are today's closes (the fill will be tomorrow's price).")
-            if not plan.empty:
+            if not plan.empty and not can_edit():
+                st.caption("To record these trades, unlock editing in the Trade ledger section below.")
+            if not plan.empty and can_edit():
                 with st.form("record_replacement"):
                     st.markdown("**Done the trades? Record them here** (enter the actual fill prices):")
                     day = st.date_input("Trade date", value=pd.Timestamp.now(tz="Asia/Kolkata").date())
@@ -854,6 +909,18 @@ with tab_overview:
             st.caption(f"The ledger is created automatically at the {pd.Timestamp(EVALUATION_START_DATE):%d-%b-%Y} close "
                        "with the 8 invested stocks at that day's closing prices and the Nifty puts. After that, correct "
                        "the prices (and share counts) here to what you actually paid.")
+        elif not can_edit():
+            st.caption("The group can see the trades; recording or correcting them needs the edit password.")
+            st.dataframe(pd.read_csv(TRADES_CSV), hide_index=True, width="stretch")
+            if EDIT_PASSWORD:
+                pw = st.text_input("Edit password", type="password", key="edit_pw")
+                if pw:
+                    if pw == EDIT_PASSWORD:
+                        st.session_state["edit_unlocked"] = True
+                        st.rerun()
+                    st.error("Wrong password.")
+            else:
+                st.info("Editing is off on the web app: no EDIT_PASSWORD secret is set.")
         else:
             st.caption("Edit a cell to correct a price or quantity (for example your actual buy prices on the snapshot "
                        "day), or add a row at the bottom for a new trade. Actions are BUY or SELL; stocks by NSE symbol, "

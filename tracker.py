@@ -485,6 +485,49 @@ def roll_trades(roll: pd.DataFrame, day: str) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=LEDGER_COLUMNS)
 
 
+GITHUB_REPO = "shambo1597-afk/capex-infra-portfolio"
+
+
+def ledger_fingerprint() -> str:
+    """SHA-1 of data/trades.csv ('' without a ledger): tells whether the P&L outputs were computed from it."""
+    import hashlib
+
+    return hashlib.sha1(TRADES_CSV.read_bytes()).hexdigest() if TRADES_CSV.exists() else ""
+
+
+def publish_ledger_via_api(message: str, token: str, repo: str = GITHUB_REPO, branch: str = "main",
+                           session=None) -> str:
+    """
+    Commit data/trades.csv to GitHub through the contents API (for the Streamlit Cloud deployment, which has
+    no git credentials; the token needs Contents: read and write on the repo). Returns a one-line result;
+    failures are reported, never raised.
+    """
+    import base64
+
+    import requests
+
+    http = session or requests
+    url = f"https://api.github.com/repos/{repo}/contents/data/{TRADES_CSV.name}"
+    headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
+    try:
+        got = http.get(url, headers=headers, params={"ref": branch}, timeout=30)
+        body = {"message": message, "branch": branch,
+                "content": base64.b64encode(TRADES_CSV.read_bytes()).decode()}
+        if got.status_code == 200:
+            current = got.json()
+            if base64.b64decode(current.get("content", "")) == TRADES_CSV.read_bytes():
+                return f"GitHub {branch} already has these trades."
+            body["sha"] = current["sha"]
+        elif got.status_code != 404:
+            return f"Saved here only; GitHub refused ({got.status_code}): check the GITHUB_TOKEN secret."
+        put = http.put(url, headers=headers, json=body, timeout=30)
+        if put.status_code in (200, 201):
+            return f"Saved to GitHub ({branch}); the web app reloads with it in a minute or two."
+        return f"Saved here only; GitHub refused ({put.status_code}): check the GITHUB_TOKEN secret."
+    except Exception as exc:  # noqa: BLE001 - shown to the user, never fatal
+        return f"Saved here only; could not reach GitHub ({str(exc)[:120]})."
+
+
 def publish_ledger(message: str, branch: str = "main") -> str:
     """
     Commit data/trades.csv onto the remote branch without touching the working tree or the local branch
@@ -589,6 +632,8 @@ def run(as_of: Optional[date] = None, fetch=None) -> Optional[Dict[str, pd.DataF
     daily = value_portfolio(ledger, closes, factors, marks, end)
     positions = current_positions(ledger, closes, end)
     summary = summarise(daily, positions)
+    summary = pd.concat([summary, pd.DataFrame([{"metric": "ledger_sha1", "value": ledger_fingerprint()}])],
+                        ignore_index=True)
     daily.to_csv(TRACKER_DAILY_CSV, index=False)
     positions.to_csv(TRACKER_POSITIONS_CSV, index=False)
     summary.to_csv(TRACKER_SUMMARY_CSV, index=False)

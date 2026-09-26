@@ -318,3 +318,42 @@ def test_publish_ledger_pushes_only_the_ledger(tmp_path, monkeypatch):
     assert git("show", "main:other.txt", cwd=remote) == "committed"  # only the ledger was pushed
     assert (work / "other.txt").read_text() == "local edit, not for GitHub"  # working tree untouched
     assert tracker.publish_ledger("again").startswith("GitHub main already has")
+
+
+class _FakeResponse:
+    def __init__(self, status, payload=None):
+        self.status_code, self._payload = status, payload or {}
+
+    def json(self):
+        return self._payload
+
+
+class _FakeGitHub:
+    def __init__(self, existing=None):
+        self.existing, self.put_body = existing, None
+
+    def get(self, url, headers, params, timeout):
+        if self.existing is None:
+            return _FakeResponse(404)
+        import base64
+        return _FakeResponse(200, {"sha": "abc", "content": base64.b64encode(self.existing).decode()})
+
+    def put(self, url, headers, json, timeout):
+        self.put_body = json
+        return _FakeResponse(200)
+
+
+def test_publish_ledger_via_api(tmp_path, monkeypatch):
+    import base64
+    ledger = tmp_path / "trades.csv"
+    ledger.write_bytes(b"date,instrument,action,quantity,price,note\n2026-09-28,AAA,BUY,1,2.0,\n")
+    monkeypatch.setattr(tracker, "TRADES_CSV", ledger)
+    gh = _FakeGitHub(existing=b"old")
+    assert tracker.publish_ledger_via_api("msg", "t", session=gh).startswith("Saved to GitHub")
+    assert gh.put_body["sha"] == "abc" and base64.b64decode(gh.put_body["content"]) == ledger.read_bytes()
+    new_file = _FakeGitHub(existing=None)
+    tracker.publish_ledger_via_api("msg", "t", session=new_file)
+    assert "sha" not in new_file.put_body
+    same = _FakeGitHub(existing=ledger.read_bytes())
+    assert tracker.publish_ledger_via_api("msg", "t", session=same).startswith("GitHub main already has")
+    assert same.put_body is None
