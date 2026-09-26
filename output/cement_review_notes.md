@@ -1,6 +1,6 @@
 # Nifty Cement review table: notes
 
-`cement_full_review_table.csv` lists every Nifty Cement constituent (16 rows,
+`cement_full_review_table.csv` lists every Nifty Cement constituent (15 rows,
 none excluded), with live fundamentals and technicals as of 25-Sep-2026 (price window
 26-Sep-2025 to 25-Sep-2026). It is sorted by `fundamentals_passed_count` (descending),
 then `sector_rank` (ascending).
@@ -12,10 +12,10 @@ cumulative return minus the Nifty 500 price index's (NSE official closes), in pe
 Cement as a theme deserves capital at all, versus simply holding the index.
 **`rs_score_vs_sector_avg`** measures which Cement stock is best positioned relative to its
 Cement peers: the same 63-session return minus the equal-weighted average return of all
-16 constituents (-6.54% over this window). It is the relevant measure once the
+15 constituents (-6.40% over this window). It is the relevant measure once the
 decision to hold Cement exposure has been made, per the project's sector-rotation requirement.
 
-`sector_rank` ranks `rs_score_vs_sector_avg` from 1 (best) to 16 (worst); the spreads
+`sector_rank` ranks `rs_score_vs_sector_avg` from 1 (best) to 15 (worst); the spreads
 sum to approximately zero by construction.
 
 ## Full evaluation standard (applied to every row)

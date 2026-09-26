@@ -167,10 +167,14 @@ class TestReviewTable:
         # 63-day stock returns (%) in constituent order: AAA 10, BBB 2, CCC -4, DDD unavailable.
         # Sector average of the valid three = 8/3 = 2.667 -> spreads AAA +7.33, BBB -0.67, CCC -6.67
         returns = [(0.0, 10.0, 0.0), (0.0, 2.0, 0.0), (0.0, -4.0, 0.0), (float("nan"),) * 3]
+        # A full RRG history (78 sessions) each, so every valid return enters the sector average
+        dates = pd.bdate_range("2026-01-01", periods=80)
+        prices = pd.DataFrame([{"SYMBOL": s, "DATE1": d, "CLOSE_PRICE": 100.0}
+                               for s in ["AAA", "BBB", "CCC", "DDD"] for d in dates])
         with patch("sector_screen.evaluate_stock_technicals", side_effect=fake_tech), \
                 patch("sector_screen.compute_relative_strength", side_effect=returns), \
                 patch("sector_screen.get_fundamentals_summary", return_value=fundamentals) as live:
-            table = build_review_table(members, pd.DataFrame(), pd.DataFrame(), criteria)
+            table = build_review_table(members, prices, pd.DataFrame(), criteria)
 
         live.assert_called_once_with(["AAA", "BBB", "CCC", "DDD"], use_cache=False)
         # fundamentals_passed_count desc, then sector_rank asc: BBB (rank 2) beats CCC (rank 3)
@@ -323,13 +327,18 @@ def test_committed_review_table_sector_rs_properties(sector):
     n = len(members)
 
     assert sorted(table["symbol"]) == sorted(members["Symbol"])  # own universe only, each once
+    # Only stocks with the full RRG history (63 + 10 + 5 sessions) are in the sector average
+    in_avg = table["price_sessions"] >= 78
+    assert table.loc[~in_avg, ["rs_score_vs_sector_avg", "rs_momentum_vs_sector"]].isna().all().all()
+    ranked = table[in_avg]
+    k = len(ranked)
     # Values are stored to 2 decimals, so each carries up to 0.005 rounding error
-    assert abs(table["rs_score_vs_sector_avg"].sum()) <= n * 0.005 + 1e-9
-    gap = table["rs_score_vs_sector_avg"] - table["rs_score_vs_nifty500"]
+    assert abs(ranked["rs_score_vs_sector_avg"].sum()) <= k * 0.005 + 1e-9
+    gap = ranked["rs_score_vs_sector_avg"] - ranked["rs_score_vs_nifty500"]
     assert gap.max() - gap.min() <= 0.02 + 1e-9
-    assert sorted(table["sector_rank"]) == list(range(1, n + 1))
-    best_first = table.sort_values("rs_score_vs_sector_avg", ascending=False)["sector_rank"].tolist()
-    assert best_first == list(range(1, n + 1))
+    # Rank 1 = best; equal (rounded) spreads share the better rank
+    expected_rank = ranked["rs_score_vs_sector_avg"].rank(ascending=False, method="min")
+    assert (ranked["sector_rank"] == expected_rank).all() and ranked["sector_rank"].max() <= k
     expected_order = table.sort_values(["fundamentals_passed_count", "sector_rank"], ascending=[False, True])
     assert table["symbol"].tolist() == expected_order["symbol"].tolist()
 

@@ -287,8 +287,18 @@ def build_review_table(
         })
     table = pd.DataFrame(rows)
 
+    # Only stocks with the full RRG history (a 63-session window at every momentum offset) enter the
+    # sector average, the same members at every offset: for a recent listing compute_relative_strength
+    # falls back to the history it has, a shorter window than everyone else's
+    sessions = dict(zip(table["symbol"], table["price_sessions"]))
+    min_sessions = TECHNICAL_RS_LOOKBACK_DAYS + RRG_MOMENTUM_DAYS + RRG_MOMENTUM_SMOOTHING_DAYS
+
+    def _full_window(returns: Dict[str, float]) -> Dict[str, float]:
+        return {sym: (ret if sessions.get(sym, 0) >= min_sessions else float("nan"))
+                for sym, ret in returns.items()}
+
     # Within-sector relative strength vs the equal-weighted average of all constituents
-    sector_rs, sector_avg = compute_sector_relative_strength(stock_returns)
+    sector_rs, sector_avg = compute_sector_relative_strength(_full_window(stock_returns))
     table["rs_score_vs_sector_avg"] = table["symbol"].map(lambda sym: round(sector_rs[sym], 2)
                                                           if not pd.isna(sector_rs[sym]) else float("nan"))
     table["sector_rank"] = table["rs_score_vs_sector_avg"].rank(ascending=False, method="min").astype("Int64")
@@ -297,7 +307,7 @@ def build_review_table(
     # Momentum vs sector, smoothed exactly like the vs-Nifty-500 one: the sector spread is recomputed
     # for each window end, then the average of the latest RRG_MOMENTUM_SMOOTHING_DAYS minus the
     # average of the same number of days RRG_MOMENTUM_DAYS sessions earlier
-    spreads = {k: compute_sector_relative_strength(rets)[0] for k, rets in offset_returns.items()}
+    spreads = {k: compute_sector_relative_strength(_full_window(rets))[0] for k, rets in offset_returns.items()}
     now_k = range(RRG_MOMENTUM_SMOOTHING_DAYS)
     prev_k = range(RRG_MOMENTUM_DAYS, RRG_MOMENTUM_DAYS + RRG_MOMENTUM_SMOOTHING_DAYS)
 

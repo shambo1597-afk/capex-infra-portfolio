@@ -1610,7 +1610,7 @@ with tab_performance:
         st.caption(
             "CML: E[r] = r_f + (E[r_m] - r_f)/σ_m × σ, through the Nifty 500 TRI. Over the past year the market returned less "
             "than the risk-free rate, so the CML slopes down (negative market Sharpe). Our portfolio plots far above it; "
-            "the dashed line through the tangency portfolio of the 11 stocks is the best risk-return trade-off they offered. "
+            "the dashed line through the tangency portfolio of the 10 stocks is the best risk-return trade-off they offered. "
             "Ex-post: a chart of the past, not a forecast."
         )
         cmp_stats = _out("portfolio_weights_compared_stats.csv")
@@ -1618,7 +1618,7 @@ with tab_performance:
         if not cmp_stats.empty:
             st.markdown("### Global minimum variance portfolio (GMVP) vs our weights")
             st.caption(
-                "GMVP = the combination of the 11 stocks with the lowest possible volatility (the leftmost point of the "
+                "GMVP = the combination of the 10 stocks with the lowest possible volatility (the leftmost point of the "
                 "efficient frontier, purple triangles on the chart), long-only and within the brief's weight limits. "
                 "Effective number of stocks = 1 / Σw² (how many equal positions the portfolio behaves like). Our equal-risk "
                 "weights give up a little volatility against the GMVP for broader diversification; the tangency portfolio "

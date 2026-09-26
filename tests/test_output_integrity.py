@@ -81,7 +81,9 @@ def test_candidate_sweep_matches_review_tables(review):
     assert set(sweep["symbol"]) == set(PORTFOLIO_SYMBOLS) - set(LOCKED_PORTFOLIO_SYMBOLS)
     merged = sweep.merge(review, on="symbol", suffixes=("_s", "_r"))
     for col in ["rs_score_vs_sector_avg", "sector_rank", "fundamentals_passed_count"]:
-        assert ((merged[f"{col}_s"] - merged[f"{col}_r"]).abs() <= 0.011).all(), col
+        diff = (merged[f"{col}_s"] - merged[f"{col}_r"]).abs()
+        both_nan = merged[f"{col}_s"].isna() & merged[f"{col}_r"].isna()
+        assert ((diff <= 0.011) | both_nan).all(), col
 
 
 def test_price_history_is_one_window_without_duplicates():

@@ -75,36 +75,44 @@ A production-grade, mathematically transparent data pipeline and quantitative sc
 
 ## Portfolio Universe & Locked Portfolio
 
-**Universes.** Each sector universe starts from its official Nifty index constituent file in `data/index_constituents/` (niftyindices.com, downloaded 24-Sep-2026): Nifty Cement (16), Nifty Capital Goods (50) and Nifty Power (21). The official index is a starting point, not a limit: any stock whose business fits Cement, Capital Goods/EPC or Power can be added through `config.THEME_ADDITIONS`, and every addition must carry a `BUSINESS_FOCUS_NOTES` entry recording the business check. Current additions, all in Capital Goods: `LT` and `BHARATFORG` (from the Nifty Infrastructure index file, `ind_niftyinfralist.csv`; the rest of that index is ports, aviation, oil & gas, telecom, healthcare, realty, hotels or auto components) and `QPOWER` and `RRKABEL` (not in any index used here). That makes 16 + 54 + 21 = 91 stocks. Additions are screened with their sector's thresholds and ranked against the whole sector universe. The review tables' `source_index` column shows where each stock came from, and `business_focus_note` carries the theme-fit and conglomerate / classification notes (`LT`, `BHARATFORG`, `QPOWER`, `RRKABEL`, `GRASIM`).
+**Universe (single source of truth: three Screener.in exports, `data/screener/`, downloaded 26-Sep-2026).** `cement.csv` (42 rows), `capital_goods.csv` (887) and `power.csv` (49); `data/screener/SOURCE.md` records how they were exported. `config._read_screener` applies the same rules to every row, and the fundamentals (pledge, debt/equity, interest cover, ROCE, OPM, operating cash flow, market cap) come straight from those rows:
 
-**Locked portfolio (11 stocks, `config.LOCKED_PORTFOLIO`, final as of 26-Sep-2026).** Exactly the picks of the selection rule (`sector_screen.select_portfolio`; column `rule_pick` of `output/selection_ranking.csv`, rebuilt by every review run), with no judgement-call exceptions:
+- an NSE symbol and a market cap of at least Rs 5,000 crore (`config.UNIVERSE_MIN_MARKET_CAP_CR`);
+- Capital Goods only: no Aerospace & Defense group (`CAPITAL_GOODS_EXCLUDED_GROUPS`) and no industries outside the capex theme such as packaging, rubber, industrial glass, non-ferrous products, commercial vehicles, tractors and dealers (`CAPITAL_GOODS_EXCLUDED_INDUSTRIES`);
+- no InvITs (`NON_EQUITY_INSTRUMENTS`: INDIGRID, PGINVIT);
+- `config.THEME_EXCLUSIONS`: 20 names whose Screener industry sits inside Capital Goods but whose business is not capex/infra, in five stated groups: (1) EMS / electronics, (2) auto and consumer components, (3) defence and shipbuilding, (4) primary steel, (5) packaging and films.
 
-1. **Hard fundamental rules pass** (`config.FUNDAMENTAL_HARD_FIELDS`): pledged shares < 15%, debt/equity < 1.5, interest cover, market cap. These can turn a bad quarterly result into a crash, so they are never waived. Soft criteria (ROCE, OPM, one year's operating cash flow) describe business quality over years, are already in the price, and matter little over 3 months; failing them is an acceptable, displayed exception.
-2. **Bullish trend with a real DI gap** (+DI minus -DI of at least 2).
-3. **Ranked by 6-month relative strength vs the Nifty 500, excluding the latest month**, the ranking with the best (though modest) record in the 2020-2026 study (`research/momentum_study.py`).
-4. **Picks:** the best-ranked eligible Cement stock (`config.SECTOR_MIN_HOLDINGS`), so all three sub-themes are held, then the top of the ranking up to 11 (`config.PORTFOLIO_SIZE`).
+That leaves **139 stocks: Cement 15, Capital Goods 102, Power 22**. The review tables' `source_index` column shows each stock's Screener industry, and `business_focus_note` records the borderline theme calls (`GREAVESCOT`, `UTLSOLAR`, `RPEL`, `GRASIM`, `NAVA`, `RRKABEL`). Theme is the only constraint on the list: there are no per-sector quotas.
 
-| Rank | Stock | Sector | Note |
-| :---: | :--- | :--- | :--- |
-| 1 | `WELCORP` | Capital Goods | |
-| 2 | `TDPOWERSYS` | Capital Goods | |
-| 3 | `APARINDS` | Capital Goods | |
-| 4 | `ACMESOLAR` | Power | lowest correlation with the rest (0.21) |
-| 5 | `QPOWER` | Capital Goods | theme addition (not in a Nifty sector index) |
-| 6 | `FINCABLES` | Capital Goods | |
-| 7 | `CARBORUNIV` | Capital Goods | |
-| 8 | `BEML` | Capital Goods | soft exception: ROCE / OPM just under 8% |
-| 9 | `VOLTAMP` | Capital Goods | |
-| 10 | `USHAMART` | Capital Goods | |
-| 14 | `NUVOCO` | Cement | the Cement holding: only Cement stock passing the hard rules and the trend test; soft exception: ROCE |
+**Locked portfolio (10 stocks, `config.LOCKED_PORTFOLIO`; the list is frozen after 5-Oct-2026).** The selection rule (`sector_screen.select_portfolio`; column `rule_pick` of `output/selection_ranking.csv`, rebuilt by every review run):
 
-Sector rotation follows from the rule: Cement has the weakest sector momentum, so it holds only its one-stock minimum, and the weakest earlier picks (JKCEMENT, TATAPOWER, APLAPOLLO) rotated out. Eleven names (inside the brief's limit of 15): the Cement holding is added rather than swapped for USHAMART, which keeps a stronger stock and lowers portfolio volatility and tracking error; PTCIL, 11th in the ranking, is the first name outside. The stock list is frozen after 5-Oct-2026 with no swaps in or out: a stopped-out position's money goes into the remaining holdings.
+1. **Hard fundamental rules pass** (`config.FUNDAMENTAL_HARD_FIELDS`): pledged shares < 15%, debt/equity < 1.5, interest cover, market cap. These can turn a bad quarterly result into a crash, so they are never waived. Soft criteria (ROCE, OPM, one year's operating cash flow) describe business quality over years and matter little over 3 months; failing them is a displayed exception.
+2. **At least one year of trading history** (`config.MIN_HISTORY_SESSIONS` = 240 sessions), so every stock has a full year for the risk model and the 6-month ranking.
+3. **Bullish trend with a real DI gap** (+DI minus -DI of at least 2).
+4. **Ranked by 6-month relative strength vs the Nifty 500, excluding the latest month** (momentum from the literature, Jegadeesh & Titman; the 2020-2026 backtest in `research/momentum_study.py` is inconclusive for every signal tested, so no claim beyond the literature is made).
+5. **RRG conviction High or Moderate** (`config.SELECTION_CONVICTION_TIERS`): stocks WEAKENING or LAGGING against both the Nifty 500 and their sector average are skipped. Picks run down the ranking to 10 names (`config.PORTFOLIO_SIZE`; the brief allows 8-15).
+
+| Rank | Stock | Sector | Conviction | Note |
+| :---: | :--- | :--- | :--- | :--- |
+| 1 | `WELCORP` | Capital Goods | High | |
+| 2 | `RPEL` | Capital Goods | Moderate | refractory ramming mass for steel plants |
+| 3 | `SBCL` | Capital Goods | Moderate | rule pick, not yet in the locked list (see below) |
+| 8 | `ACMESOLAR` | Power | High | |
+| 10 | `FINCABLES` | Capital Goods | High | |
+| 11 | `GREAVESCOT` | Capital Goods | High | soft exception: OPM |
+| 13 | `ACE` | Capital Goods | High | |
+| 14 | `CARBORUNIV` | Capital Goods | Moderate | |
+| 15 | `GOODLUCK` | Capital Goods | Moderate | |
+| 16 | `BEML` | Capital Goods | High | soft exception: ROCE / OPM |
+| — | `UTLSOLAR` | Capital Goods | High | in the locked list; 211 sessions of history, under the one-year rule |
+
+Pending team decision: `config.LOCKED_PORTFOLIO` holds `UTLSOLAR` where the rule picks `SBCL`. No Cement stock passes the rule today; whether to add a Cement leg (NUVOCO) is a question for the professor.
 
 **Weights and allocation.** Equal risk contribution (`weights.py`): each stock carries the same share of portfolio variance $w_i (\Sigma w)_i / w^\top \Sigma w = 1/N$, with every weight bounded 5-15% (`config.WEIGHT_MIN_PCT`, `WEIGHT_MAX_PCT`) and $\Sigma$ from one year of daily returns. It needs no return forecast (none is reliable, `research/momentum_study.py`) and gives volatile names less capital. The weights apply to the 97% equity sleeve (`config.EQUITY_ALLOCATION_PCT`) of the Rs 1 crore principal; the other 3% is the hedge reserve (day-0 Nifty puts and one profit-trigger roll-up, see `risk_model.py`), held in a liquid ETF at the overnight rate until used. `output/portfolio_risk_summary.csv` gives the whole shares at the latest close, the amount invested and each stock's risk contribution. Recompute at the actual purchase prices.
 
 **Conviction tier** (dashboard badge, `rrg.conviction_tier`): **High** = LEADING vs both the Nifty 500 and the sector average; **Moderate** = LEADING in one view only, or IMPROVING in either; **Low conviction** = WEAKENING or LAGGING in both views.
 
-`config.LOCKED_PORTFOLIO` is the single definition used by the pipeline's risk summary, the dashboard, and `sector_screen.py` (`--locked-check`, and the exclusion list for `--tenth-sweep`).
+`config.LOCKED_PORTFOLIO` is the single definition used by the pipeline's risk summary, the live tracker, the dashboard, and `sector_screen.py` (`--locked-check`, and the exclusion list for `--tenth-sweep`).
 
 ---
 
@@ -182,7 +190,7 @@ Using a 20-day rolling window:
 - **Data:** `data/factors/daily_factors.csv` (Nifty 500 TRI, Nifty 50, 10-year G-sec, Nifty 1D Rate index, Brent) and `data/derivatives/nifty_fo_<date>.csv` (Nifty rows of the NSE F&O bhavcopy), both rebuilt by the refresh.
 
 ### 8. Performance & Capital Market Line (`performance.py`)
-Daily $r_p = \sum_i w_i r_i$ with today's weights, compounded $R = \prod (1 + r_t) - 1$; annualised $(1+R)^{252/n} - 1$ (the simple $R \times 252/n$ is shown too: the gap is the compounding effect). Sharpe $= (R_p - R_f)/\sigma_p$, Treynor $= (R_p - R_f)/\beta$, Jensen's $\alpha = R_p - [R_f + \beta (R_m - R_f)]$, XIRR from dated cash flows (negative for a loss), $R_f$ = Nifty 1D Rate index. CML through the Nifty 500 TRI, with the 11 stocks, their long-only efficient frontier, the tangency portfolio and the **global minimum variance portfolio (GMVP)**, long-only and within the 5-15% limits (`output/cml.png`). `output/portfolio_weights_compared*.csv` compares our weights with the GMVPs and the tangency portfolio (volatility, return, Sharpe, effective number of stocks $1/\sum w^2$, largest weight). Until the 28-Sep snapshot these are a backtest of a portfolio chosen with hindsight. From 20 trading days after the snapshot, a **Live** column adds the same metrics for the real portfolio (`performance.live_metrics`, from `output/tracker_daily.csv`: stocks + puts + cash vs the same Rs 1 crore in the Nifty 500 TRI, the liquid fund as risk-free).
+Daily $r_p = \sum_i w_i r_i$ with today's weights, compounded $R = \prod (1 + r_t) - 1$; annualised $(1+R)^{252/n} - 1$ (the simple $R \times 252/n$ is shown too: the gap is the compounding effect). Sharpe $= (R_p - R_f)/\sigma_p$, Treynor $= (R_p - R_f)/\beta$, Jensen's $\alpha = R_p - [R_f + \beta (R_m - R_f)]$, XIRR from dated cash flows (negative for a loss), $R_f$ = Nifty 1D Rate index. CML through the Nifty 500 TRI, with the 10 stocks, their long-only efficient frontier, the tangency portfolio and the **global minimum variance portfolio (GMVP)**, long-only and within the 5-15% limits (`output/cml.png`). `output/portfolio_weights_compared*.csv` compares our weights with the GMVPs and the tangency portfolio (volatility, return, Sharpe, effective number of stocks $1/\sum w^2$, largest weight). Until the 28-Sep snapshot these are a backtest of a portfolio chosen with hindsight. From 20 trading days after the snapshot, a **Live** column adds the same metrics for the real portfolio (`performance.live_metrics`, from `output/tracker_daily.csv`: stocks + puts + cash vs the same Rs 1 crore in the Nifty 500 TRI, the liquid fund as risk-free).
 
 **Q2 results calendar (Overview tab).** Each holding's September-quarter results date from NSE's board-meeting announcements (re-fetched when the cache is a day old): `reported` once the meeting has passed, else the announced date, else an estimate (last year's date + 364 days, the same weekday), labelled as such (`sector_screen.results_calendar_fields`, columns `q2_results_*` of `output/locked_portfolio_runup_catalyst_check.csv`). A warning appears when a holding reports within 7 days: results day is when a price can gap through its stop.
 
@@ -203,7 +211,7 @@ IAPFDOF/
 │   ├── raw_bhavcopy/             # Cached daily NSE Bhavcopy slices (bhav_DD-Mon-YYYY.csv)
 │   ├── fundamentals_cache/       # Cached company HTML pages from Screener.in
 │   ├── processed/                # Unified historical OHLCV dataset
-│   ├── index_constituents/       # Official Nifty Cement / Capital Goods / Power constituent files
+│   ├── screener/                 # Screener.in exports: cement, capital_goods, power (the universe)
 │   └── nifty500_tri.csv          # Official Nifty 500 Total Returns Index CSV
 ├── output/
 │   ├── portfolio_technical_summary.csv # Technical summary, one row per universe stock (91)
@@ -367,7 +375,7 @@ The automated fetch routine in `fetch_benchmark_tri_automated()` is completely w
 
 `python sector_screen.py` applies the brief's order ("technical analysis, then financial analysis") identically to each sector:
 
-1. **Universe:** the official Nifty Cement (16), Nifty Capital Goods (50) and Nifty Power (21) constituents, stored as downloaded from niftyindices.com in `data/index_constituents/`, plus the theme additions in `config.THEME_ADDITIONS` (see Portfolio Universe).
+1. **Universe:** the 139 stocks of the three Screener.in exports in `data/screener/` after the market-cap, industry and theme filters (see Portfolio Universe).
 2. **Technical screen (every constituent):** RS vs Nifty 500 over 63 sessions **> +2 pp** (a margin: RS is a 63-day cumulative spread and one day's return can move it by several points, so a bare `> 0` flips on noise) **and** trend direction (+DI vs −DI) Bullish, computed with the existing indicator pipeline on the complete Bhavcopy history. ADX is reported as a tiebreaker, not a cutoff.
 3. **Fundamental safety screen (technical passers only):** fetched live via `get_fundamentals_summary(..., use_cache=False)` (Screener.in for financials, NSE pledge disclosures for promoter pledge) and scored against the sector's criteria in `config.py`. A metric that cannot be read fails. These are deliberately **light, current-year solvency checks** for a 3-month tactical mandate, not a multi-year quality bar (no 3-year averages or growth):
 

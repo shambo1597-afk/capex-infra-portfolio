@@ -1,18 +1,17 @@
 name,kind,sigma,expected_return
 WELCORP,stock,0.426271,1.311989
-TDPOWERSYS,stock,0.548297,1.137014
-APARINDS,stock,0.467487,0.880580
-QPOWER,stock,0.551088,0.564867
+RPEL,stock,0.529514,1.127202
+UTLSOLAR,stock,0.465265,0.954928
 FINCABLES,stock,0.437361,0.687367
+GREAVESCOT,stock,0.446479,0.181868
+ACE,stock,0.335411,0.185882
 CARBORUNIV,stock,0.344400,0.395786
+GOODLUCK,stock,0.438386,0.402602
 BEML,stock,0.391046,0.042703
-VOLTAMP,stock,0.403492,0.519679
-USHAMART,stock,0.339576,0.205255
 ACMESOLAR,stock,0.378916,0.589825
-NUVOCO,stock,0.356939,-0.167092
-Our portfolio,portfolio,0.228262,0.518485
+Our portfolio,portfolio,0.233673,0.561897
 Nifty 500 TRI (market),market,0.141546,0.014313
-Tangency (max Sharpe of the 11),tangency,0.298800,1.064598
-GMVP (long-only),gmvp,0.214592,0.390580
-GMVP (5-15% limits),gmvp_bounded,0.219069,0.437271
+Tangency (max Sharpe of the 11),tangency,0.291706,1.063704
+GMVP (long-only),gmvp,0.219804,0.539880
+GMVP (5-15% limits),gmvp_bounded,0.228216,0.594023
 Risk-free (1D rate),risk_free,0.000000,0.052220
