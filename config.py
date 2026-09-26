@@ -147,21 +147,21 @@ def sector_of(symbol: str) -> str:
 
 # -----------------------------------------------------------------------------
 # LOCKED PORTFOLIO
-# The final 11 picks (decided 26-Sep-2026): exactly the top 11 of the selection rule in
+# The final 10 picks (decided 26-Sep-2026): exactly the top 10 of the selection rule in
 # sector_screen.py (output/selection_ranking.csv), with no judgement calls: pass the HARD fundamental
 # rules, bullish trend with a real DI gap (>= 2), ranked by 6-month relative strength excluding the
 # latest month, the ranking with the best (if modest) record in research/momentum_study.py.
 # Sector rotation follows from the rule: Cement (weakest sector momentum) and TATAPOWER / JKCEMENT /
 # APLAPOLLO (weakest 6-month RS among the earlier picks) rotated out, leaving Capital Goods (strongest
-# sector momentum) plus ACMESOLAR, the one holding with low correlation to the rest. Eleven names,
-# because the list is frozen after 5-Oct-2026: a stopped-out position's money is redeployed into the
-# remaining holdings. Soft-criteria exceptions (BEML: ROCE/OPM; PTCIL: last year's operating cash
-# flow) are shown on the dashboard. Names and sectors come from the constituent files.
+# sector momentum) plus ACMESOLAR, the one holding with low correlation to the rest. Ten names (the
+# group's decision, inside the brief's 7-10): the list is frozen after 5-Oct-2026, so a stopped-out
+# position's money is redeployed into the remaining holdings. Soft-criteria exception (BEML: ROCE/OPM)
+# is shown on the dashboard. Names and sectors come from the constituent files.
 # -----------------------------------------------------------------------------
 
 LOCKED_PORTFOLIO_SYMBOLS = [
     "WELCORP", "TDPOWERSYS", "APARINDS", "QPOWER", "FINCABLES",    # Capital Goods
-    "CARBORUNIV", "BEML", "VOLTAMP", "USHAMART", "PTCIL",          # Capital Goods
+    "CARBORUNIV", "BEML", "VOLTAMP", "USHAMART",                   # Capital Goods
     "ACMESOLAR",                                                   # Power
 ]
 
@@ -386,6 +386,16 @@ HIGH_TURNOVER_ROCE_MIN = 20.0
 TRADING_DAYS_PER_YEAR = 252
 
 PRINCIPAL_INR = 10_000_000  # Rs 1 crore
+
+# Share of the principal put into the stocks. The remaining 5% is the hedge budget (index put
+# premium or futures margin for the tail hedge), so the brief's >= 90% market exposure holds.
+EQUITY_ALLOCATION_PCT = 95.0
+
+# Stock weights (weights.py): equal risk contribution within the brief's bounds, from the
+# covariance of the trailing ~1 year of daily returns.
+WEIGHT_MIN_PCT = 5.0
+WEIGHT_MAX_PCT = 15.0
+WEIGHT_COV_LOOKBACK_DAYS = 252
 
 # Lookback for volatility / expected return: the trailing ~1 year of daily returns
 RISK_LOOKBACK_TRADING_DAYS = 252

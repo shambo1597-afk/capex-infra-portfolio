@@ -64,7 +64,11 @@ def test_locked_portfolio_outputs(review, technical_summary):
     assert risk["symbol"].tolist() == LOCKED_PORTFOLIO_SYMBOLS
     prices = technical_summary.set_index("symbol")["current_price"]
     assert (risk.set_index("symbol")["current_price"] == prices.loc[LOCKED_PORTFOLIO_SYMBOLS]).all()
-    assert (risk["weight_pct"] == round(100 / len(LOCKED_PORTFOLIO_SYMBOLS), 2)).all()
+    from config import WEIGHT_MAX_PCT, WEIGHT_MIN_PCT
+    assert risk["weight_pct"].between(WEIGHT_MIN_PCT, WEIGHT_MAX_PCT).all()
+    assert abs(risk["weight_pct"].sum() - 100) < 0.05
+    # Equal risk contribution: every stock carries ~1/N of portfolio variance (no bound binds here)
+    assert (risk["risk_contribution_pct"] - 100 / len(LOCKED_PORTFOLIO_SYMBOLS)).abs().max() < 0.1
 
     check = pd.read_csv(OUTPUT_DIR / "locked_portfolio_runup_catalyst_check.csv")
     assert check["symbol"].tolist() == LOCKED_PORTFOLIO_SYMBOLS
@@ -100,12 +104,14 @@ def test_every_holding_passes_the_hard_fundamental_rules(review):
 
 
 def test_allocation_of_the_principal():
-    from config import PRINCIPAL_INR
+    from config import EQUITY_ALLOCATION_PCT, PRINCIPAL_INR
+    equity_inr = PRINCIPAL_INR * EQUITY_ALLOCATION_PCT / 100
     risk = pd.read_csv(RISK_SUMMARY_OUTPUT_CSV)
-    assert (risk["shares"] == (PRINCIPAL_INR * risk["weight_pct"] / 100 // risk["current_price"])).all()
+    assert (risk["shares"] == (equity_inr * risk["weight_pct"] / 100 // risk["current_price"])).all()
     assert (risk["invested_inr"] - risk["shares"] * risk["current_price"]).abs().max() < 0.01
     invested = risk["invested_inr"].sum()
-    assert 0.98 * PRINCIPAL_INR <= invested <= PRINCIPAL_INR  # whole shares leave only a little cash
+    assert 0.98 * equity_inr <= invested <= equity_inr  # whole shares leave only a little rounding cash
+    assert invested >= 0.90 * PRINCIPAL_INR  # the brief's minimum market exposure
 
 
 def test_selection_ranking_matches_review_tables(review):

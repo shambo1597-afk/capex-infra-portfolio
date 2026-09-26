@@ -1,8 +1,8 @@
 {
   "as_of": "2026-09-26",
-  "started": "2026-09-26T07:29:31+05:30",
+  "started": "2026-09-26T07:56:40+05:30",
   "status": "ok",
-  "pid": 1650,
+  "pid": 2760,
   "total_steps": 6,
   "step_names": [
     "Nifty 500 TRI (niftyindices.com)",
@@ -13,8 +13,8 @@
     "Candidate sweep"
   ],
   "expected_seconds": {
-    "Nifty 500 TRI (niftyindices.com)": 17,
-    "Prices, technicals and risk summary": 6,
+    "Nifty 500 TRI (niftyindices.com)": 56,
+    "Prices, technicals and risk summary": 5,
     "Technical-first sector screens": 41,
     "Review tables, RRG and plots": 185,
     "Locked-portfolio run-up check": 4,
@@ -23,23 +23,23 @@
   "steps": [
     {
       "name": "Nifty 500 TRI (niftyindices.com)",
-      "returncode": 0,
-      "seconds": 56
+      "returncode": 1,
+      "seconds": 147
     },
     {
       "name": "Prices, technicals and risk summary",
       "returncode": 0,
-      "seconds": 5
+      "seconds": 6
     },
     {
       "name": "Technical-first sector screens",
       "returncode": 0,
-      "seconds": 41
+      "seconds": 45
     },
     {
       "name": "Review tables, RRG and plots",
       "returncode": 0,
-      "seconds": 185
+      "seconds": 190
     },
     {
       "name": "Locked-portfolio run-up check",
@@ -52,9 +52,12 @@
       "seconds": 5
     }
   ],
-  "heartbeat": "2026-09-26T07:34:28+05:30",
+  "heartbeat": "2026-09-26T08:03:17+05:30",
   "current_step": 6,
   "current_step_name": "Candidate sweep",
-  "current_step_started": "2026-09-26T07:34:22+05:30",
-  "finished": "2026-09-26T07:34:28+05:30"
+  "current_step_started": "2026-09-26T08:03:11+05:30",
+  "warnings": [
+    "Nifty 500 TRI (niftyindices.com) failed; the dashboard keeps the existing TRI file. Last output: RuntimeError: niftyindices.com rejected 4 browser sessions (Akamai bot protection); last: TimeoutError: Page.wait_for_function: Timeout 20000ms exceeded."
+  ],
+  "finished": "2026-09-26T08:03:17+05:30"
 }

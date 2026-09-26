@@ -77,7 +77,7 @@ A production-grade, mathematically transparent data pipeline and quantitative sc
 
 **Universes.** Each sector universe starts from its official Nifty index constituent file in `data/index_constituents/` (niftyindices.com, downloaded 24-Sep-2026): Nifty Cement (16), Nifty Capital Goods (50) and Nifty Power (21). The official index is a starting point, not a limit: any stock whose business fits Cement, Capital Goods/EPC or Power can be added through `config.THEME_ADDITIONS`, and every addition must carry a `BUSINESS_FOCUS_NOTES` entry recording the business check. Current additions, all in Capital Goods: `LT` and `BHARATFORG` (from the Nifty Infrastructure index file, `ind_niftyinfralist.csv`; the rest of that index is ports, aviation, oil & gas, telecom, healthcare, realty, hotels or auto components) and `QPOWER` and `RRKABEL` (not in any index used here). That makes 16 + 54 + 21 = 91 stocks. Additions are screened with their sector's thresholds and ranked against the whole sector universe. The review tables' `source_index` column shows where each stock came from, and `business_focus_note` carries the theme-fit and conglomerate / classification notes (`LT`, `BHARATFORG`, `QPOWER`, `RRKABEL`, `GRASIM`).
 
-**Locked portfolio (11 stocks, `config.LOCKED_PORTFOLIO`, final as of 26-Sep-2026).** Exactly the top 11 of the selection rule, with no judgement-call exceptions (`output/selection_ranking.csv`, rebuilt by every review run):
+**Locked portfolio (10 stocks, `config.LOCKED_PORTFOLIO`, final as of 26-Sep-2026).** Exactly the top 10 of the selection rule, with no judgement-call exceptions (`output/selection_ranking.csv`, rebuilt by every review run):
 
 1. **Hard fundamental rules pass** (`config.FUNDAMENTAL_HARD_FIELDS`): pledged shares < 15%, debt/equity < 1.5, interest cover, market cap. These can turn a bad quarterly result into a crash, so they are never waived. Soft criteria (ROCE, OPM, one year's operating cash flow) describe business quality over years, are already in the price, and matter little over 3 months; failing them is an acceptable, displayed exception.
 2. **Bullish trend with a real DI gap** (+DI minus -DI of at least 2).
@@ -95,11 +95,10 @@ A production-grade, mathematically transparent data pipeline and quantitative sc
 | 8 | `BEML` | Capital Goods | soft exception: ROCE / OPM just under 8% |
 | 9 | `VOLTAMP` | Capital Goods | |
 | 10 | `USHAMART` | Capital Goods | |
-| 11 | `PTCIL` | Capital Goods | soft exception: negative operating cash flow last year |
 
-Sector rotation follows from the rule: Cement (weakest sector momentum) and the weakest earlier picks (JKCEMENT, TATAPOWER, APLAPOLLO) rotated out. Eleven names because the stock list is frozen after 5-Oct-2026 with no swaps in or out: a stopped-out position's money goes into the remaining holdings.
+Sector rotation follows from the rule: Cement (weakest sector momentum) and the weakest earlier picks (JKCEMENT, TATAPOWER, APLAPOLLO) rotated out. Ten names (the group's choice, inside the brief's 7-10); PTCIL, 11th in the ranking, is the first name outside. The stock list is frozen after 5-Oct-2026 with no swaps in or out: a stopped-out position's money goes into the remaining holdings.
 
-**Weights and allocation.** Equal weight, 1/11 = 9.09% each: with no reliable return forecast, 1/N avoids the estimation error of optimised weights. `output/portfolio_risk_summary.csv` gives the whole shares of each Rs 9.09 lakh slice of the Rs 1 crore principal (`config.PRINCIPAL_INR`) at the latest close, and the amount invested; the dashboard shows the total deployed and the cash left. Recompute at the actual purchase prices.
+**Weights and allocation.** Equal risk contribution (`weights.py`): each stock carries the same share of portfolio variance $w_i (\Sigma w)_i / w^\top \Sigma w = 1/N$, with every weight bounded 5-15% (`config.WEIGHT_MIN_PCT`, `WEIGHT_MAX_PCT`) and $\Sigma$ from one year of daily returns. It needs no return forecast (none is reliable, `research/momentum_study.py`) and gives volatile names less capital. The weights apply to the 95% equity sleeve (`config.EQUITY_ALLOCATION_PCT`) of the Rs 1 crore principal; the other 5% is the hedge budget. `output/portfolio_risk_summary.csv` gives the whole shares at the latest close, the amount invested and each stock's risk contribution. Recompute at the actual purchase prices.
 
 **Conviction tier** (dashboard badge, `rrg.conviction_tier`): **High** = LEADING vs both the Nifty 500 and the sector average; **Moderate** = LEADING in one view only, or IMPROVING in either; **Low conviction** = WEAKENING or LAGGING in both views.
 
@@ -161,7 +160,7 @@ Using a 20-day rolling window:
 - **Daily returns:** $r_t = \text{Close}_t / \text{PrevClose}_t - 1$ over the trailing 252 sessions, using NSE's `PREV_CLOSE` so every return is a true one-session move even when sessions are missing from the local history. NSE does **not** adjust Bhavcopy prices for splits, bonuses or demergers (a 1-for-10 split shows as a -90% day), so `corporate_actions.py` scales every earlier price by each action's factor, taken from NSE's corporate-action records, before any indicator is computed.
 - **Volatility:** sample standard deviation $\sigma_d$ of daily returns; annualized as $\sigma_d\sqrt{252}$.
 - **Historical expected return (placeholder):** mean daily return $\times 252$. May be replaced by a CAPM-implied return once portfolio beta is computed.
-- **Weight (placeholder):** equal weighting (final), $100/N$ per stock ($100/11 = 9.09\%$ for the 11 picks), until formal weight assignment within the capping constraints is completed.
+- **Weight:** equal risk contribution within 5-15% (`weights.py`), final.
 - **ATR:** $\text{TR}_t = \max(H_t - L_t,\ |H_t - \text{PrevClose}_t|,\ |L_t - \text{PrevClose}_t|)$, Wilder-smoothed over 14 sessions.
 - **Stop-loss (3-month mandate):** sized for about one month and trailed at monthly reviews, rather than sized for the whole quarter. A 63-session volatility stop would sit roughly 19-41% below price for these stocks, a bigger loss than a 3-month tactical trade is expected to earn.
   1. *Base stop:* $P - 3 \times \text{ATR}_{14}$. Three ATRs is close to a one-month, one-standard-deviation move (JKCEMENT: 3 ATR = 8.5% vs $\sigma_{annual}\sqrt{21/252}$ = 9.4%), so the stop sits just outside ordinary noise.
@@ -260,7 +259,7 @@ The web dashboard loads instantly from the existing CSV outputs already in the r
 **Keeping the dashboard current.** Under the header the dashboard shows the price date, the fundamentals date and the last refresh time, shows how current the Nifty 500 TRI is, warns when prices are older than the latest published NSE session, and has a **Refresh all data** button that runs `refresh_data.py`: it appends new TRI sessions from niftyindices.com (`fetch_data.py --update-tri`; if the site's bot protection blocks it, the refresh continues and the header shows a warning) and then runs all pipeline steps for one end date (about 5-10 minutes, needs internet). The same refresh can be run from a terminal with `python refresh_data.py`.
 
 ### Dashboard Architecture (5 Tabs)
-1. **Portfolio Overview:** the 11 locked stocks grouped by sector, one row each with the RRG conviction badge and every field the brief requires: volatility, expected return (historical average, placeholder pending CAPM), weight (placeholder pending final weight assignment), stop-loss with its method, ADX, RS vs Nifty 500, RSI and support/resistance; followed by the screen exceptions.
+1. **Portfolio Overview:** the 10 locked stocks grouped by sector, one row each with the RRG conviction badge and every field the brief requires: volatility, expected return (historical average, placeholder pending CAPM), weight (equal risk contribution), stop-loss with its method, ADX, RS vs Nifty 500, RSI and support/resistance; followed by the screen exceptions.
 2. **Fundamentals:** Fundamentals of the locked picks (Market Cap, Price, ROCE, 3-Yr Avg ROCE, ROE, Debt/Equity, Operating Cash Flow, OPM, Interest Coverage, Pledged %, 3-Yr Sales and Profit Growth) plus each sector's safety-screen thresholds, read from `config.SECTOR_SCREENS`, scraped directly from Screener.in company pages by `fundamentals.py` and cached under `data/fundamentals_cache/`.
 3. **Technicals:** technical table for the locked stocks (RSI, ADX, trend, DI gap, RS, both RRG quadrants, conviction tier, support/resistance), the embedded RRG plots (combined vs Nifty 500, and a per-sector selector), a separate **Risk, Sizing & Stop-Loss** section (volatility, placeholder expected return and weight, ATR, stop-loss and its method), and an interactive 1-year OHLCV line chart with horizontal Support and Resistance reference levels.
 4. **Risk & Hedging:** *(Module in Progress)* Beta regression, explained/unexplained risk decomposition, and hedge ratio analysis.
@@ -401,7 +400,8 @@ It also saves `output/portfolio_risk_summary.csv`, one row per locked portfolio 
 | `symbol`, `sector`, `current_price` | String / Float (INR) | As above. |
 | `annualized_volatility_pct` | Float (%) | Sample std. dev. of daily returns x sqrt(252). |
 | `historical_expected_return_pct` | Float (%) | **Placeholder:** mean daily return x 252 (may become CAPM-implied). |
-| `weight_pct` | Float (%) | **Placeholder:** equal weight (100/N; 9.09% for 11 stocks) pending formal weight assignment. |
+| `weight_pct` | Float (%) | Equal-risk-contribution weight within 5-15% of the equity sleeve (`weights.py`). |
+| `risk_contribution_pct` | Float (%) | Share of portfolio variance carried by the stock (10% each when no bound binds). |
 | `atr_14`, `atr_pct` | Float (INR / %) | 14-session Wilder ATR, in rupees and as % of price. |
 | `stop_loss_price` | Float (INR) | Price - 3 ATR, or just below a support level up to 1 ATR beyond that; trailed across reviews. |
 | `stop_loss_pct_below_current` | Float (%) | Distance of the stop below the current price. |

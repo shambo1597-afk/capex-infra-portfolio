@@ -9,7 +9,7 @@ selection_rank,symbol,company_name,sector,held,rs_6m_skip1m,rs_score_vs_nifty500
 8,BEML,BEML Ltd.,Capital Goods,True,24.49,20.87,2.72,25.75,LEADING,LEADING,ROCE > 8%; OPM > 8%,
 9,VOLTAMP,Voltamp Transformers Ltd,Capital Goods,True,18.25,7.96,2.41,23.25,WEAKENING,WEAKENING,,
 10,USHAMART,Usha Martin Ltd.,Capital Goods,True,14.08,8.84,8.56,16.72,LEADING,LEADING,,
-11,PTCIL,PTC Industries Ltd.,Capital Goods,True,9.49,28.58,6.19,41.86,LEADING,LEADING,Cash from operations last year > 0 (Rs Cr),
+11,PTCIL,PTC Industries Ltd.,Capital Goods,False,9.49,28.58,6.19,41.86,LEADING,LEADING,Cash from operations last year > 0 (Rs Cr),
 12,ENRIN,Siemens Energy India Ltd.,Capital Goods,False,9.35,-5.83,3.92,14.94,IMPROVING,IMPROVING,,
 13,KAYNES,Kaynes Technology India Ltd.,Capital Goods,False,4.24,17.57,2.69,17.48,WEAKENING,LEADING,Cash from operations last year > 0 (Rs Cr),
 14,NUVOCO,Nuvoco Vistas Corporation Ltd.,Cement,False,0.97,12.01,5.52,14.91,LEADING,LEADING,ROCE > 8%,

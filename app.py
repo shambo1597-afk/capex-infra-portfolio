@@ -25,7 +25,10 @@ from config import (
     LOCKED_PORTFOLIO_SYMBOLS,
     OUTPUT_DIR,
     PORTFOLIO_SYMBOLS,
+    EQUITY_ALLOCATION_PCT,
     PRINCIPAL_INR,
+    WEIGHT_MAX_PCT,
+    WEIGHT_MIN_PCT,
     SECTOR_SCREENS,
     RISK_SUMMARY_OUTPUT_CSV,
     STOP_LOSS_ATR_MULTIPLE,
@@ -424,7 +427,7 @@ def portfolio_table_html(df: pd.DataFrame) -> str:
         "<tr><th>Stock</th><th>Conviction (RRG)</th><th>Price (₹)</th>"
         "<th>Volatility<span class='sub'>annualised</span></th>"
         "<th>Expected return<span class='sub ph'>Historical average (placeholder pending CAPM)</span></th>"
-        "<th>Weight<span class='sub'>equal (1/N) · shares · ₹</span></th>"
+        "<th>Weight<span class='sub'>equal-risk · shares · ₹</span></th>"
         "<th>Stop-loss (₹)<span class='sub'>% below · method</span></th>"
         f"<th>ADX (14)</th><th>RS vs Nifty 500<span class='sub'>{TECHNICAL_RS_LOOKBACK_DAYS} sessions</span></th><th>RSI (14)</th>"
         "<th>Support / Resistance (₹)</th></tr>"
@@ -649,7 +652,7 @@ with tab_overview:
             <div class="metric-card">
                 <div class="metric-title">Capital Deployed</div>
                 <div class="metric-value">₹{invested_total / 1e5:,.2f} L of ₹{PRINCIPAL_INR / 1e5:,.0f} L</div>
-                <div class="metric-sub">{invested_total / PRINCIPAL_INR * 100:.2f}% invested &bull; cash ₹{PRINCIPAL_INR - invested_total:,.0f} (whole shares, latest close)</div>
+                <div class="metric-sub">{invested_total / PRINCIPAL_INR * 100:.2f}% invested &bull; cash ₹{PRINCIPAL_INR - invested_total:,.0f} ({100 - EQUITY_ALLOCATION_PCT:g}% hedge budget + rounding)</div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -680,9 +683,10 @@ with tab_overview:
         "Prices, technicals and risk figures from daily NSE Bhavcopy files (last pipeline run). "
         f"Stop-loss: price - {STOP_LOSS_ATR_MULTIPLE:g} x ATR({STOP_LOSS_ATR_PERIOD}), moved just below a support level "
         f"up to {STOP_LOSS_SUPPORT_BAND_ATR:g} ATR beyond it; the method column shows which applied. "
-        f"Weights are equal (1/N) and final; shares are whole shares of each "
-        f"₹{PRINCIPAL_INR / len(LOCKED_PORTFOLIO_SYMBOLS) / 1e5:,.2f} lakh slice of the ₹{PRINCIPAL_INR / 1e7:g} crore "
-        "at the latest close. The field marked in blue (expected return) is a placeholder."
+        f"Weights: equal risk contribution (each stock carries the same share of portfolio variance), "
+        f"bounded {WEIGHT_MIN_PCT:g}-{WEIGHT_MAX_PCT:g}%, applied to the {EQUITY_ALLOCATION_PCT:g}% equity sleeve of the "
+        f"₹{PRINCIPAL_INR / 1e7:g} crore; the other {100 - EQUITY_ALLOCATION_PCT:g}% is the hedge budget. Shares are whole "
+        "shares at the latest close. The field marked in blue (expected return) is a placeholder."
     )
 
     sector_badge_classes = {
@@ -916,9 +920,9 @@ with tab_technicals:
             <span class="placeholder-badge" style="margin-bottom: 0;">Placeholder &mdash; pending finalization</span>
             <span style="font-size: 0.82rem;">
                 <strong>Expected return</strong> is a historical average (placeholder pending CAPM, once portfolio
-                beta is computed). <strong>Weight</strong> is final: equal weighting ({100 / len(LOCKED_PORTFOLIO_SYMBOLS):.2f}% each
-                across {len(LOCKED_PORTFOLIO_SYMBOLS)} stocks), since no signal forecasts returns reliably enough to justify
-                optimised weights (research/momentum_study.py).
+                beta is computed). <strong>Weight</strong> is final: equal risk contribution within {WEIGHT_MIN_PCT:g}-{WEIGHT_MAX_PCT:g}%
+                (each of the {len(LOCKED_PORTFOLIO_SYMBOLS)} stocks carries the same share of portfolio variance, from one year
+                of daily returns). It needs no return forecast, which no signal provides reliably (research/momentum_study.py).
             </span>
             """,
             unsafe_allow_html=True,
@@ -934,7 +938,9 @@ with tab_technicals:
                 "Ann. Volatility (%)": risk_df["annualized_volatility_pct"].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
                 "Expected Return: Historical average (placeholder pending CAPM)": risk_df[
                     "historical_expected_return_pct"].apply(lambda x: f"{x:+.2f}%" if pd.notna(x) else "—"),
-                "Weight (equal, 1/N)": risk_df["weight_pct"].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
+                "Weight (equal risk)": risk_df["weight_pct"].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
+                "Risk Contribution (%)": risk_df["risk_contribution_pct"].apply(
+                    lambda x: f"{x:.1f}%" if pd.notna(x) else "—"),
                 "Shares": risk_df["shares"].apply(lambda x: f"{x:,.0f}" if pd.notna(x) else "—"),
                 "Invested (₹)": risk_df["invested_inr"].apply(lambda x: f"₹{x:,.0f}" if pd.notna(x) else "—"),
                 f"ATR({STOP_LOSS_ATR_PERIOD}) (%)": risk_df["atr_pct"].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),

@@ -153,7 +153,7 @@ class TestPortfolioRiskSummary:
         assert list(risk.columns) == RISK_SUMMARY_COLUMNS
         assert out_csv.exists() and len(pd.read_csv(out_csv)) == 2
         aaa, bbb = risk.iloc[0], risk.iloc[1]
-        assert aaa["weight_pct"] == bbb["weight_pct"] == 50.0  # equal-weight placeholder
+        assert aaa["weight_pct"] == bbb["weight_pct"] == 50.0  # too little history: equal-weight fallback
         assert (aaa["atr_14"], aaa["atr_pct"]) == (2.0, 2.0)
         # AAA: support 1% below price is ignored; stop = 100 - 3 x 2
         assert (aaa["stop_loss_method"], aaa["stop_loss_price"], aaa["stop_loss_pct_below_current"]) == ("atr", 94.0, 6.0)
@@ -168,8 +168,8 @@ class TestPortfolioRiskSummary:
         assert aaa["historical_expected_return_pct"] == pytest.approx(126.0)
         assert aaa["stop_loss_method"] == "unavailable"  # 4 sessions: too few for ATR(14)
 
-    def test_locked_portfolio_is_equal_weighted(self):
+    def test_locked_portfolio_without_data_falls_back_to_equal_weight(self):
         risk = generate_portfolio_risk_summary(pd.DataFrame(), pd.DataFrame(), output_csv_path=None)
         assert risk["symbol"].tolist() == LOCKED_PORTFOLIO_SYMBOLS
-        assert (risk["weight_pct"] == round(100 / len(LOCKED_PORTFOLIO_SYMBOLS), 2)).all()  # 9.09% for 11
+        assert (risk["weight_pct"] == round(100 / len(LOCKED_PORTFOLIO_SYMBOLS), 2)).all()
         assert (risk["stop_loss_method"] == "unavailable").all()  # no data: no stop, no crash

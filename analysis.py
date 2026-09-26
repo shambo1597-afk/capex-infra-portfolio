@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 
 from config import (
+    EQUITY_ALLOCATION_PCT,
     LOCKED_PORTFOLIO_SYMBOLS,
     PRINCIPAL_INR,
     RISK_SUMMARY_OUTPUT_CSV,
@@ -33,6 +34,7 @@ from indicators import (
     compute_rsi,
     compute_support_resistance,
 )
+from weights import compute_portfolio_weights
 from stoploss import (
     compute_annualized_volatility,
     compute_daily_returns,
@@ -281,6 +283,7 @@ RISK_SUMMARY_COLUMNS = [
     "annualized_volatility_pct",
     "historical_expected_return_pct",
     "weight_pct",
+    "risk_contribution_pct",
     "shares",
     "invested_inr",
     "atr_14",
@@ -325,10 +328,11 @@ def generate_portfolio_risk_summary(
     if symbols is None:
         symbols = LOCKED_PORTFOLIO_SYMBOLS
 
-    # Equal weighting (1/N): with no reliable return forecast (research/momentum_study.py), 1/N avoids the
-    # estimation error of optimised weights (DeMiguel, Garlappi & Uppal 2009). 100 / 11 = 9.09% each, inside
-    # the brief's 4-5% minimum; shares are whole shares of each slice of PRINCIPAL_INR at the latest close.
-    equal_weight_pct = round(100.0 / len(symbols), 2) if symbols else None
+    # Weights: equal risk contribution within WEIGHT_MIN_PCT..WEIGHT_MAX_PCT (weights.py). They are
+    # weights of the equity sleeve (EQUITY_ALLOCATION_PCT of PRINCIPAL_INR); shares are whole shares of
+    # each stock's rupee amount at the latest close.
+    weights = compute_portfolio_weights(stock_data, symbols).set_index("symbol")
+    equity_inr = PRINCIPAL_INR * EQUITY_ALLOCATION_PCT / 100
 
     technicals = technical_summary.set_index("symbol") if not technical_summary.empty else pd.DataFrame()
     records = []
@@ -357,18 +361,19 @@ def generate_portfolio_risk_summary(
         if len(returns) < 2:
             logger.warning("%s: insufficient price history for volatility (%d daily returns).", symbol, len(returns))
 
+        weight_pct = float(weights.loc[symbol, "weight_pct"])
+        shares = int(equity_inr * weight_pct / 100 // current_price) if current_price else None
         records.append({
             "symbol": symbol,
             "sector": sector_of(symbol),
             "current_price": current_price,
             "annualized_volatility_pct": _pct(compute_annualized_volatility(returns)),
             "historical_expected_return_pct": _pct(compute_historical_expected_return(returns)),
-            "weight_pct": equal_weight_pct,
-            # Whole shares buyable with this stock's slice of the principal at the latest close
-            "shares": (int(PRINCIPAL_INR * equal_weight_pct / 100 // current_price)
-                       if current_price and equal_weight_pct else None),
-            "invested_inr": (round(int(PRINCIPAL_INR * equal_weight_pct / 100 // current_price) * current_price, 2)
-                             if current_price and equal_weight_pct else None),
+            "weight_pct": weight_pct,
+            "risk_contribution_pct": weights.loc[symbol, "risk_contribution_pct"],
+            # Whole shares buyable with this stock's share of the equity sleeve at the latest close
+            "shares": shares,
+            "invested_inr": None if shares is None else round(shares * current_price, 2),
             "atr_14": None if atr is None else round(atr, 2),
             "atr_pct": None if atr is None or not current_price else round(atr / current_price * 100, 2),
             "stop_loss_price": None if stop_price is None else round(stop_price, 2),
@@ -410,9 +415,9 @@ def print_risk_summary_table(risk_df: pd.DataFrame) -> None:
     if not risk_df.empty and risk_df["invested_inr"].notna().any():
         invested = risk_df["invested_inr"].sum()
         print(f" Allocation of Rs {PRINCIPAL_INR:,.0f}: invested Rs {invested:,.2f} ({invested / PRINCIPAL_INR * 100:.2f}%), "
-              f"cash Rs {PRINCIPAL_INR - invested:,.2f} (whole shares at the latest close)")
+              f"cash Rs {PRINCIPAL_INR - invested:,.2f} (hedge budget {100 - EQUITY_ALLOCATION_PCT:g}% plus rounding)")
     print(" PLACEHOLDER - pending finalization:")
     print(" - historical_expected_return_pct: simple historical average; may be replaced by CAPM-implied return")
-    print(" Weights: equal weight (1/N), final.")
+    print(" Weights: equal risk contribution within the 5-15% bounds (weights.py).")
     print("=" * 115 + "\n")
 
