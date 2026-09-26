@@ -119,3 +119,29 @@ def test_autocorrelation_detects_an_ar1_process_and_not_noise():
     out = autocorrelation_table(returns, returns["NOISE"]).set_index("symbol")
     assert out.loc["AR", "ar1_phi"] == pytest.approx(0.4, abs=0.08) and out.loc["AR", "predictable_at_5pct"]
     assert not out.loc["NOISE", "predictable_at_5pct"]
+
+
+def test_gmvp_minimises_variance_within_bounds():
+    from performance import gmvp
+    cov = np.diag([0.04, 0.09, 0.16])
+    w = gmvp(cov)
+    inv = 1 / np.diag(cov)
+    assert np.allclose(w, inv / inv.sum(), atol=1e-4)  # uncorrelated: weights proportional to 1/variance
+    wb = gmvp(cov, 0.2, 0.5)
+    assert wb.min() >= 0.2 - 1e-9 and wb.max() <= 0.5 + 1e-9 and wb.sum() == pytest.approx(1.0)
+    assert wb @ cov @ wb >= w @ cov @ w - 1e-12  # limits can only add variance
+
+
+def test_risk_reward_ratio():
+    from risk_model import risk_reward_table
+    risk = pd.DataFrame({"symbol": ["A"], "current_price": [100.0], "stop_loss_price": [90.0],
+                         "stop_loss_pct_below_current": [10.0], "annualized_volatility_pct": [40.0],
+                         "atr_pct": [3.0], "invested_inr": [1e6]})
+    tech = pd.DataFrame({"symbol": ["A"], "nearest_resistance": [102.0]})
+    capm = pd.DataFrame({"symbol": ["A", "PORTFOLIO"], "capm_3m_return_pct": [3.0, 3.0]})
+    out = risk_reward_table(risk, tech, capm, portfolio_vol_pct=20.0).set_index("symbol")
+    assert out.loc["A", "upside_pct"] == pytest.approx(20.0)  # 40% x sqrt(63/252): resistance is not a cap
+    assert out.loc["A", "reward_risk"] == pytest.approx(2.0)
+    assert out.loc["A", "first_hurdle_above_pct"] == pytest.approx(2.0)
+    assert out.loc["PORTFOLIO (all stocks at once)", "downside_inr"] == pytest.approx(1e5)
+    assert out.loc["PORTFOLIO (diversified)", "reward_risk"] == pytest.approx(1.0)

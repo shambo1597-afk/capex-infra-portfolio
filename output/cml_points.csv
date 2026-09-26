@@ -13,4 +13,6 @@ NUVOCO,stock,0.356939,-0.167092
 Our portfolio,portfolio,0.228262,0.518485
 Nifty 500 TRI (market),market,0.141546,0.014313
 Tangency (max Sharpe of the 11),tangency,0.298800,1.064598
+GMVP (long-only),gmvp,0.214592,0.390580
+GMVP (5-15% limits),gmvp_bounded,0.219069,0.437271
 Risk-free (1D rate),risk_free,0.000000,0.052220

@@ -15,6 +15,10 @@ Definitions (daily data, TRADING_DAYS_PER_YEAR sessions a year, risk-free = Nift
 The windows before the 28-Sep-2026 snapshot are a BACKTEST of today's portfolio (chosen with
 hindsight: its stocks were picked for strong past returns), not realised performance.
 
+GMVP: the global minimum variance portfolio of the 11 stocks (the leftmost point of the efficient
+frontier), long-only and within the brief's 5-15% weight limits, compared with our weights and the
+tangency portfolio (volatility, mean return, Sharpe, effective number of stocks = 1 / sum w^2).
+
 CML: the line from the risk-free rate through the market portfolio (Nifty 500 TRI) in (sigma, E[r])
 space, E[r] = r_f + (E[r_m] - r_f) / sigma_m x sigma. Plotted with the 11 stocks, the long-only
 efficient frontier of the 11, its tangency (maximum-Sharpe) portfolio, and our portfolio.
@@ -27,7 +31,8 @@ from typing import Dict, List, Optional, Sequence, Tuple
 import numpy as np
 import pandas as pd
 
-from config import HISTORICAL_OHLCV_CSV, OUTPUT_DIR, RISK_SUMMARY_OUTPUT_CSV, TRADING_DAYS_PER_YEAR
+from config import (HISTORICAL_OHLCV_CSV, OUTPUT_DIR, RISK_SUMMARY_OUTPUT_CSV, TRADING_DAYS_PER_YEAR, WEIGHT_MAX_PCT,
+                    WEIGHT_MIN_PCT)
 from risk_model import excess_returns, load_factor_series, portfolio_returns, stock_return_matrix
 from weights import project_to_bounded_simplex
 
@@ -37,6 +42,8 @@ PERFORMANCE_CSV = OUTPUT_DIR / "performance_summary.csv"
 GROWTH_CSV = OUTPUT_DIR / "performance_growth.csv"
 CML_CSV = OUTPUT_DIR / "cml_points.csv"
 CML_PNG = OUTPUT_DIR / "cml.png"
+OPTIMISED_WEIGHTS_CSV = OUTPUT_DIR / "portfolio_weights_compared.csv"
+OPTIMISED_STATS_CSV = OUTPUT_DIR / "portfolio_weights_compared_stats.csv"
 WINDOWS = {"Last quarter (63 sessions)": 63, "Last year": None}
 
 
@@ -118,6 +125,19 @@ def tangency_portfolio(mu: np.ndarray, cov: np.ndarray, rf: float, iterations: i
     return w
 
 
+def gmvp(cov: np.ndarray, lo: float = 0.0, hi: float = 1.0, iterations: int = 20000) -> np.ndarray:
+    """Global minimum variance portfolio: min w'Cw with weights summing to 1 within [lo, hi] (projected gradient)."""
+    n = cov.shape[0]
+    w = np.full(n, 1.0 / n)
+    step = 0.5 / (np.linalg.eigvalsh(cov).max() + 1e-12)
+    for _ in range(iterations):
+        w_next = project_to_bounded_simplex(w - step * 2 * cov @ w, lo, hi)
+        if np.abs(w_next - w).max() < 1e-12:
+            break
+        w = w_next
+    return w
+
+
 def efficient_frontier(mu: np.ndarray, cov: np.ndarray, points: int = 40, iterations: int = 3000) -> pd.DataFrame:
     """Long-only minimum-variance frontier: minimise w'Cw - lambda w'mu over a grid of lambda."""
     rows = []
@@ -130,7 +150,8 @@ def efficient_frontier(mu: np.ndarray, cov: np.ndarray, points: int = 40, iterat
     return pd.DataFrame(rows).drop_duplicates().sort_values("sigma").reset_index(drop=True)
 
 
-def cml_points(returns: pd.DataFrame, port: pd.Series, fx: pd.DataFrame) -> Dict[str, object]:
+def cml_points(returns: pd.DataFrame, port: pd.Series, fx: pd.DataFrame,
+               weights: Optional[pd.Series] = None) -> Dict[str, object]:
     """Annualised (sigma, mean return) of the stocks, portfolio, market, tangency, frontier and CML (past year)."""
     data = returns.join(fx[["mkt_excess", "rf"]], how="inner")
     mkt = data["mkt_excess"] + data["rf"]
@@ -149,9 +170,30 @@ def cml_points(returns: pd.DataFrame, port: pd.Series, fx: pd.DataFrame) -> Dict
     w_t = tangency_portfolio(mu, cov, rf)
     points.append({"name": "Tangency (max Sharpe of the 11)", "kind": "tangency",
                    "sigma": float(np.sqrt(w_t @ cov @ w_t)), "expected_return": float(w_t @ mu)})
+    w_g = gmvp(cov)
+    w_gb = gmvp(cov, WEIGHT_MIN_PCT / 100, WEIGHT_MAX_PCT / 100)
+    points.append({"name": "GMVP (long-only)", "kind": "gmvp", "sigma": float(np.sqrt(w_g @ cov @ w_g)),
+                   "expected_return": float(w_g @ mu)})
+    points.append({"name": f"GMVP ({WEIGHT_MIN_PCT:g}-{WEIGHT_MAX_PCT:g}% limits)", "kind": "gmvp_bounded",
+                   "sigma": float(np.sqrt(w_gb @ cov @ w_gb)), "expected_return": float(w_gb @ mu)})
     points.append({"name": "Risk-free (1D rate)", "kind": "risk_free", "sigma": 0.0, "expected_return": rf})
+
+    ours = (weights if weights is not None else pd.Series(1.0 / len(mu), index=returns.columns)).reindex(
+        returns.columns).fillna(0.0).values
+    ours = ours / ours.sum()
+    table = pd.DataFrame({"symbol": returns.columns, "our_weight_pct": ours * 100, "gmvp_long_only_pct": w_g * 100,
+                          "gmvp_bounded_pct": w_gb * 100, "tangency_pct": w_t * 100}).round(2)
+    stats = []
+    for label, w in [("Our portfolio (equal risk contribution)", ours), ("GMVP (long-only)", w_g),
+                     (f"GMVP ({WEIGHT_MIN_PCT:g}-{WEIGHT_MAX_PCT:g}% limits)", w_gb), ("Tangency (max Sharpe)", w_t)]:
+        sd, er = float(np.sqrt(w @ cov @ w)), float(w @ mu)
+        stats.append({"portfolio": label, "volatility_pct": round(sd * 100, 2), "mean_return_pct": round(er * 100, 2),
+                      "sharpe": round((er - rf) / sd, 2), "effective_n_stocks": round(1 / float((w ** 2).sum()), 1),
+                      "largest_weight_pct": round(float(w.max()) * 100, 1),
+                      "stocks_above_1pct": int((w > 0.01).sum())})
     return {"points": pd.DataFrame(points), "frontier": efficient_frontier(mu, cov), "rf": rf,
-            "market_sharpe": (m_mu - rf) / m_sigma, "tangency_weights": dict(zip(returns.columns, np.round(w_t, 4)))}
+            "market_sharpe": (m_mu - rf) / m_sigma, "tangency_weights": dict(zip(returns.columns, np.round(w_t, 4))),
+            "weights_table": table, "weights_stats": pd.DataFrame(stats)}
 
 
 def plot_cml(cml: Dict[str, object], path=CML_PNG) -> None:
@@ -173,7 +215,8 @@ def plot_cml(cml: Dict[str, object], path=CML_PNG) -> None:
     ax.plot(frontier["sigma"] * 100, frontier["expected_return"] * 100, color="#555", lw=1.5,
             label="Efficient frontier of the 11 stocks (long-only)")
     styles = {"stock": ("o", "#999999", 40), "portfolio": ("*", "#d62728", 260), "market": ("s", "#1f77b4", 90),
-              "tangency": ("D", "#2ca02c", 80), "risk_free": ("o", "#000000", 50)}
+              "tangency": ("D", "#2ca02c", 80), "risk_free": ("o", "#000000", 50),
+              "gmvp": ("^", "#7c3aed", 90), "gmvp_bounded": ("v", "#7c3aed", 90)}
     for _, r in pts.iterrows():
         marker, color, size = styles[r["kind"]]
         ax.scatter(r["sigma"] * 100, r["expected_return"] * 100, marker=marker, color=color, s=size, zorder=3)
@@ -215,8 +258,10 @@ def run(as_of: Optional[date] = None) -> Dict[str, pd.DataFrame]:
     growth.reset_index().assign(date=lambda d: d["date"].dt.strftime("%Y-%m-%d")).to_csv(
         GROWTH_CSV, index=False, float_format="%.6f")
 
-    cml = cml_points(returns, port, fx)
+    cml = cml_points(returns, port, fx, risk.set_index("symbol")["weight_pct"] / 100)
     cml["points"].to_csv(CML_CSV, index=False, float_format="%.6f")
+    cml["weights_table"].to_csv(OPTIMISED_WEIGHTS_CSV, index=False)
+    cml["weights_stats"].to_csv(OPTIMISED_STATS_CSV, index=False)
     plot_cml(cml)
     return {"summary": summary, "cml": cml["points"], "tangency": cml["tangency_weights"]}
 
@@ -231,3 +276,5 @@ if __name__ == "__main__":
     print(out["summary"].T.to_string())
     print(out["cml"].to_string(index=False))
     print("Tangency weights:", out["tangency"])
+    print(pd.read_csv(OPTIMISED_WEIGHTS_CSV).to_string(index=False))
+    print(pd.read_csv(OPTIMISED_STATS_CSV).to_string(index=False))

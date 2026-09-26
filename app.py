@@ -1420,6 +1420,39 @@ with tab_risk:
                 "predictable_at_5pct": "Predictable?", "weekly_rho_1": "Weekly ρ1", "weekly_significance_bound": "Weekly ±bound"}),
                 hide_index=True, width="stretch", height=_fit_height(ac_df))
 
+        # 3d. Risk-reward for the 3-month window
+        rr_df = _out("risk_reward.csv")
+        if not rr_df.empty:
+            st.markdown("### Risk-reward for the next 3 months")
+            stocks_rr = rr_df[~rr_df["symbol"].str.startswith("PORTFOLIO")]
+            all_once = rr_df[rr_df["symbol"] == "PORTFOLIO (all stocks at once)"]
+            diversified = rr_df[rr_df["symbol"] == "PORTFOLIO (diversified)"]
+            if not all_once.empty:
+                ao = all_once.iloc[0]
+                r1, r2, r3, r4 = st.columns(4)
+                r1.metric("Upside, typical move (all stocks)", _inr(float(ao["upside_inr"])),
+                          help="Each stock's one-standard-deviation 3-month move, summed")
+                r2.metric("Downside if every stop is hit", _inr(float(ao["downside_inr"])),
+                          help="Capped by the stops; a market crash is also covered by the puts")
+                r3.metric("Reward : risk (all stocks at once)", f"{float(ao['reward_risk']):.2f} : 1")
+                if not diversified.empty:
+                    r4.metric("Reward : risk (diversified portfolio)", f"{float(diversified.iloc[0]['reward_risk']):.2f} : 1",
+                              help="The portfolio's own 3-month move is smaller because the stocks do not all move together")
+            st.caption(
+                "Reward : risk = upside ÷ downside for the 3-month window. Downside = distance to the stop-loss (the loss the "
+                "stop allows). Upside = a typical 3-month move, one standard deviation = annual volatility × √(63/252); the "
+                "nearest resistance (a 20-session swing high) is shown as the first hurdle, not as a cap on a 3-month move. "
+                "CAPM reward : risk uses only the market's required return (no stock-picking view), so it is always low. "
+                "The case for the design: the downside is cut short by the stops (and a market crash by the puts), while "
+                "the upside is left open. A price can gap below a stop on results day."
+            )
+            show_rr = rr_df.drop(columns=["price", "stop_loss_price", "value_inr"], errors="ignore").rename(columns={
+                "symbol": "Stock", "downside_to_stop_pct": "Downside to stop %", "upside_1sd_3m_pct": "Typical 3-month move %",
+                "first_hurdle_resistance": "First hurdle (resistance ₹)", "first_hurdle_above_pct": "Hurdle above price %",
+                "upside_pct": "Upside %", "reward_risk": "Reward : risk", "capm_3m_pct": "CAPM 3-month %",
+                "capm_reward_risk": "CAPM reward : risk", "upside_inr": "Upside ₹", "downside_inr": "Downside ₹"})
+            st.dataframe(show_rr, hide_index=True, width="stretch", height=_fit_height(show_rr))
+
         # 4. Hedge plan
         st.markdown("### Hedge plan (Nifty 50 derivatives)")
         h1, h2, h3, h4 = st.columns(4)
@@ -1533,3 +1566,25 @@ with tab_performance:
             "the dashed line through the tangency portfolio of the 11 stocks is the best risk-return trade-off they offered. "
             "Ex-post: a chart of the past, not a forecast."
         )
+        cmp_stats = _out("portfolio_weights_compared_stats.csv")
+        cmp_w = _out("portfolio_weights_compared.csv")
+        if not cmp_stats.empty:
+            st.markdown("### Global minimum variance portfolio (GMVP) vs our weights")
+            st.caption(
+                "GMVP = the combination of the 11 stocks with the lowest possible volatility (the leftmost point of the "
+                "efficient frontier, purple triangles on the chart), long-only and within the brief's weight limits. "
+                "Effective number of stocks = 1 / Σw² (how many equal positions the portfolio behaves like). Our equal-risk "
+                "weights give up a little volatility against the GMVP for broader diversification; the tangency portfolio "
+                "has the best past Sharpe but bets half the money on one stock chosen with hindsight."
+            )
+            st.dataframe(cmp_stats.rename(columns={
+                "portfolio": "Portfolio", "volatility_pct": "Volatility %", "mean_return_pct": "Past-year mean return %",
+                "sharpe": "Sharpe (past year)", "effective_n_stocks": "Effective no. of stocks",
+                "largest_weight_pct": "Largest weight %", "stocks_above_1pct": "Stocks above 1%"}),
+                hide_index=True, width="stretch", height=_fit_height(cmp_stats))
+            if not cmp_w.empty:
+                with st.expander("Weights: ours vs GMVP vs tangency"):
+                    st.dataframe(cmp_w.rename(columns={
+                        "symbol": "Stock", "our_weight_pct": "Ours %", "gmvp_long_only_pct": "GMVP long-only %",
+                        "gmvp_bounded_pct": "GMVP 5-15% %", "tangency_pct": "Tangency %"}),
+                        hide_index=True, width="stretch", height=_fit_height(cmp_w))

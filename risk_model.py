@@ -55,6 +55,7 @@ from config import (
     PRINCIPAL_INR,
     RISK_FREE_INDEX_NAME,
     RISK_SUMMARY_OUTPUT_CSV,
+    SUMMARY_OUTPUT_CSV,
     TAIL_HEDGE_OTM_PCT,
     TAIL_QUANTILE,
     TRADING_DAYS_PER_YEAR,
@@ -66,6 +67,8 @@ SINGLE_INDEX_CSV = OUTPUT_DIR / "regression_single_index.csv"
 MULTIFACTOR_CSV = OUTPUT_DIR / "regression_multifactor.csv"
 CAPM_CSV = OUTPUT_DIR / "capm_expected_returns.csv"
 AUTOCORR_CSV = OUTPUT_DIR / "autocorrelation.csv"
+RISK_REWARD_CSV = OUTPUT_DIR / "risk_reward.csv"
+HORIZON_SESSIONS = 63  # the 3-month evaluation window
 LJUNG_BOX_CRITICAL_5PCT = {1: 3.84, 2: 5.99, 3: 7.81, 4: 9.49, 5: 11.07, 10: 18.31}  # chi-square 95th percentiles
 HEDGE_PLAN_CSV = OUTPUT_DIR / "hedge_plan.csv"
 PUT_CANDIDATES_CSV = OUTPUT_DIR / "hedge_put_candidates.csv"
@@ -348,6 +351,66 @@ def autocorrelation_table(returns: pd.DataFrame, port: pd.Series, lags: int = AU
     return pd.DataFrame(rows)
 
 
+def risk_reward_table(risk: pd.DataFrame, technicals: pd.DataFrame, capm: pd.DataFrame,
+                      portfolio_vol_pct: Optional[float] = None, horizon: int = HORIZON_SESSIONS) -> pd.DataFrame:
+    """
+    Reward-to-risk for the 3-month window, per stock and for the portfolio (in rupees):
+      downside  = distance to the stop-loss (the loss the stop allows)
+      upside    = a typical 3-month move, one standard deviation = annual volatility x sqrt(63/252); the
+                  nearest resistance (a 20-session swing high: a short-term level, not a 3-month cap) is
+                  shown as the first hurdle
+      ratio     = upside / downside; the CAPM 3-month return / downside is shown alongside (the market's
+                  required return only, no stock-picking view)
+    The downside is capped by the stop (and a market crash by the puts); the upside is not.
+    """
+    tech = technicals.set_index("symbol")
+    cap = capm.set_index("symbol")
+    rows = []
+    for _, r in risk.iterrows():
+        sym, price = r["symbol"], float(r["current_price"])
+        down = float(r["stop_loss_pct_below_current"])
+        vol_up = float(r["annualized_volatility_pct"]) * math.sqrt(horizon / TRADING_DAYS_PER_YEAR)
+        res = tech.loc[sym, "nearest_resistance"] if sym in tech.index else np.nan
+        res_pct = (float(res) / price - 1) * 100 if pd.notna(res) else np.nan
+        up = vol_up
+        capm_3m = float(cap.loc[sym, "capm_3m_return_pct"]) if sym in cap.index else np.nan
+        value = float(r["invested_inr"]) if pd.notna(r.get("invested_inr")) else float("nan")
+        rows.append({
+            "symbol": sym, "price": price, "stop_loss_price": r["stop_loss_price"],
+            "downside_to_stop_pct": round(down, 2),
+            "upside_1sd_3m_pct": round(vol_up, 2),
+            "first_hurdle_resistance": res,
+            "first_hurdle_above_pct": round(res_pct, 2) if pd.notna(res_pct) else np.nan,
+            "upside_pct": round(up, 2),
+            "reward_risk": round(up / down, 2) if down > 0 else np.nan,
+            "capm_3m_pct": capm_3m,
+            "capm_reward_risk": round(capm_3m / down, 2) if down > 0 and pd.notna(capm_3m) else np.nan,
+            "value_inr": value,
+            "upside_inr": round(value * up / 100) if pd.notna(value) else np.nan,
+            "downside_inr": round(value * down / 100) if pd.notna(value) else np.nan,
+        })
+    out = pd.DataFrame(rows)
+    up_inr, down_inr = out["upside_inr"].sum(), out["downside_inr"].sum()
+    port_capm = float(cap.loc[PORTFOLIO_LABEL, "capm_3m_return_pct"]) if PORTFOLIO_LABEL in cap.index else np.nan
+    value = out["value_inr"].sum()
+    down_pct = down_inr / value * 100
+    extra = [{
+        "symbol": f"{PORTFOLIO_LABEL} (all stocks at once)", "downside_to_stop_pct": round(down_pct, 2),
+        "upside_pct": round(up_inr / value * 100, 2), "reward_risk": round(up_inr / down_inr, 2),
+        "capm_3m_pct": port_capm, "capm_reward_risk": round(port_capm / down_pct, 2),
+        "value_inr": value, "upside_inr": up_inr, "downside_inr": down_inr,
+    }]
+    if portfolio_vol_pct is not None:
+        p_up = portfolio_vol_pct * math.sqrt(horizon / TRADING_DAYS_PER_YEAR)
+        extra.append({
+            "symbol": f"{PORTFOLIO_LABEL} (diversified)", "downside_to_stop_pct": round(down_pct, 2),
+            "upside_1sd_3m_pct": round(p_up, 2), "upside_pct": round(p_up, 2), "reward_risk": round(p_up / down_pct, 2),
+            "capm_3m_pct": port_capm, "capm_reward_risk": round(port_capm / down_pct, 2), "value_inr": value,
+            "upside_inr": round(value * p_up / 100), "downside_inr": down_inr,
+        })
+    return pd.concat([out, pd.DataFrame(extra)], ignore_index=True)
+
+
 # ----------------------------------------------------------------------------- hedging
 
 def hedge_betas(port: pd.Series, fx: pd.DataFrame, tail_quantile: float = TAIL_QUANTILE) -> Dict[str, float]:
@@ -518,7 +581,11 @@ def run(as_of: Optional[date] = None, refresh_factors: bool = True) -> Dict[str,
     multi.to_csv(MULTIFACTOR_CSV, index=False)
     capm.to_csv(CAPM_CSV, index=False)
     autocorr.to_csv(AUTOCORR_CSV, index=False)
-    out = {"single": single, "multi": multi, "capm": capm, "autocorr": autocorr}
+    port_vol = single.loc[single["symbol"] == PORTFOLIO_LABEL, "total_vol_pct"]
+    rr = risk_reward_table(risk, pd.read_csv(SUMMARY_OUTPUT_CSV), capm,
+                           float(port_vol.iloc[0]) if not port_vol.empty else None)
+    rr.to_csv(RISK_REWARD_CSV, index=False)
+    out = {"single": single, "multi": multi, "capm": capm, "autocorr": autocorr, "risk_reward": rr}
 
     fo = fetch_nifty_derivatives(as_of)
     if fo is None or fo.empty:
@@ -549,6 +616,7 @@ if __name__ == "__main__":
     print(results["multi"].to_string(index=False))
     print(results["capm"].to_string(index=False))
     print(results["autocorr"].to_string(index=False))
+    print(results["risk_reward"].to_string(index=False))
     if "plan" in results:
         print(results["plan"].to_string(index=False))
         print(results["puts"].to_string(index=False))
