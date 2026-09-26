@@ -166,11 +166,12 @@ def sector_of(symbol: str) -> str:
 #   Cement none (its only confirmed uptrend, NUVOCO, ranks near the bottom); the group will ask the
 #   professor whether a Cement leg is required. Frozen after 5-Oct-2026: a stopped-out position's
 #   money is redeployed into the remaining holdings. Soft exceptions (shown on the dashboard): BEML
-#   (ROCE/OPM), GREAVESCOT (OPM), UTLSOLAR (operating cash flow).
+#   (ROCE/OPM), GREAVESCOT (OPM). UTLSOLAR (211 sessions of prices) fails the one-year history rule
+#   and was replaced by the rule's pick SBCL (group decision 26-Sep-2026).
 # -----------------------------------------------------------------------------
 
 LOCKED_PORTFOLIO_SYMBOLS = [
-    "WELCORP", "RPEL", "UTLSOLAR", "FINCABLES", "GREAVESCOT",      # Capital Goods
+    "WELCORP", "RPEL", "SBCL", "FINCABLES", "GREAVESCOT",          # Capital Goods
     "ACE", "CARBORUNIV", "GOODLUCK", "BEML",                       # Capital Goods
     "ACMESOLAR",                                                   # Power
 ]

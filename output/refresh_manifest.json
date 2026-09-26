@@ -1,8 +1,8 @@
 {
   "as_of": "2026-09-26",
-  "started": "2026-09-26T22:31:43+05:30",
+  "started": "2026-09-26T23:30:20+05:30",
   "status": "ok",
-  "pid": 901,
+  "pid": 944,
   "total_steps": 10,
   "step_names": [
     "Nifty 500 TRI (niftyindices.com)",
@@ -17,22 +17,22 @@
     "Performance and CML"
   ],
   "expected_seconds": {
-    "Nifty 500 TRI (niftyindices.com)": 39,
-    "Prices, technicals and risk summary": 43,
-    "Technical-first sector screens": 8,
+    "Nifty 500 TRI (niftyindices.com)": 159,
+    "Prices, technicals and risk summary": 8,
+    "Technical-first sector screens": 7,
     "Review tables, RRG and plots": 27,
-    "Locked-portfolio run-up check": 5,
+    "Locked-portfolio run-up check": 4,
     "Candidate sweep": 7,
-    "RRG weekly tails": 23,
-    "Regression and hedge plan": 5,
+    "RRG weekly tails": 21,
+    "Regression and hedge plan": 4,
     "Live P&L of the Rs 1 crore": 1,
     "Performance and CML": 140
   },
   "steps": [
     {
       "name": "Nifty 500 TRI (niftyindices.com)",
-      "returncode": 0,
-      "seconds": 159
+      "returncode": 1,
+      "seconds": 222
     },
     {
       "name": "Prices, technicals and risk summary",
@@ -52,7 +52,7 @@
     {
       "name": "Locked-portfolio run-up check",
       "returncode": 0,
-      "seconds": 4
+      "seconds": 5
     },
     {
       "name": "Candidate sweep",
@@ -62,7 +62,7 @@
     {
       "name": "RRG weekly tails",
       "returncode": 0,
-      "seconds": 21
+      "seconds": 22
     },
     {
       "name": "Regression and hedge plan",
@@ -77,12 +77,15 @@
     {
       "name": "Performance and CML",
       "returncode": 0,
-      "seconds": 140
+      "seconds": 143
     }
   ],
-  "heartbeat": "2026-09-26T22:38:01+05:30",
+  "heartbeat": "2026-09-26T23:37:46+05:30",
   "current_step": 10,
   "current_step_name": "Performance and CML",
-  "current_step_started": "2026-09-26T22:35:41+05:30",
-  "finished": "2026-09-26T22:38:01+05:30"
+  "current_step_started": "2026-09-26T23:35:23+05:30",
+  "warnings": [
+    "Nifty 500 TRI (niftyindices.com) failed; the dashboard keeps the existing TRI file. Last output: RuntimeError: niftyindices.com rejected 4 browser sessions (Akamai bot protection); last: TimeoutError: Page.wait_for_function: Timeout 20000ms exceeded."
+  ],
+  "finished": "2026-09-26T23:37:46+05:30"
 }

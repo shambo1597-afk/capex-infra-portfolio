@@ -1,7 +1,7 @@
 selection_rank,symbol,company_name,sector,held,rule_pick,rs_6m_skip1m,rs_score_vs_nifty500,di_gap,latest_adx,rrg_quadrant_vs_nifty500,rrg_quadrant_vs_sector,conviction,soft_fundamental_fails,business_focus_note
 1,WELCORP,Welspun Corp,Capital Goods,True,True,185.19,89.2,13.87,42.51,LEADING,LEADING,High,,
 2,RPEL,Raghav Product.,Capital Goods,True,True,179.48,48.35,6.49,29.49,WEAKENING,LEADING,Moderate,,KEPT: refractory ramming mass used inside steel plants' induction furnaces (an industrial consumable).
-3,SBCL,Shivalik Bimetal,Capital Goods,False,True,152.23,56.29,10.91,34.27,WEAKENING,LEADING,Moderate,,
+3,SBCL,Shivalik Bimetal,Capital Goods,True,True,152.23,56.29,10.91,34.27,WEAKENING,LEADING,Moderate,,
 4,AEROFLEX,Aeroflex,Capital Goods,False,False,126.19,13.81,5.23,26.95,WEAKENING,WEAKENING,Low,,
 5,TDPOWERSYS,TD Power Systems,Capital Goods,False,False,63.57,23.63,10.58,28.54,WEAKENING,WEAKENING,Low,,
 6,RAMRAT,Ram Ratna Wires,Capital Goods,False,False,61.46,42.59,13.1,25.23,WEAKENING,WEAKENING,Low,OPM > 8%; Cash from operations last year > 0 (Rs Cr),

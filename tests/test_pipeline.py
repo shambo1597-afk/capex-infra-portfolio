@@ -63,7 +63,7 @@ class TestUniverseConfiguration:
             assert sym in PORTFOLIO_SYMBOLS  # notes describe universe members kept on a judgement
 
     def test_locked_portfolio(self):
-        expected_locked = ["WELCORP", "RPEL", "UTLSOLAR", "FINCABLES", "GREAVESCOT", "ACE", "CARBORUNIV",
+        expected_locked = ["WELCORP", "RPEL", "SBCL", "FINCABLES", "GREAVESCOT", "ACE", "CARBORUNIV",
                            "GOODLUCK", "BEML", "ACMESOLAR"]
         assert LOCKED_PORTFOLIO_SYMBOLS == expected_locked
         assert list(LOCKED_PORTFOLIO) == expected_locked

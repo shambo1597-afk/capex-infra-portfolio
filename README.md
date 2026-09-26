@@ -96,7 +96,7 @@ That leaves **139 stocks: Cement 15, Capital Goods 102, Power 22**. The review t
 | :---: | :--- | :--- | :--- | :--- |
 | 1 | `WELCORP` | Capital Goods | High | |
 | 2 | `RPEL` | Capital Goods | Moderate | refractory ramming mass for steel plants |
-| 3 | `SBCL` | Capital Goods | Moderate | rule pick, not yet in the locked list (see below) |
+| 3 | `SBCL` | Capital Goods | Moderate | bimetal and shunt parts for smart meters, electrical, EV |
 | 8 | `ACMESOLAR` | Power | High | |
 | 10 | `FINCABLES` | Capital Goods | High | |
 | 11 | `GREAVESCOT` | Capital Goods | High | soft exception: OPM |
@@ -104,9 +104,8 @@ That leaves **139 stocks: Cement 15, Capital Goods 102, Power 22**. The review t
 | 14 | `CARBORUNIV` | Capital Goods | Moderate | |
 | 15 | `GOODLUCK` | Capital Goods | Moderate | |
 | 16 | `BEML` | Capital Goods | High | soft exception: ROCE / OPM |
-| — | `UTLSOLAR` | Capital Goods | High | in the locked list; 211 sessions of history, under the one-year rule |
 
-Pending team decision: `config.LOCKED_PORTFOLIO` holds `UTLSOLAR` where the rule picks `SBCL`. No Cement stock passes the rule today; whether to add a Cement leg (NUVOCO) is a question for the professor.
+`UTLSOLAR` (High conviction, 6-month RS +118%) was in an earlier draft but has only 211 sessions of prices, under the one-year rule, so the rule's pick `SBCL` holds the place (group decision 26-Sep-2026). No Cement stock makes the top 10: NUVOCO passes every rule but ranks #32 (6-month RS +1%). Whether a Cement leg is required is a question for the professor.
 
 **Weights and allocation.** Equal risk contribution (`weights.py`): each stock carries the same share of portfolio variance $w_i (\Sigma w)_i / w^\top \Sigma w = 1/N$, with every weight bounded 5-15% (`config.WEIGHT_MIN_PCT`, `WEIGHT_MAX_PCT`) and $\Sigma$ from one year of daily returns. It needs no return forecast (none is reliable, `research/momentum_study.py`) and gives volatile names less capital. The weights apply to the 97% equity sleeve (`config.EQUITY_ALLOCATION_PCT`) of the Rs 1 crore principal; the other 3% is the hedge reserve (day-0 Nifty puts and one profit-trigger roll-up, see `risk_model.py`), held in a liquid ETF at the overnight rate until used. `output/portfolio_risk_summary.csv` gives the whole shares at the latest close, the amount invested and each stock's risk contribution. Recompute at the actual purchase prices.
 
