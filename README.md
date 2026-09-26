@@ -161,13 +161,14 @@ Using a 20-day rolling window:
 ### 6. Volatility, Historical Return & ATR Stop-Loss (`stoploss.py`)
 - **Daily returns:** $r_t = \text{Close}_t / \text{PrevClose}_t - 1$ over the trailing 252 sessions, using NSE's `PREV_CLOSE` so every return is a true one-session move even when sessions are missing from the local history. NSE does **not** adjust Bhavcopy prices for splits, bonuses or demergers (a 1-for-10 split shows as a -90% day), so `corporate_actions.py` scales every earlier price by each action's factor, taken from NSE's corporate-action records, before any indicator is computed.
 - **Volatility:** sample standard deviation $\sigma_d$ of daily returns; annualized as $\sigma_d\sqrt{252}$.
-- **Historical expected return (placeholder):** mean daily return $\times 252$. May be replaced by a CAPM-implied return once portfolio beta is computed.
+- **Expected return (CAPM, `risk_model.py`):** $E[r_i] = r_f + \beta_i \times MRP$, with $r_f$ the Nifty 1D Rate index annualised over the last quarter, $\beta_i$ the single-index beta vs the Nifty 500 TRI, and MRP = 7.08% (India's total equity risk premium, Damodaran, updated 5-Jan-2026); also compounded over the 3-month window. The past year's average return (mean daily return $\times 252$) is kept for comparison only; it is not a forecast.
+- **Own-return regression (autocorrelation, `risk_model.py`):** AR(1) $r_t = a + \phi r_{t-1} + e$, autocorrelations at lags 1-5 against $\pm 1.96/\sqrt{n}$, the Ljung-Box $Q$ against its 5% critical value, and the lag-1 autocorrelation of weekly returns (`output/autocorrelation.csv`).
 - **Weight:** equal risk contribution within 5-15% (`weights.py`), final.
 - **ATR:** $\text{TR}_t = \max(H_t - L_t,\ |H_t - \text{PrevClose}_t|,\ |L_t - \text{PrevClose}_t|)$, Wilder-smoothed over 14 sessions.
 - **Stop-loss (3-month mandate):** sized for about one month and trailed at monthly reviews, rather than sized for the whole quarter. A 63-session volatility stop would sit roughly 19-41% below price for these stocks, a bigger loss than a 3-month tactical trade is expected to earn.
   1. *Base stop:* $P - 3 \times \text{ATR}_{14}$. Three ATRs is close to a one-month, one-standard-deviation move (JKCEMENT: 3 ATR = 8.5% vs $\sigma_{annual}\sqrt{21/252}$ = 9.4%), so the stop sits just outside ordinary noise.
   2. *Support adjustment:* if a support level (Section 5) lies below the base stop but within 1 ATR of it, the stop moves to support $- 0.25 \times$ ATR, just under that level. A support level closer to the price is ignored: it never makes the stop tighter than 3 ATR. (The earlier rule, "the tighter of support and a volatility cap", produced stops 0.1-0.7% below price.)
-  3. *Trailing:* at each monthly review, run `python main.py --trail-stops <previous risk summary CSV>`. A stop is only ever raised: a higher previous stop is kept (`trailed`), and a previous stop at or above the current price is reported as `breached`.
+  3. *Trailing:* automatic once invested: when the trade ledger `data/trades.csv` exists, every refresh uses the previous risk summary's stops as the floor (`python main.py --trail-stops <CSV>` does the same by hand). A stop is only ever raised: a higher previous stop is kept (`trailed`), and a previous stop at or above the current price is reported as `breached`.
 
   All multiples are stated, adjustable assumptions in `config.py` (`STOP_LOSS_ATR_*`, `STOP_LOSS_SUPPORT_*`).
 
@@ -198,7 +199,7 @@ IAPFDOF/
 ├── output/
 │   ├── portfolio_technical_summary.csv # Technical summary, one row per universe stock (91)
 │   ├── portfolio_historical_ohlcv.csv  # Clean historical OHLCV data across universe
-│   ├── portfolio_risk_summary.csv      # Locked portfolio volatility, placeholder return/weight, stop-loss
+│   ├── portfolio_risk_summary.csv      # Locked portfolio volatility, CAPM-ready return, equal-risk weight, stop-loss
 │   ├── *_full_screen.csv               # Technical-first sector screens (cement, capital_goods, power)
 │   ├── *_full_review_table.csv         # Unfiltered per-sector review tables with RRG / DI-gap columns (+ *_review_notes.md)
 │   ├── rrg_*.png                       # Relative Rotation Graphs (combined vs Nifty 500; per sector vs sector average)
@@ -273,9 +274,9 @@ The web dashboard loads instantly from the existing CSV outputs already in the r
 **Keeping the dashboard current.** Under the header the dashboard shows the price date, the fundamentals date and the last refresh time, shows how current the Nifty 500 TRI is, warns when prices are older than the latest published NSE session, and has a **Refresh all data** button that runs `refresh_data.py`: it appends new TRI sessions from niftyindices.com (`fetch_data.py --update-tri`; if the site's bot protection blocks it, the refresh continues and the header shows a warning) and then runs all pipeline steps for one end date (about 5-10 minutes, needs internet). The same refresh can be run from a terminal with `python refresh_data.py`.
 
 ### Dashboard Architecture (5 Tabs)
-1. **Portfolio Overview:** the 11 locked stocks grouped by sector, one row each with the RRG conviction badge and every field the brief requires: volatility, expected return (historical average, placeholder pending CAPM), weight (equal risk contribution), stop-loss with its method, ADX, RS vs Nifty 500, RSI and support/resistance; followed by the screen exceptions.
+1. **Portfolio Overview:** the 11 locked stocks grouped by sector, one row each with the RRG conviction badge and every field the brief requires: volatility, expected return (CAPM, annual and 3-month), weight (equal risk contribution), stop-loss with its method, ADX, RS vs Nifty 500, RSI and support/resistance; followed by the screen exceptions.
 2. **Fundamentals:** Fundamentals of the locked picks (Market Cap, Price, ROCE, 3-Yr Avg ROCE, ROE, Debt/Equity, Operating Cash Flow, OPM, Interest Coverage, Pledged %, 3-Yr Sales and Profit Growth) plus each sector's safety-screen thresholds, read from `config.SECTOR_SCREENS`, scraped directly from Screener.in company pages by `fundamentals.py` and cached under `data/fundamentals_cache/`.
-3. **Technicals:** technical table for the locked stocks (RSI, ADX, trend, DI gap, RS, both RRG quadrants, conviction tier, support/resistance), the embedded RRG plots (combined vs Nifty 500, and a per-sector selector), a separate **Risk, Sizing & Stop-Loss** section (volatility, placeholder expected return and weight, ATR, stop-loss and its method), and an interactive 1-year OHLCV line chart with horizontal Support and Resistance reference levels.
+3. **Technicals:** technical table for the locked stocks (RSI, ADX, trend, DI gap, RS, both RRG quadrants, conviction tier, support/resistance), the embedded RRG plots (combined vs Nifty 500, and a per-sector selector), a separate **Risk, Sizing & Stop-Loss** section (volatility, CAPM expected return, past-year average and weight, ATR, stop-loss and its method), and an interactive 1-year OHLCV line chart with horizontal Support and Resistance reference levels.
 4. **Risk & Hedging:** allocation pie (stocks by sector, Nifty puts, cash), single-index beta with explained/unexplained risk per stock and for the portfolio, the multifactor model (market + crude + rates), and the hedge plan with its scenario chart.
 5. **Performance:** Sharpe, Treynor, Jensen's alpha, XIRR and the compounding effect for the last quarter and year (a backtest of today's portfolio until the 28-Sep snapshot), growth of Rs 1 crore vs the Nifty 500 TRI, and the Capital Market Line.
 

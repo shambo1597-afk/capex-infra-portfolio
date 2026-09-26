@@ -27,6 +27,8 @@ from config import (
     PORTFOLIO_SYMBOLS,
     EQUITY_ALLOCATION_PCT,
     EVALUATION_START_DATE,
+    MARKET_RISK_PREMIUM_PCT,
+    MARKET_RISK_PREMIUM_SOURCE,
     PRINCIPAL_INR,
     WEIGHT_MAX_PCT,
     WEIGHT_MIN_PCT,
@@ -430,7 +432,7 @@ def portfolio_table_html(df: pd.DataFrame) -> str:
     header = (
         "<tr><th>Stock</th><th>Conviction (RRG)</th><th>Price (₹)</th>"
         "<th>Volatility<span class='sub'>annualised</span></th>"
-        "<th>Expected return<span class='sub ph'>Historical average (placeholder pending CAPM)</span></th>"
+        "<th>Expected return<span class='sub'>CAPM, annual · 3-month</span></th>"
         "<th>Weight<span class='sub'>equal-risk · shares · ₹</span></th>"
         "<th>Stop-loss (₹)<span class='sub'>% below · method</span></th>"
         f"<th>ADX (14)</th><th>RS vs Nifty 500<span class='sub'>{TECHNICAL_RS_LOOKBACK_DAYS} sessions</span></th><th>RSI (14)</th>"
@@ -446,7 +448,8 @@ def portfolio_table_html(df: pd.DataFrame) -> str:
             f"<td>{tier_badge(r.get('conviction_tier'))}</td>"
             f"<td>{_fmt(r['current_price'], ',.2f')}</td>"
             f"<td>{_fmt(r.get('annualized_volatility_pct'), '.2f', suffix='%')}</td>"
-            f"<td class='ph'>{_fmt(r.get('historical_expected_return_pct'), '+.2f', suffix='%')}</td>"
+            f"<td>{_fmt(r.get('capm_expected_return_pct'), '.2f', suffix='%')}"
+            f"<span class='sub'>{_fmt(r.get('capm_3m_return_pct'), '.2f', suffix='%')} over 3 months</span></td>"
             f"<td>{_fmt(r.get('weight_pct'), '.2f', suffix='%')}"
             f"<span class='sub'>{_fmt(r.get('shares'), ',.0f')} sh · {_fmt(r.get('invested_inr'), ',.0f', prefix='₹')}</span></td>"
             f"<td>{_fmt(r.get('stop_loss_price'), ',.2f')}"
@@ -482,6 +485,10 @@ summary_df = load_summary_data(_file_mtime(SUMMARY_OUTPUT_CSV))
 ohlcv_df = load_historical_ohlcv(_file_mtime(HISTORICAL_OHLCV_CSV))
 tri_df = load_tri_benchmark(_file_mtime(DEFAULT_TRI_CSV_PATH))
 risk_df = load_risk_summary(_file_mtime(RISK_SUMMARY_OUTPUT_CSV))
+_capm_path = OUTPUT_DIR / "capm_expected_returns.csv"
+if not risk_df.empty and _capm_path.exists():
+    risk_df = risk_df.merge(pd.read_csv(_capm_path)[["symbol", "capm_expected_return_pct", "capm_3m_return_pct"]],
+                            on="symbol", how="left")
 rrg_df = load_rrg_data(tuple(_file_mtime(review_table_path(sector)) for sector in SECTOR_SCREENS))
 
 # One row per locked stock: technicals + risk/sizing/stop-loss + RRG, in LOCKED_PORTFOLIO order
@@ -790,7 +797,8 @@ with tab_overview:
         f"Weights: equal risk contribution (each stock carries the same share of portfolio variance), "
         f"bounded {WEIGHT_MIN_PCT:g}-{WEIGHT_MAX_PCT:g}%, applied to the {EQUITY_ALLOCATION_PCT:g}% equity sleeve of the "
         f"₹{PRINCIPAL_INR / 1e7:g} crore; the other {100 - EQUITY_ALLOCATION_PCT:g}% is the hedge budget. Shares are whole "
-        "shares at the latest close. The field marked in blue (expected return) is a placeholder."
+        "shares at the latest close (the shares actually held once invested). Expected return = CAPM: "
+        f"risk-free + beta × {MARKET_RISK_PREMIUM_PCT:g}% India equity risk premium ({MARKET_RISK_PREMIUM_SOURCE})."
     )
 
     sector_badge_classes = {
@@ -1080,15 +1088,15 @@ with tab_technicals:
             "~1 year of daily returns (close vs. the exchange's previous close). Stop-loss = price - "
             f"{STOP_LOSS_ATR_MULTIPLE:g} x ATR({STOP_LOSS_ATR_PERIOD}), about a one-month, one-standard-deviation "
             f"move; if a support level sits up to {STOP_LOSS_SUPPORT_BAND_ATR:g} ATR below that, the stop moves just under the support. "
-            "For the 3-month holding period the stop is sized for one month and trailed up (never down) at "
-            "each monthly review (python main.py --trail-stops <previous risk summary CSV>)."
+            "For the 3-month holding period the stop is sized for one month and, from the 28-Sep snapshot on, trailed "
+            "automatically: every refresh keeps the previous stop as a floor, so a stop only ever rises."
         )
         st.markdown(
             f"""
-            <span class="placeholder-badge" style="margin-bottom: 0;">Placeholder &mdash; pending finalization</span>
             <span style="font-size: 0.82rem;">
-                <strong>Expected return</strong> is a historical average (placeholder pending CAPM, once portfolio
-                beta is computed). <strong>Weight</strong> is final: equal risk contribution within {WEIGHT_MIN_PCT:g}-{WEIGHT_MAX_PCT:g}%
+                <strong>Expected return</strong> is CAPM: risk-free (Nifty 1D Rate, last quarter) + beta vs the Nifty 500 ×
+                {MARKET_RISK_PREMIUM_PCT:g}% India equity risk premium ({MARKET_RISK_PREMIUM_SOURCE}); the past year's average
+                return is shown next to it for comparison only (it is not a forecast). <strong>Weight</strong> is final: equal risk contribution within {WEIGHT_MIN_PCT:g}-{WEIGHT_MAX_PCT:g}%
                 (each of the {len(LOCKED_PORTFOLIO_SYMBOLS)} stocks carries the same share of portfolio variance, from one year
                 of daily returns). It needs no return forecast, which no signal provides reliably (research/momentum_study.py).
             </span>
@@ -1104,7 +1112,11 @@ with tab_technicals:
                 "Sector": risk_df["sector"],
                 "Current Price (₹)": risk_df["current_price"].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) else "—"),
                 "Ann. Volatility (%)": risk_df["annualized_volatility_pct"].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
-                "Expected Return: Historical average (placeholder pending CAPM)": risk_df[
+                "Expected Return: CAPM (annual)": risk_df.get("capm_expected_return_pct", pd.Series(dtype=float)).apply(
+                    lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
+                "CAPM over 3 months": risk_df.get("capm_3m_return_pct", pd.Series(dtype=float)).apply(
+                    lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
+                "Past-year average return (not a forecast)": risk_df[
                     "historical_expected_return_pct"].apply(lambda x: f"{x:+.2f}%" if pd.notna(x) else "—"),
                 "Weight (equal risk)": risk_df["weight_pct"].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
                 "Risk Contribution (%)": risk_df["risk_contribution_pct"].apply(
@@ -1337,6 +1349,49 @@ with tab_risk:
                 "r2_single_index": "R² single", "r2_multifactor": "R² multi", "adj_r2_single_index": "Adj R² single",
                 "adj_r2_multifactor": "Adj R² multi", "r2_gain_pp": "R² gain (pp)"}),
                 hide_index=True, width="stretch", height=_fit_height(multi_df))
+
+        # 3b. CAPM expected return
+        capm_df = _out("capm_expected_returns.csv")
+        if not capm_df.empty:
+            st.markdown("### Expected return (CAPM)")
+            cp = capm_df[capm_df["symbol"] == "PORTFOLIO"]
+            if not cp.empty:
+                c = cp.iloc[0]
+                k1, k2, k3, k4 = st.columns(4)
+                k1.metric("Portfolio expected return (annual)", f"{c['capm_expected_return_pct']:.2f}%")
+                k2.metric("Over the 3-month window", f"{c['capm_3m_return_pct']:.2f}%",
+                          help="(1 + annual)^(1/4) - 1")
+                k3.metric("In rupees on ₹1 crore (3 months)", _inr(PRINCIPAL_INR * c["capm_3m_return_pct"] / 100))
+                k4.metric("Risk-free / market risk premium", f"{c['risk_free_pct']:.2f}% / {c['market_risk_premium_pct']:.2f}%")
+            st.caption(
+                "E[r] = r_f + β × MRP. r_f = Nifty 1D Rate index annualised over the last quarter; β = single-index beta vs "
+                f"the Nifty 500 TRI (above); MRP = {MARKET_RISK_PREMIUM_SOURCE}. CAPM is what the market pays for the risk "
+                "taken, not a forecast of our picks: our thesis is to beat it (alpha)."
+            )
+            st.dataframe(capm_df.drop(columns=["source"]).rename(columns={
+                "symbol": "Stock", "beta": "Beta", "risk_free_pct": "Risk-free %", "market_risk_premium_pct": "MRP %",
+                "capm_expected_return_pct": "CAPM annual %", "capm_3m_return_pct": "CAPM 3-month %"}),
+                hide_index=True, width="stretch", height=_fit_height(capm_df))
+
+        # 3c. Autocorrelation: stock returns against their own past returns
+        ac_df = _out("autocorrelation.csv")
+        if not ac_df.empty:
+            st.markdown("### Own-return regression (autocorrelation)")
+            n_pred = int(ac_df[ac_df["symbol"] != "PORTFOLIO"]["predictable_at_5pct"].sum())
+            st.caption(
+                "Does yesterday's return predict today's? AR(1): r_t = a + φ·r_(t-1) + e, autocorrelations at lags 1-5 "
+                "(significant beyond ±1.96/√n) and the Ljung-Box Q test (Q = n(n+2)·Σρ_k²/(n-k); above the 5% critical value "
+                f"= predictable). {n_pred} of {len(ac_df) - 1} stocks show significant daily autocorrelation: daily returns are "
+                "close to a random walk, so the edge is not in day-to-day patterns but in the multi-month trend (momentum) the "
+                "selection uses. Weekly ρ₁ = lag-1 autocorrelation of non-overlapping 5-session returns (a short-horizon "
+                "momentum check; significant beyond its own bound)."
+            )
+            st.dataframe(ac_df.rename(columns={
+                "symbol": "Stock", "observations": "Days", "ar1_phi": "AR(1) φ", "ar1_t": "t", "rho_1": "ρ1", "rho_2": "ρ2",
+                "rho_3": "ρ3", "rho_4": "ρ4", "rho_5": "ρ5", "significance_bound": "±bound",
+                "significant_lags": "Significant lags", "ljung_box_q": "Ljung-Box Q", "ljung_box_critical_5pct": "Q 5% crit.",
+                "predictable_at_5pct": "Predictable?", "weekly_rho_1": "Weekly ρ1", "weekly_significance_bound": "Weekly ±bound"}),
+                hide_index=True, width="stretch", height=_fit_height(ac_df))
 
         # 4. Hedge plan
         st.markdown("### Hedge plan (Nifty 50 derivatives)")

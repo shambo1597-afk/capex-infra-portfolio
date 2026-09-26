@@ -304,9 +304,12 @@ def generate_portfolio_risk_summary(
     symbols: Optional[List[str]] = None,
     output_csv_path: Optional[Path] = RISK_SUMMARY_OUTPUT_CSV,
     previous_stops: Optional[Dict[str, float]] = None,
+    held_shares: Optional[Dict[str, float]] = None,
 ) -> pd.DataFrame:
     """
     Build one risk/sizing row per locked portfolio stock and save it as a CSV.
+    Before the snapshot, shares are the whole shares each weight buys at the latest close; once
+    invested, `held_shares` (net quantities from the trade ledger) are shown instead, valued at the close.
 
     Columns: symbol, sector, current_price, annualized_volatility_pct,
     historical_expected_return_pct, weight_pct, stop_loss_price,
@@ -362,7 +365,10 @@ def generate_portfolio_risk_summary(
             logger.warning("%s: insufficient price history for volatility (%d daily returns).", symbol, len(returns))
 
         weight_pct = float(weights.loc[symbol, "weight_pct"])
-        shares = int(equity_inr * weight_pct / 100 // current_price) if current_price else None
+        if held_shares is not None:
+            shares = int(held_shares.get(symbol, 0))
+        else:
+            shares = int(equity_inr * weight_pct / 100 // current_price) if current_price else None
         records.append({
             "symbol": symbol,
             "sector": sector_of(symbol),
@@ -416,8 +422,8 @@ def print_risk_summary_table(risk_df: pd.DataFrame) -> None:
         invested = risk_df["invested_inr"].sum()
         print(f" Allocation of Rs {PRINCIPAL_INR:,.0f}: invested Rs {invested:,.2f} ({invested / PRINCIPAL_INR * 100:.2f}%), "
               f"cash Rs {PRINCIPAL_INR - invested:,.2f} (hedge budget {100 - EQUITY_ALLOCATION_PCT:g}% plus rounding)")
-    print(" PLACEHOLDER - pending finalization:")
-    print(" - historical_expected_return_pct: simple historical average; may be replaced by CAPM-implied return")
+    print(" historical_expected_return_pct: past year's average (not a forecast); the CAPM expected return is in")
+    print(" output/capm_expected_returns.csv (risk_model.py)")
     print(" Weights: equal risk contribution within the 5-15% bounds (weights.py).")
     print("=" * 115 + "\n")
 

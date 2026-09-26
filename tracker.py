@@ -90,6 +90,13 @@ def option_settlement(instrument: str, session: date, fetch=None) -> Optional[fl
     return settle
 
 
+def ledger_positions(ledger: pd.DataFrame) -> Dict[str, float]:
+    """Net quantity held per instrument (buys minus sells) across the whole ledger."""
+    signs = np.where(ledger["action"].str.upper() == "BUY", 1, -1)
+    net = pd.Series(signs * ledger["quantity"].astype(float)).groupby(ledger["instrument"].values).sum()
+    return {k: v for k, v in net.items() if v}
+
+
 def initial_trades(snapshot: pd.Timestamp, closes: pd.Series, weights_pct: pd.Series, put_contract: Optional[str],
                    put_units: int, put_price: Optional[float]) -> pd.DataFrame:
     """The opening trades at the snapshot close: whole shares of each weight of the equity sleeve, then the puts."""

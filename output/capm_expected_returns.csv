@@ -1,0 +1,13 @@
+symbol,beta,risk_free_pct,market_risk_premium_pct,capm_expected_return_pct,capm_3m_return_pct,source
+WELCORP,1.247,4.95,7.08,13.77,3.28,"Damodaran, country risk premiums, India total ERP, updated 5-Jan-2026"
+TDPOWERSYS,1.191,4.95,7.08,13.38,3.19,"Damodaran, country risk premiums, India total ERP, updated 5-Jan-2026"
+APARINDS,1.368,4.95,7.08,14.63,3.47,"Damodaran, country risk premiums, India total ERP, updated 5-Jan-2026"
+QPOWER,1.362,4.95,7.08,14.59,3.46,"Damodaran, country risk premiums, India total ERP, updated 5-Jan-2026"
+FINCABLES,1.212,4.95,7.08,13.53,3.22,"Damodaran, country risk premiums, India total ERP, updated 5-Jan-2026"
+CARBORUNIV,0.915,4.95,7.08,11.42,2.74,"Damodaran, country risk premiums, India total ERP, updated 5-Jan-2026"
+BEML,1.713,4.95,7.08,17.07,4.02,"Damodaran, country risk premiums, India total ERP, updated 5-Jan-2026"
+VOLTAMP,1.066,4.95,7.08,12.49,2.99,"Damodaran, country risk premiums, India total ERP, updated 5-Jan-2026"
+USHAMART,1.226,4.95,7.08,13.63,3.25,"Damodaran, country risk premiums, India total ERP, updated 5-Jan-2026"
+ACMESOLAR,0.402,4.95,7.08,7.79,1.89,"Damodaran, country risk premiums, India total ERP, updated 5-Jan-2026"
+NUVOCO,1.167,4.95,7.08,13.21,3.15,"Damodaran, country risk premiums, India total ERP, updated 5-Jan-2026"
+PORTFOLIO,1.127,4.95,7.08,12.93,3.09,"Damodaran, country risk premiums, India total ERP, updated 5-Jan-2026"

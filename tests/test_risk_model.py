@@ -95,3 +95,27 @@ def test_tangency_prefers_the_better_sharpe():
     cov = np.diag([0.04, 0.04])
     w = tangency_portfolio(mu, cov, rf=0.05)
     assert w[0] > w[1] and w.sum() == pytest.approx(1.0)
+
+
+def test_capm_expected_return():
+    from risk_model import capm_table
+    single = pd.DataFrame({"symbol": ["A", "PORTFOLIO"], "beta": [1.5, 1.0]})
+    out = capm_table(single, rf_annual=0.05, mrp_pct=7.0).set_index("symbol")
+    assert out.loc["A", "capm_expected_return_pct"] == pytest.approx(15.5)
+    assert out.loc["A", "capm_3m_return_pct"] == pytest.approx((1.155 ** 0.25 - 1) * 100, abs=0.01)
+    assert out.loc["PORTFOLIO", "capm_expected_return_pct"] == pytest.approx(12.0)
+
+
+def test_autocorrelation_detects_an_ar1_process_and_not_noise():
+    from risk_model import autocorrelation_table
+    rng = np.random.default_rng(5)
+    n = 600
+    e = rng.normal(0, 0.01, n)
+    ar = np.zeros(n)
+    for t in range(1, n):
+        ar[t] = 0.4 * ar[t - 1] + e[t]
+    idx = pd.bdate_range("2024-01-01", periods=n)
+    returns = pd.DataFrame({"AR": ar, "NOISE": rng.normal(0, 0.01, n)}, index=idx)
+    out = autocorrelation_table(returns, returns["NOISE"]).set_index("symbol")
+    assert out.loc["AR", "ar1_phi"] == pytest.approx(0.4, abs=0.08) and out.loc["AR", "predictable_at_5pct"]
+    assert not out.loc["NOISE", "predictable_at_5pct"]

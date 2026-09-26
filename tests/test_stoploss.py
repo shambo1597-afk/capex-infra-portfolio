@@ -173,3 +173,11 @@ class TestPortfolioRiskSummary:
         assert risk["symbol"].tolist() == LOCKED_PORTFOLIO_SYMBOLS
         assert (risk["weight_pct"] == round(100 / len(LOCKED_PORTFOLIO_SYMBOLS), 2)).all()
         assert (risk["stop_loss_method"] == "unavailable").all()  # no data: no stop, no crash
+
+
+def test_held_shares_replace_the_target_shares_once_invested():
+    stock_data = _bhavcopy_rows("AAA", [0.0] * 20, day_range=2.0)
+    technicals = pd.DataFrame({"symbol": ["AAA"], "current_price": [100.0], "nearest_support": [90.0]})
+    risk = generate_portfolio_risk_summary(stock_data, technicals, symbols=["AAA"], output_csv_path=None,
+                                           held_shares={"AAA": 123})
+    assert risk.iloc[0]["shares"] == 123 and risk.iloc[0]["invested_inr"] == 12300.0

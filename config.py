@@ -430,6 +430,13 @@ CRUDE_TICKER = "BZ=F"                                # Brent crude front-month f
 TAIL_QUANTILE = 0.10          # tail beta: regression on the worst 10% of Nifty 50 days
 TAIL_HEDGE_OTM_PCT = 5.0      # protective puts struck about 5% below spot: insure the tail, not every wobble
 HEDGE_PROFIT_TRIGGER_PCT = 10.0  # once the portfolio is up 10%, roll the puts up to lock in part of the gain
+# CAPM expected return E[r_i] = r_f + beta_i x MRP (risk_model.py): r_f = the Nifty 1D Rate index
+# annualised over the last quarter; MRP = India's total equity risk premium from Damodaran's country
+# risk premium table (pages.stern.nyu.edu/~adamodar, "Country Default Spreads and Risk Premiums",
+# updated 5-Jan-2026: mature-market ERP plus India's country risk premium 2.85%, rating Baa3).
+MARKET_RISK_PREMIUM_PCT = 7.08
+MARKET_RISK_PREMIUM_SOURCE = "Damodaran, country risk premiums, India total ERP, updated 5-Jan-2026"
+AUTOCORRELATION_LAGS = 5  # Ljung-Box Q over lags 1..5 (5% critical value of chi-square(5) = 11.07)
 FUTURES_MARGIN_PCT_ASSUMED = 12.0  # ASSUMPTION: SPAN + exposure margin on a short index future, % of notional
 
 # Stock weights (weights.py): equal risk contribution within the brief's bounds, from the

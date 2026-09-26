@@ -41,6 +41,7 @@ from config import (
     POWER_SECTOR_STOCKS,
     PROCESSED_DATA_DIR,
     RISK_SUMMARY_OUTPUT_CSV,
+    TRADES_CSV,
     STOP_LOSS_ATR_MULTIPLE,
     STOP_LOSS_ATR_PERIOD,
     STOP_LOSS_SUPPORT_BAND_ATR,
@@ -246,15 +247,26 @@ def run_pipeline() -> int:
     )
 
     previous_stops = None
+    held_shares = None
     if args.trail_stops:
         previous = pd.read_csv(args.trail_stops)
         previous_stops = dict(zip(previous["symbol"], previous["stop_loss_price"]))
+    elif TRADES_CSV.exists() and RISK_SUMMARY_OUTPUT_CSV.exists():
+        # Invested (the trade ledger exists): every refresh trails the stops, so a stop is only ever
+        # raised from the snapshot on; the previous run's stops are the floor
+        previous = pd.read_csv(RISK_SUMMARY_OUTPUT_CSV)
+        previous_stops = dict(zip(previous["symbol"], previous["stop_loss_price"]))
+        logger.info("Trade ledger found: trailing stops from the previous risk summary (never lowered).")
+    if TRADES_CSV.exists():
+        from tracker import ledger_positions
+        held_shares = ledger_positions(pd.read_csv(TRADES_CSV))
 
     risk_df = generate_portfolio_risk_summary(
         stock_data=stock_df,
         technical_summary=summary_df,
         output_csv_path=RISK_SUMMARY_OUTPUT_CSV,
         previous_stops=previous_stops,
+        held_shares=held_shares,
     )
 
     # -------------------------------------------------------------------------

@@ -68,3 +68,9 @@ def test_summary_waits_30_days_for_xirr():
                           "stocks_inr": [9.7e6, 9.8e6], "options_inr": [6e4, 5e4], "cash_inr": [2.4e5, 2.5e5]})
     s = dict(tracker.summarise(daily, pd.DataFrame()).values)
     assert pd.isna(s["xirr_pct"]) and s["vs_liquid_fund_inr"] == pytest.approx(9e4)
+
+
+def test_ledger_positions_net_buys_and_sells():
+    ledger = pd.DataFrame({"instrument": ["AAA", "AAA", "BBB", "BBB"], "action": ["BUY", "SELL", "BUY", "SELL"],
+                           "quantity": [100, 40, 10, 10]})
+    assert tracker.ledger_positions(ledger) == {"AAA": 60.0}  # BBB fully sold: not held

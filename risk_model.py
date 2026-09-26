@@ -35,6 +35,7 @@ import numpy as np
 import pandas as pd
 
 from config import (
+    AUTOCORRELATION_LAGS,
     BENCHMARK_INDEX_NAME,
     CRUDE_TICKER,
     DERIVATIVES_DIR,
@@ -47,6 +48,8 @@ from config import (
     HEDGE_INDEX_SYMBOL,
     HEDGE_PROFIT_TRIGGER_PCT,
     HISTORICAL_OHLCV_CSV,
+    MARKET_RISK_PREMIUM_PCT,
+    MARKET_RISK_PREMIUM_SOURCE,
     NSE_FO_BHAVCOPY_URL_TEMPLATE,
     OUTPUT_DIR,
     PRINCIPAL_INR,
@@ -61,6 +64,9 @@ logger = logging.getLogger("risk_model")
 
 SINGLE_INDEX_CSV = OUTPUT_DIR / "regression_single_index.csv"
 MULTIFACTOR_CSV = OUTPUT_DIR / "regression_multifactor.csv"
+CAPM_CSV = OUTPUT_DIR / "capm_expected_returns.csv"
+AUTOCORR_CSV = OUTPUT_DIR / "autocorrelation.csv"
+LJUNG_BOX_CRITICAL_5PCT = {1: 3.84, 2: 5.99, 3: 7.81, 4: 9.49, 5: 11.07, 10: 18.31}  # chi-square 95th percentiles
 HEDGE_PLAN_CSV = OUTPUT_DIR / "hedge_plan.csv"
 PUT_CANDIDATES_CSV = OUTPUT_DIR / "hedge_put_candidates.csv"
 HEDGE_SCENARIOS_CSV = OUTPUT_DIR / "hedge_scenarios.csv"
@@ -287,6 +293,61 @@ def multifactor_table(returns: pd.DataFrame, port: pd.Series, fx: pd.DataFrame) 
     return pd.DataFrame(rows)
 
 
+def annualised_risk_free(fx: pd.DataFrame, sessions: int = 63) -> float:
+    """The overnight rate compounded over the last `sessions` sessions, annualised (a fraction)."""
+    rf = fx["rf"].dropna().tail(sessions)
+    return float((1 + rf).prod() ** (TRADING_DAYS_PER_YEAR / len(rf)) - 1)
+
+
+def capm_table(single: pd.DataFrame, rf_annual: float, mrp_pct: float = MARKET_RISK_PREMIUM_PCT) -> pd.DataFrame:
+    """
+    CAPM expected return per stock and for the portfolio: E[r] = r_f + beta x MRP (annual), and the
+    same compounded over the 3-month window. Beta is the single-index beta vs the Nifty 500 TRI.
+    """
+    out = single[["symbol", "beta"]].copy()
+    out["risk_free_pct"] = round(rf_annual * 100, 2)
+    out["market_risk_premium_pct"] = mrp_pct
+    annual = rf_annual + out["beta"] * mrp_pct / 100
+    out["capm_expected_return_pct"] = (annual * 100).round(2)
+    out["capm_3m_return_pct"] = (((1 + annual) ** 0.25 - 1) * 100).round(2)
+    out["source"] = MARKET_RISK_PREMIUM_SOURCE
+    return out
+
+
+def autocorrelation_table(returns: pd.DataFrame, port: pd.Series, lags: int = AUTOCORRELATION_LAGS) -> pd.DataFrame:
+    """
+    Does a stock's own past return predict its next one? Per stock and for the portfolio:
+    AR(1) regression r_t = a + phi r_(t-1) + e (phi and its t-stat), autocorrelations at lags 1..`lags`
+    (significant beyond +/-1.96/sqrt(n)), the Ljung-Box Q = n(n+2) sum rho_k^2/(n-k) against its 5%
+    critical value, and the lag-1 autocorrelation of non-overlapping weekly (5-session) returns.
+    """
+    rows = []
+    for name, series in list(returns.items()) + [(PORTFOLIO_LABEL, port)]:
+        r = series.dropna()
+        n = len(r)
+        if n < 30:
+            continue
+        ar = ols(r.iloc[1:].reset_index(drop=True), pd.DataFrame({"lag1": r.iloc[:-1].values}))
+        rho = [float(r.autocorr(k)) for k in range(1, lags + 1)]
+        q = n * (n + 2) * sum(rk ** 2 / (n - k) for k, rk in enumerate(rho, start=1))
+        weekly = (1 + r).groupby(np.arange(n) // 5).prod() - 1
+        bound = 1.96 / math.sqrt(n)
+        row = {"symbol": name, "observations": n, "ar1_phi": round(ar["coef"]["lag1"], 3),
+               "ar1_t": round(ar["t"]["lag1"], 2)}
+        row.update({f"rho_{k}": round(v, 3) for k, v in enumerate(rho, start=1)})
+        row.update({
+            "significance_bound": round(bound, 3),
+            "significant_lags": ", ".join(str(k) for k, v in enumerate(rho, start=1) if abs(v) > bound),
+            "ljung_box_q": round(q, 2),
+            "ljung_box_critical_5pct": LJUNG_BOX_CRITICAL_5PCT[lags],
+            "predictable_at_5pct": bool(q > LJUNG_BOX_CRITICAL_5PCT[lags]),
+            "weekly_rho_1": round(float(weekly.autocorr(1)), 3),
+            "weekly_significance_bound": round(1.96 / math.sqrt(len(weekly)), 3),
+        })
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
 # ----------------------------------------------------------------------------- hedging
 
 def hedge_betas(port: pd.Series, fx: pd.DataFrame, tail_quantile: float = TAIL_QUANTILE) -> Dict[str, float]:
@@ -451,9 +512,13 @@ def run(as_of: Optional[date] = None, refresh_factors: bool = True) -> Dict[str,
 
     single = single_index_table(returns, port, fx)
     multi = multifactor_table(returns, port, fx)
+    capm = capm_table(single, annualised_risk_free(fx))
+    autocorr = autocorrelation_table(returns, port)
     single.to_csv(SINGLE_INDEX_CSV, index=False)
     multi.to_csv(MULTIFACTOR_CSV, index=False)
-    out = {"single": single, "multi": multi}
+    capm.to_csv(CAPM_CSV, index=False)
+    autocorr.to_csv(AUTOCORR_CSV, index=False)
+    out = {"single": single, "multi": multi, "capm": capm, "autocorr": autocorr}
 
     fo = fetch_nifty_derivatives(as_of)
     if fo is None or fo.empty:
@@ -482,6 +547,8 @@ if __name__ == "__main__":
     pd.set_option("display.width", 200)
     print(results["single"].to_string(index=False))
     print(results["multi"].to_string(index=False))
+    print(results["capm"].to_string(index=False))
+    print(results["autocorr"].to_string(index=False))
     if "plan" in results:
         print(results["plan"].to_string(index=False))
         print(results["puts"].to_string(index=False))

@@ -104,9 +104,14 @@ def test_every_holding_passes_the_hard_fundamental_rules(review):
 
 
 def test_allocation_of_the_principal():
-    from config import EQUITY_ALLOCATION_PCT, PRINCIPAL_INR
+    from config import EQUITY_ALLOCATION_PCT, PRINCIPAL_INR, TRADES_CSV
     equity_inr = PRINCIPAL_INR * EQUITY_ALLOCATION_PCT / 100
     risk = pd.read_csv(RISK_SUMMARY_OUTPUT_CSV)
+    if TRADES_CSV.exists():  # invested: the risk summary shows the shares actually held
+        from tracker import ledger_positions
+        held = ledger_positions(pd.read_csv(TRADES_CSV))
+        assert (risk["shares"] == risk["symbol"].map(lambda s: held.get(s, 0))).all()
+        return
     assert (risk["shares"] == (equity_inr * risk["weight_pct"] / 100 // risk["current_price"])).all()
     assert (risk["invested_inr"] - risk["shares"] * risk["current_price"]).abs().max() < 0.01
     invested = risk["invested_inr"].sum()
