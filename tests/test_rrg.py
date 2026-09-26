@@ -116,6 +116,41 @@ def _row(symbol, rs=10.0, mom=2.0, rs_sec=10.0, mom_sec=2.0, plus_di=25.0, minus
             "fundamentals_passed_count": sum(passes)}
 
 
+class TestHardSoftAndSelection:
+    CRITERIA = [
+        ("market_cap", ">", 1000, "Market Cap > 1000 (Rs Cr)"),
+        ("roce", ">", 8, "ROCE > 8%"),
+        ("pledged_pct", "<", 15, "Pledged percentage < 15%"),
+    ]
+
+    def _row(self, symbol, mcap=True, roce=True, pledge=True, plus_di=25.0, minus_di=15.0):
+        return {"symbol": symbol, "rs_score_vs_nifty500": 5.0, "rs_momentum_vs_nifty500": 1.0,
+                "rs_score_vs_sector_avg": 5.0, "rs_momentum_vs_sector": 1.0, "plus_di": plus_di, "minus_di": minus_di,
+                "roce": 10.0, "recent_10day_contribution_pct": 10.0, "pass_market_cap": mcap, "pass_roce": roce,
+                "pass_pledged_pct": pledge, "fundamentals_passed_count": sum([mcap, roce, pledge])}
+
+    def test_soft_failures_are_listed_and_hard_failures_block(self):
+        t = add_evaluation_columns(pd.DataFrame([
+            self._row("SOFT", roce=False), self._row("HARD", pledge=False), self._row("OK"),
+            self._row("THIN", plus_di=20.0, minus_di=19.0), self._row("BEAR", plus_di=10.0, minus_di=20.0),
+        ]), self.CRITERIA).set_index("symbol")
+        assert t.loc["SOFT", "soft_fundamental_fails"] == "ROCE > 8%" and t.loc["SOFT", "hard_fundamentals_pass"]
+        assert not t.loc["HARD", "hard_fundamentals_pass"] and t.loc["HARD", "soft_fundamental_fails"] == ""
+        assert t["selection_eligible"].to_dict() == {"SOFT": True, "HARD": False, "OK": True, "THIN": False, "BEAR": False}
+
+    def test_selection_ranking_orders_eligible_stocks_by_6m_rs(self):
+        from sector_screen import build_selection_ranking
+        base = {"company_name": "x", "rs_score_vs_nifty500": 1.0, "di_gap": 5.0, "latest_adx": 20.0,
+                "rrg_quadrant_vs_nifty500": "LEADING", "rrg_quadrant_vs_sector": "LEADING",
+                "soft_fundamental_fails": "", "business_focus_note": None}
+        tables = {"Capital Goods": pd.DataFrame([{**base, "symbol": "A", "rs_6m_skip1m": 10.0, "selection_eligible": True},
+                                                 {**base, "symbol": "B", "rs_6m_skip1m": 50.0, "selection_eligible": False}]),
+                  "Power": pd.DataFrame([{**base, "symbol": "C", "rs_6m_skip1m": 30.0, "selection_eligible": True}])}
+        ranking = build_selection_ranking(tables)
+        assert ranking["symbol"].tolist() == ["C", "A"] and ranking["selection_rank"].tolist() == [1, 2]
+        assert ranking.set_index("symbol").loc["C", "sector"] == "Power"
+
+
 class TestEvaluationColumns:
     def test_di_gap_and_thin_flag_either_direction(self):
         table = add_evaluation_columns(pd.DataFrame([

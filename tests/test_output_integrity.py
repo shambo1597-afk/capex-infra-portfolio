@@ -91,3 +91,32 @@ def test_committed_price_history_has_no_unexplained_jumps():
     from corporate_actions import unexplained_jumps
     ohlcv = pd.read_csv(HISTORICAL_OHLCV_CSV, usecols=["SYMBOL", "DATE1", "PREV_CLOSE", "CLOSE_PRICE"])
     assert unexplained_jumps(ohlcv).empty
+
+
+def test_every_holding_passes_the_hard_fundamental_rules(review):
+    """HARD rules (pledge, debt, interest cover, size) are never waived for a holding."""
+    held = review[review["symbol"].isin(LOCKED_PORTFOLIO_SYMBOLS)]
+    assert held["hard_fundamentals_pass"].all(), held.loc[~held["hard_fundamentals_pass"], "symbol"].tolist()
+
+
+def test_allocation_of_the_principal():
+    from config import PRINCIPAL_INR
+    risk = pd.read_csv(RISK_SUMMARY_OUTPUT_CSV)
+    assert (risk["shares"] == (PRINCIPAL_INR * risk["weight_pct"] / 100 // risk["current_price"])).all()
+    assert (risk["invested_inr"] - risk["shares"] * risk["current_price"]).abs().max() < 0.01
+    invested = risk["invested_inr"].sum()
+    assert 0.98 * PRINCIPAL_INR <= invested <= PRINCIPAL_INR  # whole shares leave only a little cash
+
+
+def test_selection_ranking_matches_review_tables(review):
+    ranking = pd.read_csv(OUTPUT_DIR / "selection_ranking.csv")
+    eligible = review[review["selection_eligible"] == True]  # noqa: E712
+    assert sorted(ranking["symbol"]) == sorted(eligible["symbol"])
+    assert ranking["rs_6m_skip1m"].is_monotonic_decreasing
+    assert (ranking["held"] == ranking["symbol"].isin(LOCKED_PORTFOLIO_SYMBOLS)).all()
+
+
+def test_holdings_are_exactly_the_top_of_the_selection_ranking():
+    """The final portfolio is the top N of the ranking: no judgement-call exceptions."""
+    ranking = pd.read_csv(OUTPUT_DIR / "selection_ranking.csv")
+    assert set(ranking.head(len(LOCKED_PORTFOLIO_SYMBOLS))["symbol"]) == set(LOCKED_PORTFOLIO_SYMBOLS)

@@ -147,23 +147,22 @@ def sector_of(symbol: str) -> str:
 
 # -----------------------------------------------------------------------------
 # LOCKED PORTFOLIO
-# The final 11 picks, chosen from the technical and fundamental screens (sector_screen.py,
-# output/*_full_review_table.csv), the RRG analysis (rrg.py) and the 2020-2026 momentum study
-# (research/momentum_study.py). The stock list is frozen after 5-Oct-2026 (no swaps in or out),
-# so it holds more names than strictly needed: if a holding is stopped out, its money is
-# redeployed into the remaining holdings. TDPOWERSYS, QPOWER and CARBORUNIV were added on
-# 26-Sep-2026 as the strongest clean, uptrending names by 6-month relative strength.
-# Not every pick passes every screen: JKCEMENT and TATAPOWER have RS vs Nifty 500 below +2 pp,
-# and APLAPOLLO fails only the OPM criterion (flagged high-turnover, held after manual review).
-# The dashboard lists these exceptions from the review tables. Names and sectors come from the
-# constituent files / theme additions.
+# The final 11 picks (decided 26-Sep-2026): exactly the top 11 of the selection rule in
+# sector_screen.py (output/selection_ranking.csv), with no judgement calls: pass the HARD fundamental
+# rules, bullish trend with a real DI gap (>= 2), ranked by 6-month relative strength excluding the
+# latest month, the ranking with the best (if modest) record in research/momentum_study.py.
+# Sector rotation follows from the rule: Cement (weakest sector momentum) and TATAPOWER / JKCEMENT /
+# APLAPOLLO (weakest 6-month RS among the earlier picks) rotated out, leaving Capital Goods (strongest
+# sector momentum) plus ACMESOLAR, the one holding with low correlation to the rest. Eleven names,
+# because the list is frozen after 5-Oct-2026: a stopped-out position's money is redeployed into the
+# remaining holdings. Soft-criteria exceptions (BEML: ROCE/OPM; PTCIL: last year's operating cash
+# flow) are shown on the dashboard. Names and sectors come from the constituent files.
 # -----------------------------------------------------------------------------
 
 LOCKED_PORTFOLIO_SYMBOLS = [
-    "JKCEMENT",                                                    # Cement
-    "VOLTAMP", "FINCABLES", "APARINDS", "WELCORP", "APLAPOLLO",    # Capital Goods
-    "TDPOWERSYS", "QPOWER", "CARBORUNIV",                          # Capital Goods (added 26-Sep-2026)
-    "ACMESOLAR", "TATAPOWER",                                      # Power
+    "WELCORP", "TDPOWERSYS", "APARINDS", "QPOWER", "FINCABLES",    # Capital Goods
+    "CARBORUNIV", "BEML", "VOLTAMP", "USHAMART", "PTCIL",          # Capital Goods
+    "ACMESOLAR",                                                   # Power
 ]
 
 LOCKED_PORTFOLIO = {
@@ -300,6 +299,13 @@ CAPITAL_GOODS_SCREEN_CRITERIA = [
 # and interest coverage instead of a flat debt/equity cap (the regulated capital structure is
 # normatively debt-heavy, ~70:30, so leverage is structural; the ability to service it is what
 # matters). The ROCE floor is lower for the same regulated, leveraged capital structure.
+# HARD vs SOFT criteria for a 3-month holding period. HARD failures can turn a bad quarterly result
+# into a crash (pledged shares face margin calls and forced selling; heavy debt or thin interest
+# cover leaves no cushion; tiny companies are illiquid): never held. SOFT failures (ROCE, OPM,
+# one year's operating cash flow) describe business quality over years, are already in the price,
+# and matter little over 3 months: acceptable exceptions, shown on the dashboard.
+FUNDAMENTAL_HARD_FIELDS = {"pledged_pct", "debt_to_equity", "interest_coverage", "market_cap"}
+
 POWER_SCREEN_CRITERIA = [
     ("market_cap", ">", 2000, "Market Cap > 2000 (Rs Cr)"),
     ("roce", ">", 6, "ROCE > 6%"),
@@ -334,6 +340,11 @@ SECTOR_SCREENS = {
 # TECHNICAL_RS_LOOKBACK_DAYS exceeds TECHNICAL_RS_MARGIN_PP AND the trend direction (+DI vs -DI)
 # is Bullish. ADX is reported (tiebreaker) but not a cutoff.
 TECHNICAL_RS_LOOKBACK_DAYS = 63
+
+# Selection ranking: RS vs Nifty 500 over SELECTION_RS_DAYS sessions ending SELECTION_SKIP_DAYS
+# sessions ago (about 6 months, skipping the latest month), per research/momentum_study.py
+SELECTION_RS_DAYS = 105
+SELECTION_SKIP_DAYS = 21
 
 # Run-up heuristic window: share of the 63-session RS earned in the last this-many sessions
 RUNUP_RECENT_DAYS = 10
@@ -373,6 +384,8 @@ HIGH_TURNOVER_ROCE_MIN = 20.0
 
 # Trading sessions per year, used to annualize daily volatility and mean returns
 TRADING_DAYS_PER_YEAR = 252
+
+PRINCIPAL_INR = 10_000_000  # Rs 1 crore
 
 # Lookback for volatility / expected return: the trailing ~1 year of daily returns
 RISK_LOOKBACK_TRADING_DAYS = 252

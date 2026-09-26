@@ -74,7 +74,7 @@ def conviction_tier(quadrant_vs_nifty500: Optional[str], quadrant_vs_sector: Opt
     Conviction tier from the two RRG views:
       High      LEADING vs the Nifty 500 AND LEADING vs the sector average
       Moderate  LEADING in exactly one view, or IMPROVING in either view
-      Low       WEAKENING or LAGGING in both views (a sector-coverage hold)
+      Low       WEAKENING or LAGGING in both views
     None when either quadrant is missing. The three rules cover every quadrant pair.
     """
     views = (quadrant_vs_nifty500, quadrant_vs_sector)

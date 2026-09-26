@@ -77,19 +77,31 @@ A production-grade, mathematically transparent data pipeline and quantitative sc
 
 **Universes.** Each sector universe starts from its official Nifty index constituent file in `data/index_constituents/` (niftyindices.com, downloaded 24-Sep-2026): Nifty Cement (16), Nifty Capital Goods (50) and Nifty Power (21). The official index is a starting point, not a limit: any stock whose business fits Cement, Capital Goods/EPC or Power can be added through `config.THEME_ADDITIONS`, and every addition must carry a `BUSINESS_FOCUS_NOTES` entry recording the business check. Current additions, all in Capital Goods: `LT` and `BHARATFORG` (from the Nifty Infrastructure index file, `ind_niftyinfralist.csv`; the rest of that index is ports, aviation, oil & gas, telecom, healthcare, realty, hotels or auto components) and `QPOWER` and `RRKABEL` (not in any index used here). That makes 16 + 54 + 21 = 91 stocks. Additions are screened with their sector's thresholds and ranked against the whole sector universe. The review tables' `source_index` column shows where each stock came from, and `business_focus_note` carries the theme-fit and conglomerate / classification notes (`LT`, `BHARATFORG`, `QPOWER`, `RRKABEL`, `GRASIM`).
 
-**Locked portfolio (11 stocks, `config.LOCKED_PORTFOLIO`).** Chosen from the technical and fundamental screens (`output/*_full_review_table.csv`), the Relative Rotation Graph analysis (`rrg.py`) and the 2020-2026 momentum study (`research/momentum_study.py`). The stock list is frozen after 5-Oct-2026, with no swaps in or out, so the portfolio holds more names than strictly needed: if a holding is stopped out, its money goes into the remaining holdings.
+**Locked portfolio (11 stocks, `config.LOCKED_PORTFOLIO`, final as of 26-Sep-2026).** Exactly the top 11 of the selection rule, with no judgement-call exceptions (`output/selection_ranking.csv`, rebuilt by every review run):
 
-| Sector | Stocks | Symbols |
-| :--- | :---: | :--- |
-| **Cement** | 1 | `JKCEMENT` |
-| **Capital Goods** | 8 | `VOLTAMP`, `FINCABLES`, `APARINDS`, `WELCORP`, `APLAPOLLO`, `TDPOWERSYS`, `QPOWER`, `CARBORUNIV` |
-| **Power** | 2 | `ACMESOLAR`, `TATAPOWER` |
+1. **Hard fundamental rules pass** (`config.FUNDAMENTAL_HARD_FIELDS`): pledged shares < 15%, debt/equity < 1.5, interest cover, market cap. These can turn a bad quarterly result into a crash, so they are never waived. Soft criteria (ROCE, OPM, one year's operating cash flow) describe business quality over years, are already in the price, and matter little over 3 months; failing them is an acceptable, displayed exception.
+2. **Bullish trend with a real DI gap** (+DI minus -DI of at least 2).
+3. **Ranked by 6-month relative strength vs the Nifty 500, excluding the latest month**, the ranking with the best (though modest) record in the 2020-2026 study (`research/momentum_study.py`).
 
-`TDPOWERSYS`, `QPOWER` and `CARBORUNIV` were added on 26-Sep-2026 as the strongest names by 6-month relative strength with clean fundamentals and an uptrend.
+| Rank | Stock | Sector | Note |
+| :---: | :--- | :--- | :--- |
+| 1 | `WELCORP` | Capital Goods | |
+| 2 | `TDPOWERSYS` | Capital Goods | |
+| 3 | `APARINDS` | Capital Goods | |
+| 4 | `ACMESOLAR` | Power | lowest correlation with the rest (0.21) |
+| 5 | `QPOWER` | Capital Goods | theme addition (not in a Nifty sector index) |
+| 6 | `FINCABLES` | Capital Goods | |
+| 7 | `CARBORUNIV` | Capital Goods | |
+| 8 | `BEML` | Capital Goods | soft exception: ROCE / OPM just under 8% |
+| 9 | `VOLTAMP` | Capital Goods | |
+| 10 | `USHAMART` | Capital Goods | |
+| 11 | `PTCIL` | Capital Goods | soft exception: negative operating cash flow last year |
 
-Screen exceptions (shown on the dashboard, generated from the review tables): `JKCEMENT` and `TATAPOWER` have RS vs Nifty 500 below the +2 pp technical margin; `APLAPOLLO` fails only the Capital Goods OPM criterion (7.98% vs > 8%) and is held after a manual business-model review, as flagged by `high_turnover_business_flag`.
+Sector rotation follows from the rule: Cement (weakest sector momentum) and the weakest earlier picks (JKCEMENT, TATAPOWER, APLAPOLLO) rotated out. Eleven names because the stock list is frozen after 5-Oct-2026 with no swaps in or out: a stopped-out position's money goes into the remaining holdings.
 
-**Conviction tier** (dashboard badge, `rrg.conviction_tier`): **High** = LEADING vs both the Nifty 500 and the sector average; **Moderate** = LEADING in one view only, or IMPROVING in either; **Low (sector-coverage hold)** = WEAKENING or LAGGING in both views.
+**Weights and allocation.** Equal weight, 1/11 = 9.09% each: with no reliable return forecast, 1/N avoids the estimation error of optimised weights. `output/portfolio_risk_summary.csv` gives the whole shares of each Rs 9.09 lakh slice of the Rs 1 crore principal (`config.PRINCIPAL_INR`) at the latest close, and the amount invested; the dashboard shows the total deployed and the cash left. Recompute at the actual purchase prices.
+
+**Conviction tier** (dashboard badge, `rrg.conviction_tier`): **High** = LEADING vs both the Nifty 500 and the sector average; **Moderate** = LEADING in one view only, or IMPROVING in either; **Low conviction** = WEAKENING or LAGGING in both views.
 
 `config.LOCKED_PORTFOLIO` is the single definition used by the pipeline's risk summary, the dashboard, and `sector_screen.py` (`--locked-check`, and the exclusion list for `--tenth-sweep`).
 
@@ -149,7 +161,7 @@ Using a 20-day rolling window:
 - **Daily returns:** $r_t = \text{Close}_t / \text{PrevClose}_t - 1$ over the trailing 252 sessions, using NSE's `PREV_CLOSE` so every return is a true one-session move even when sessions are missing from the local history. NSE does **not** adjust Bhavcopy prices for splits, bonuses or demergers (a 1-for-10 split shows as a -90% day), so `corporate_actions.py` scales every earlier price by each action's factor, taken from NSE's corporate-action records, before any indicator is computed.
 - **Volatility:** sample standard deviation $\sigma_d$ of daily returns; annualized as $\sigma_d\sqrt{252}$.
 - **Historical expected return (placeholder):** mean daily return $\times 252$. May be replaced by a CAPM-implied return once portfolio beta is computed.
-- **Weight (placeholder):** equal weighting, $100/N$ per stock ($100/11 = 9.09\%$ for the 11 picks), until formal weight assignment within the capping constraints is completed.
+- **Weight (placeholder):** equal weighting (final), $100/N$ per stock ($100/11 = 9.09\%$ for the 11 picks), until formal weight assignment within the capping constraints is completed.
 - **ATR:** $\text{TR}_t = \max(H_t - L_t,\ |H_t - \text{PrevClose}_t|,\ |L_t - \text{PrevClose}_t|)$, Wilder-smoothed over 14 sessions.
 - **Stop-loss (3-month mandate):** sized for about one month and trailed at monthly reviews, rather than sized for the whole quarter. A 63-session volatility stop would sit roughly 19-41% below price for these stocks, a bigger loss than a 3-month tactical trade is expected to earn.
   1. *Base stop:* $P - 3 \times \text{ATR}_{14}$. Three ATRs is close to a one-month, one-standard-deviation move (JKCEMENT: 3 ATR = 8.5% vs $\sigma_{annual}\sqrt{21/252}$ = 9.4%), so the stop sits just outside ordinary noise.
@@ -404,7 +416,7 @@ Run the full automated unit test suite with `pytest`:
 pytest tests/ -v
 ```
 
-The 215 tests cover, among other things:
+The 221 tests cover, among other things:
 - Exact convergence of Wilder's smoothing against recursive mathematical definitions.
 - Boundary conditions for RSI ($RSI = 100$ in monotonic gains, $RSI = 0$ in monotonic losses).
 - Directional movement calculations and trend indicators for ADX.

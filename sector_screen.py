@@ -39,12 +39,15 @@ from analysis import evaluate_stock_technicals
 from config import (
     BUSINESS_FOCUS_NOTES,
     DI_GAP_THIN_THRESHOLD,
+    FUNDAMENTAL_HARD_FIELDS,
     HIGH_TURNOVER_ROCE_MIN,
     LOCKED_PORTFOLIO_SYMBOLS,
     OUTPUT_DIR,
     RRG_MOMENTUM_DAYS,
     RRG_MOMENTUM_SMOOTHING_DAYS,
     RUNUP_RECENT_DAYS,
+    SELECTION_RS_DAYS,
+    SELECTION_SKIP_DAYS,
     SECTOR_SCREENS,
     TECHNICAL_RS_LOOKBACK_DAYS,
     TECHNICAL_RS_MARGIN_PP,
@@ -56,6 +59,7 @@ from fundamentals import evaluate_fundamental_screen, fetch_results_calendar, ge
 from indicators import (
     compute_recent_rs_contribution,
     compute_relative_strength,
+    compute_rs_at_offsets,
     compute_rs_momentum,
     compute_sector_relative_strength,
 )
@@ -238,6 +242,8 @@ def build_review_table(
             sym_prices, benchmark, TECHNICAL_RS_LOOKBACK_DAYS, RRG_MOMENTUM_DAYS, RRG_MOMENTUM_SMOOTHING_DAYS)
         for offset, ret in returns_by_offset.items():
             offset_returns.setdefault(offset, {})[symbol] = ret
+        rs_6m_skip1m = compute_rs_at_offsets(
+            sym_prices, benchmark, SELECTION_RS_DAYS, [SELECTION_SKIP_DAYS])[SELECTION_SKIP_DAYS][0]
         rs_10d, _, recent_pct = compute_recent_rs_contribution(
             sym_prices, benchmark, RUNUP_RECENT_DAYS, TECHNICAL_RS_LOOKBACK_DAYS)
         rows.append({
@@ -266,6 +272,7 @@ def build_review_table(
             "rs_momentum_vs_nifty500": rs_momentum,
             "rs_last_10d": rs_10d,
             "recent_10day_contribution_pct": recent_pct,
+            "rs_6m_skip1m": rs_6m_skip1m,
         })
     table = pd.DataFrame(rows)
 
@@ -333,6 +340,16 @@ def add_evaluation_columns(table: pd.DataFrame, criteria: List[Tuple[str, str, f
     else:
         table["high_turnover_business_flag"] = pd.NA
 
+    # HARD vs SOFT fundamental failures (config.FUNDAMENTAL_HARD_FIELDS) for a 3-month holding
+    hard = [f for f in fields if f in FUNDAMENTAL_HARD_FIELDS]
+    soft = [f for f in fields if f not in FUNDAMENTAL_HARD_FIELDS]
+    labels = {field: label for field, _, _, label in criteria}
+    table["hard_fundamentals_pass"] = table[[f"pass_{f}" for f in hard]].eq(True).all(axis=1)
+    table["soft_fundamental_fails"] = table.apply(
+        lambda r: "; ".join(labels[f] for f in soft if not r.get(f"pass_{f}") == True), axis=1)  # noqa: E712
+    # Selection rule: hard rules pass, bullish trend with a real DI gap; ranked by rs_6m_skip1m
+    table["selection_eligible"] = table["hard_fundamentals_pass"] & (table["di_gap"] >= DI_GAP_THIN_THRESHOLD)
+
     table["full_standard_candidate"] = (
         table["fundamentals_clean"]
         & (table["rrg_quadrant_vs_nifty500"] == LEADING)
@@ -340,6 +357,24 @@ def add_evaluation_columns(table: pd.DataFrame, criteria: List[Tuple[str, str, f
         & (table["di_gap"] >= DI_GAP_THIN_THRESHOLD)
     )
     return table
+
+
+def build_selection_ranking(tables: Dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """
+    Universe-wide ranking for portfolio selection: every eligible stock (hard fundamental rules
+    pass, bullish trend with di_gap >= DI_GAP_THIN_THRESHOLD) ranked by rs_6m_skip1m (RS vs the
+    Nifty 500 over SELECTION_RS_DAYS sessions ending SELECTION_SKIP_DAYS ago), best first, with the
+    context needed for the final judgement (soft fundamental fails, 3-month RS, sector, held or not).
+    """
+    frames = [t.assign(sector=sector) for sector, t in tables.items()]
+    table = pd.concat(frames, ignore_index=True)
+    table = table[table["selection_eligible"] == True].sort_values("rs_6m_skip1m", ascending=False)  # noqa: E712
+    table["selection_rank"] = range(1, len(table) + 1)
+    table["held"] = table["symbol"].isin(LOCKED_PORTFOLIO_SYMBOLS)
+    cols = ["selection_rank", "symbol", "company_name", "sector", "held", "rs_6m_skip1m", "rs_score_vs_nifty500",
+            "di_gap", "latest_adx", "rrg_quadrant_vs_nifty500", "rrg_quadrant_vs_sector", "soft_fundamental_fails",
+            "business_focus_note"]
+    return table[cols].reset_index(drop=True)
 
 
 def run_review_table(sector: str, output_csv: Path, as_of: Optional[date] = None) -> pd.DataFrame:
@@ -566,6 +601,8 @@ if __name__ == "__main__":
             if sector not in SECTOR_SCREENS:
                 sys.exit(f"Unknown sector {sector!r}; choose from {list(SECTOR_SCREENS)}")
             last_sessions.append(run_review_table(sector, review_table_path(sector), as_of=as_of).attrs["last_session"])
+        tables = {sec: pd.read_csv(review_table_path(sec)) for sec in SECTOR_SCREENS}
+        build_selection_ranking(tables).to_csv(OUTPUT_DIR / "selection_ranking.csv", index=False)
         # Redraw the RRG plots from all three review tables (whichever were just refreshed)
         from rrg import plot_all_rrgs
         plot_all_rrgs({sec: pd.read_csv(review_table_path(sec)) for sec in SECTOR_SCREENS},

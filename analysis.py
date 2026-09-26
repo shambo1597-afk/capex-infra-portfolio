@@ -18,6 +18,7 @@ import pandas as pd
 
 from config import (
     LOCKED_PORTFOLIO_SYMBOLS,
+    PRINCIPAL_INR,
     RISK_SUMMARY_OUTPUT_CSV,
     STOP_LOSS_ATR_MULTIPLE,
     STOP_LOSS_ATR_PERIOD,
@@ -280,6 +281,8 @@ RISK_SUMMARY_COLUMNS = [
     "annualized_volatility_pct",
     "historical_expected_return_pct",
     "weight_pct",
+    "shares",
+    "invested_inr",
     "atr_14",
     "atr_pct",
     "stop_loss_price",
@@ -322,9 +325,9 @@ def generate_portfolio_risk_summary(
     if symbols is None:
         symbols = LOCKED_PORTFOLIO_SYMBOLS
 
-    # PLACEHOLDER: equal weighting across the locked stocks (100 / N, e.g. 100 / 11 = 9.09% for the 11 picks). To be
-    # replaced once formal weight assignment, respecting the project's minimum and maximum
-    # weight-capping constraints, is completed.
+    # Equal weighting (1/N): with no reliable return forecast (research/momentum_study.py), 1/N avoids the
+    # estimation error of optimised weights (DeMiguel, Garlappi & Uppal 2009). 100 / 11 = 9.09% each, inside
+    # the brief's 4-5% minimum; shares are whole shares of each slice of PRINCIPAL_INR at the latest close.
     equal_weight_pct = round(100.0 / len(symbols), 2) if symbols else None
 
     technicals = technical_summary.set_index("symbol") if not technical_summary.empty else pd.DataFrame()
@@ -361,6 +364,11 @@ def generate_portfolio_risk_summary(
             "annualized_volatility_pct": _pct(compute_annualized_volatility(returns)),
             "historical_expected_return_pct": _pct(compute_historical_expected_return(returns)),
             "weight_pct": equal_weight_pct,
+            # Whole shares buyable with this stock's slice of the principal at the latest close
+            "shares": (int(PRINCIPAL_INR * equal_weight_pct / 100 // current_price)
+                       if current_price and equal_weight_pct else None),
+            "invested_inr": (round(int(PRINCIPAL_INR * equal_weight_pct / 100 // current_price) * current_price, 2)
+                             if current_price and equal_weight_pct else None),
             "atr_14": None if atr is None else round(atr, 2),
             "atr_pct": None if atr is None or not current_price else round(atr / current_price * 100, 2),
             "stop_loss_price": None if stop_price is None else round(stop_price, 2),
@@ -399,8 +407,12 @@ def print_risk_summary_table(risk_df: pd.DataFrame) -> None:
         except ImportError:
             print(risk_df.to_string(index=False))
     print("=" * 115)
-    print(" PLACEHOLDERS - pending finalization:")
+    if not risk_df.empty and risk_df["invested_inr"].notna().any():
+        invested = risk_df["invested_inr"].sum()
+        print(f" Allocation of Rs {PRINCIPAL_INR:,.0f}: invested Rs {invested:,.2f} ({invested / PRINCIPAL_INR * 100:.2f}%), "
+              f"cash Rs {PRINCIPAL_INR - invested:,.2f} (whole shares at the latest close)")
+    print(" PLACEHOLDER - pending finalization:")
     print(" - historical_expected_return_pct: simple historical average; may be replaced by CAPM-implied return")
-    print(" - weight_pct: equal weighting; to be replaced by formal weight assignment within the capping constraints")
+    print(" Weights: equal weight (1/N), final.")
     print("=" * 115 + "\n")
 

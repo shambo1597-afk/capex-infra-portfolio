@@ -25,6 +25,7 @@ from config import (
     LOCKED_PORTFOLIO_SYMBOLS,
     OUTPUT_DIR,
     PORTFOLIO_SYMBOLS,
+    PRINCIPAL_INR,
     SECTOR_SCREENS,
     RISK_SUMMARY_OUTPUT_CSV,
     STOP_LOSS_ATR_MULTIPLE,
@@ -320,7 +321,8 @@ def load_risk_summary(file_mtime: float) -> pd.DataFrame:
 
 RRG_COLUMNS = ["rs_momentum_vs_nifty500", "rrg_quadrant_vs_nifty500", "rs_score_vs_sector_avg",
                "rs_momentum_vs_sector", "rrg_quadrant_vs_sector", "di_gap", "thin_trend_flag",
-               "fundamentals_failed", "high_turnover_business_flag", "technically_attractive"]
+               "fundamentals_failed", "high_turnover_business_flag", "technically_attractive",
+               "hard_fundamentals_pass", "soft_fundamental_fails"]
 
 
 @st.cache_data(show_spinner=False)
@@ -401,7 +403,7 @@ def load_fundamentals_summary(file_mtimes: tuple, force_refresh: bool = False) -
 
 TIER_CLASSES = {CONVICTION_HIGH: "tier-high", CONVICTION_MODERATE: "tier-moderate", CONVICTION_LOW: "tier-low"}
 TIER_LABELS = {CONVICTION_HIGH: "High conviction", CONVICTION_MODERATE: "Moderate conviction",
-               CONVICTION_LOW: "Low: sector-coverage hold"}
+               CONVICTION_LOW: "Low conviction"}
 STOP_METHOD_LABELS = {"atr": f"{STOP_LOSS_ATR_MULTIPLE:g} x ATR", "support": "Below support",
                       "trailed": "Trailed (prev. stop)", "breached": "BREACHED"}
 
@@ -422,7 +424,7 @@ def portfolio_table_html(df: pd.DataFrame) -> str:
         "<tr><th>Stock</th><th>Conviction (RRG)</th><th>Price (₹)</th>"
         "<th>Volatility<span class='sub'>annualised</span></th>"
         "<th>Expected return<span class='sub ph'>Historical average (placeholder pending CAPM)</span></th>"
-        "<th>Weight<span class='sub ph'>Placeholder pending final weight assignment</span></th>"
+        "<th>Weight<span class='sub'>equal (1/N) · shares · ₹</span></th>"
         "<th>Stop-loss (₹)<span class='sub'>% below · method</span></th>"
         f"<th>ADX (14)</th><th>RS vs Nifty 500<span class='sub'>{TECHNICAL_RS_LOOKBACK_DAYS} sessions</span></th><th>RSI (14)</th>"
         "<th>Support / Resistance (₹)</th></tr>"
@@ -438,7 +440,8 @@ def portfolio_table_html(df: pd.DataFrame) -> str:
             f"<td>{_fmt(r['current_price'], ',.2f')}</td>"
             f"<td>{_fmt(r.get('annualized_volatility_pct'), '.2f', suffix='%')}</td>"
             f"<td class='ph'>{_fmt(r.get('historical_expected_return_pct'), '+.2f', suffix='%')}</td>"
-            f"<td class='ph'>{_fmt(r.get('weight_pct'), '.2f', suffix='%')}</td>"
+            f"<td>{_fmt(r.get('weight_pct'), '.2f', suffix='%')}"
+            f"<span class='sub'>{_fmt(r.get('shares'), ',.0f')} sh · {_fmt(r.get('invested_inr'), ',.0f', prefix='₹')}</span></td>"
             f"<td>{_fmt(r.get('stop_loss_price'), ',.2f')}"
             f"<span class='sub'>{_fmt(r.get('stop_loss_pct_below_current'), '.2f', suffix='%')} · {method}</span></td>"
             f"<td>{_fmt(r['latest_adx'], '.2f')}</td>"
@@ -640,12 +643,13 @@ with tab_overview:
             unsafe_allow_html=True,
         )
     with m_col4:
+        invested_total = float(portfolio_df["invested_inr"].sum()) if "invested_inr" in portfolio_df else 0.0
         st.markdown(
-            """
+            f"""
             <div class="metric-card">
-                <div class="metric-title">Price Integrity</div>
-                <div class="metric-value">NSE Bhavcopy</div>
-                <div class="metric-sub">Direct exchange clearing data</div>
+                <div class="metric-title">Capital Deployed</div>
+                <div class="metric-value">₹{invested_total / 1e5:,.2f} L of ₹{PRINCIPAL_INR / 1e5:,.0f} L</div>
+                <div class="metric-sub">{invested_total / PRINCIPAL_INR * 100:.2f}% invested &bull; cash ₹{PRINCIPAL_INR - invested_total:,.0f} (whole shares, latest close)</div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -665,7 +669,7 @@ with tab_overview:
     st.caption(
         "Conviction tier from the Relative Rotation Graph: **High** = LEADING vs both the Nifty 500 and the "
         "equal-weighted sector average; **Moderate** = LEADING in one view only, or IMPROVING in either; "
-        "**Low (sector-coverage hold)** = WEAKENING or LAGGING in both views."
+        "**Low conviction** = WEAKENING or LAGGING in both views."
     )
     if missing_symbols:
         st.warning(f"No pipeline data for {', '.join(missing_symbols)}. Run `python main.py` to refresh the outputs.")
@@ -676,7 +680,9 @@ with tab_overview:
         "Prices, technicals and risk figures from daily NSE Bhavcopy files (last pipeline run). "
         f"Stop-loss: price - {STOP_LOSS_ATR_MULTIPLE:g} x ATR({STOP_LOSS_ATR_PERIOD}), moved just below a support level "
         f"up to {STOP_LOSS_SUPPORT_BAND_ATR:g} ATR beyond it; the method column shows which applied. "
-        "Fields marked in blue are placeholders."
+        f"Weights are equal (1/N) and final; shares are whole shares of each "
+        f"₹{PRINCIPAL_INR / len(LOCKED_PORTFOLIO_SYMBOLS) / 1e5:,.2f} lakh slice of the ₹{PRINCIPAL_INR / 1e7:g} crore "
+        "at the latest close. The field marked in blue (expected return) is a placeholder."
     )
 
     sector_badge_classes = {
@@ -708,12 +714,19 @@ with tab_overview:
                 f"conviction tier: {r.get('conviction_tier') or 'Unclassified'}.")
         failed = r.get("fundamentals_failed")
         if isinstance(failed, str) and failed.strip():
-            note = (f" Flagged by the OPM-exception check (fails only OPM, ROCE above {HIGH_TURNOVER_ROCE_MIN:g}%) and held after a "
-                    "manual business-model review." if r.get("high_turnover_business_flag") == True else "")  # noqa: E712
-            exceptions.append(f"**{r['symbol']}** fails the {r['sector']} fundamental screen: {failed}.{note}")
+            if r.get("hard_fundamentals_pass") == False:  # noqa: E712
+                exceptions.append(f"**{r['symbol']}** fails a HARD fundamental rule ({failed}): not acceptable for a "
+                                  "3-month holding (pledge, debt, interest cover or size can turn a bad quarter into a crash).")
+            else:
+                note = (f" Flagged by the OPM-exception check (fails only OPM, ROCE above {HIGH_TURNOVER_ROCE_MIN:g}%)."
+                        if r.get("high_turnover_business_flag") == True else "")  # noqa: E712
+                exceptions.append(f"**{r['symbol']}** fails SOFT criteria only ({failed}): acceptable for a 3-month "
+                                  f"holding, since long-run quality measures are already in the price.{note}")
     if exceptions:
         st.markdown("#### Screen exceptions")
-        st.caption("Locked stocks that do not pass every screen, stated so the selection can be defended.")
+        st.caption("Locked stocks that do not pass every screen, stated so the selection can be defended. HARD rules "
+                   "(pledged shares, debt/equity, interest cover, market cap) are never waived; SOFT criteria (ROCE, OPM, "
+                   "one year's operating cash flow) can be.")
         st.markdown("\n".join(f"- {e}" for e in exceptions))
 
 
@@ -732,9 +745,11 @@ with tab_fundamentals:
     screen_exceptions = portfolio_df[portfolio_df["fundamentals_failed"].notna()
                                      & (portfolio_df["fundamentals_failed"].astype(str).str.strip() != "")]
     for _, exc in screen_exceptions.iterrows():
-        reason = (" It is held after a manual business-model review: the OPM-exception check flagged it "
-                  f"(fails only OPM, ROCE above {HIGH_TURNOVER_ROCE_MIN:g}%), a high-turnover business for which OPM is the wrong yardstick."
-                  if exc.get("high_turnover_business_flag") == True else "")  # noqa: E712
+        reason = (" SOFT criteria only: acceptable for a 3-month holding." if exc.get("hard_fundamentals_pass") != False  # noqa: E712
+                  else " A HARD rule: not acceptable.")
+        if exc.get("high_turnover_business_flag") == True:  # noqa: E712
+            reason += (f" The OPM-exception check flagged it (fails only OPM, ROCE above {HIGH_TURNOVER_ROCE_MIN:g}%): "
+                       "a high-turnover business for which OPM is the wrong yardstick.")
         st.markdown(
             f"""
             <div class="caveat-box">
@@ -901,9 +916,9 @@ with tab_technicals:
             <span class="placeholder-badge" style="margin-bottom: 0;">Placeholder &mdash; pending finalization</span>
             <span style="font-size: 0.82rem;">
                 <strong>Expected return</strong> is a historical average (placeholder pending CAPM, once portfolio
-                beta is computed). <strong>Weight</strong> is a placeholder pending final weight assignment: equal weighting
-                ({100 / len(LOCKED_PORTFOLIO_SYMBOLS):.2f}% each across {len(LOCKED_PORTFOLIO_SYMBOLS)} stocks)
-                until formal weight assignment within the capping constraints is completed.
+                beta is computed). <strong>Weight</strong> is final: equal weighting ({100 / len(LOCKED_PORTFOLIO_SYMBOLS):.2f}% each
+                across {len(LOCKED_PORTFOLIO_SYMBOLS)} stocks), since no signal forecasts returns reliably enough to justify
+                optimised weights (research/momentum_study.py).
             </span>
             """,
             unsafe_allow_html=True,
@@ -919,8 +934,9 @@ with tab_technicals:
                 "Ann. Volatility (%)": risk_df["annualized_volatility_pct"].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
                 "Expected Return: Historical average (placeholder pending CAPM)": risk_df[
                     "historical_expected_return_pct"].apply(lambda x: f"{x:+.2f}%" if pd.notna(x) else "—"),
-                "Weight: Placeholder pending final weight assignment": risk_df["weight_pct"].apply(
-                    lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
+                "Weight (equal, 1/N)": risk_df["weight_pct"].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
+                "Shares": risk_df["shares"].apply(lambda x: f"{x:,.0f}" if pd.notna(x) else "—"),
+                "Invested (₹)": risk_df["invested_inr"].apply(lambda x: f"₹{x:,.0f}" if pd.notna(x) else "—"),
                 f"ATR({STOP_LOSS_ATR_PERIOD}) (%)": risk_df["atr_pct"].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
                 "Stop-Loss (₹)": risk_df["stop_loss_price"].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) else "—"),
                 "Stop Below Price (%)": risk_df["stop_loss_pct_below_current"].apply(
