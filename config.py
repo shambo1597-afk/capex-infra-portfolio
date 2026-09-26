@@ -147,16 +147,22 @@ def sector_of(symbol: str) -> str:
 
 # -----------------------------------------------------------------------------
 # LOCKED PORTFOLIO
-# The final 8 picks, chosen from the technical and fundamental screens (sector_screen.py,
-# output/*_full_review_table.csv) and the RRG analysis (rrg.py). Not every pick passes every
-# screen: JKCEMENT and TATAPOWER have RS vs Nifty 500 below +2 pp, and APLAPOLLO fails only
-# the OPM criterion (flagged high-turnover, held after manual review). The dashboard lists
-# these exceptions from the review tables. Names and sectors come from the constituent files.
+# The final 11 picks, chosen from the technical and fundamental screens (sector_screen.py,
+# output/*_full_review_table.csv), the RRG analysis (rrg.py) and the 2020-2026 momentum study
+# (research/momentum_study.py). The stock list is frozen after 5-Oct-2026 (no swaps in or out),
+# so it holds more names than strictly needed: if a holding is stopped out, its money is
+# redeployed into the remaining holdings. TDPOWERSYS, QPOWER and CARBORUNIV were added on
+# 26-Sep-2026 as the strongest clean, uptrending names by 6-month relative strength.
+# Not every pick passes every screen: JKCEMENT and TATAPOWER have RS vs Nifty 500 below +2 pp,
+# and APLAPOLLO fails only the OPM criterion (flagged high-turnover, held after manual review).
+# The dashboard lists these exceptions from the review tables. Names and sectors come from the
+# constituent files / theme additions.
 # -----------------------------------------------------------------------------
 
 LOCKED_PORTFOLIO_SYMBOLS = [
     "JKCEMENT",                                                    # Cement
     "VOLTAMP", "FINCABLES", "APARINDS", "WELCORP", "APLAPOLLO",    # Capital Goods
+    "TDPOWERSYS", "QPOWER", "CARBORUNIV",                          # Capital Goods (added 26-Sep-2026)
     "ACMESOLAR", "TATAPOWER",                                      # Power
 ]
 

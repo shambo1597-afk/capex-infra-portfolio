@@ -1,10 +1,10 @@
 symbol,company_name,index,price_sessions,current_price,passed_technical_screen,technical_fail_reason,rs_score,adx,plus_di,minus_di,trend_direction,rsi,fundamentals_as_of,fundamentals_status,pledged_as_of,market_cap,pass_market_cap,roce,pass_roce,interest_coverage,pass_interest_coverage,operating_cash_flow,pass_operating_cash_flow,pledged_pct,pass_pledged_pct,passed_fundamental_screen,failed_criteria,passes_both_screens
-ACMESOLAR,ACME Solar Holdings Ltd.,Nifty Power,247,442.9,True,,18.51,33.11,28.65,13.29,Bullish (Uptrend),63.04,2026-09-25,OK,,31304.0,True,8.91,True,1.6,True,1249.0,True,0.0,True,True,,True
+ACMESOLAR,ACME Solar Holdings Ltd.,Nifty Power,247,442.9,True,,18.51,33.11,28.65,13.29,Bullish (Uptrend),63.04,2026-09-26,OK,,31307.0,True,8.91,True,1.6,True,1249.0,True,0.0,True,True,,True
 ADANIENSOL,Adani Energy Solutions Ltd.,Nifty Power,247,1338.5,False,RS <= +2 pp; trend Bearish,-8.23,27.88,15.29,32.11,Bearish (Downtrend),35.26,,,,,,,,,,,,,,,,False
 ADANIGREEN,Adani Green Energy Ltd.,Nifty Power,247,1296.6,False,RS <= +2 pp; trend Bearish,-11.98,14.09,18.5,21.06,Bearish (Downtrend),48.07,,,,,,,,,,,,,,,,False
 ADANIPOWER,Adani Power Ltd.,Nifty Power,247,202.75,False,RS <= +2 pp; trend Bearish,-8.98,13.29,16.65,29.48,Bearish (Downtrend),44.89,,,,,,,,,,,,,,,,False
 CESC,CESC Ltd.,Nifty Power,247,139.86,False,RS <= +2 pp; trend Bearish,-13.24,19.02,16.79,31.2,Bearish (Downtrend),29.76,,,,,,,,,,,,,,,,False
-GMRP&UI,GMR Power and Urban Infra Ltd.,Nifty Power,247,102.68,True,,5.38,15.0,24.22,13.51,Bullish (Uptrend),65.77,2026-09-25,OK,30-Jun-2026,8028.0,True,12.0,True,1.49,False,1260.0,True,59.96,False,False,Interest coverage > 1.5; Pledged percentage < 15%,False
+GMRP&UI,GMR Power and Urban Infra Ltd.,Nifty Power,247,102.68,True,,5.38,15.0,24.22,13.51,Bullish (Uptrend),65.77,2026-09-26,OK,30-Jun-2026,8019.0,True,12.0,True,1.49,False,1260.0,True,59.96,False,False,Interest coverage > 1.5; Pledged percentage < 15%,False
 JSWENERGY,JSW Energy Ltd.,Nifty Power,247,506.55,False,RS <= +2 pp; trend Bearish,-11.87,14.26,19.44,28.21,Bearish (Downtrend),37.67,,,,,,,,,,,,,,,,False
 JPPOWER,Jaiprakash Power Ventures Ltd.,Nifty Power,247,15.87,False,RS <= +2 pp,-9.17,17.84,28.55,23.07,Bullish (Uptrend),42.3,,,,,,,,,,,,,,,,False
 KPIGREEN,KPI Green Energy Ltd.,Nifty Power,247,339.75,False,RS <= +2 pp,-12.38,50.06,32.28,18.27,Bullish (Uptrend),60.02,,,,,,,,,,,,,,,,False
