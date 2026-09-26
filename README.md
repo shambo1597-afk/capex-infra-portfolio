@@ -182,6 +182,9 @@ Using a 20-day rolling window:
 ### 8. Performance & Capital Market Line (`performance.py`)
 Daily $r_p = \sum_i w_i r_i$ with today's weights, compounded $R = \prod (1 + r_t) - 1$; annualised $(1+R)^{252/n} - 1$ (the simple $R \times 252/n$ is shown too: the gap is the compounding effect). Sharpe $= (R_p - R_f)/\sigma_p$, Treynor $= (R_p - R_f)/\beta$, Jensen's $\alpha = R_p - [R_f + \beta (R_m - R_f)]$, XIRR from dated cash flows (negative for a loss), $R_f$ = Nifty 1D Rate index. CML through the Nifty 500 TRI, with the 11 stocks, their long-only efficient frontier and tangency portfolio (`output/cml.png`). Until the 28-Sep snapshot these are a backtest of a portfolio chosen with hindsight.
 
+### 9. Live P&L of the Rs 1 crore (`tracker.py`)
+The bottom line, shown first on the dashboard: what the Rs 1 crore is worth today, the profit or loss in rupees, and the same Rs 1 crore in the Nifty 500 TRI and in a liquid fund (Nifty 1D Rate index), from the 28-Sep-2026 close (`config.EVALUATION_START_DATE`). The trade ledger `data/trades.csv` is created automatically at that close (the stocks with the current weights of the 97% sleeve, the hedge plan's puts at NSE's settlement price); record real purchase prices, stop-loss exits, redeployments and the put roll by editing it. Each session: stocks at the NSE close + puts at the NSE settlement price + cash at the overnight rate. Also shown: the rupees still at risk if every stop were hit, stop breaches, and XIRR (from day 30). Outputs: `output/tracker_*.csv`.
+
 ## Project Structure
 
 ```

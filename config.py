@@ -400,9 +400,12 @@ PRINCIPAL_INR = 10_000_000  # Rs 1 crore
 # it waits in a liquid ETF at the overnight rate, not idle. Market exposure stays well above 90%.
 EQUITY_ALLOCATION_PCT = 97.0
 
-# Evaluation window: first snapshot 28-Sep-2026, three months to 28-Dec-2026
+# Evaluation window: first snapshot 28-Sep-2026, three months to 28-Dec-2026. tracker.py values the
+# Rs 1 crore from the snapshot close using the trade ledger TRADES_CSV (editable: record real fills,
+# stop-loss exits and redeployments there).
 EVALUATION_START_DATE = "2026-09-28"
 EVALUATION_END_DATE = "2026-12-28"
+TRADES_CSV = DATA_DIR / "trades.csv"
 
 # -----------------------------------------------------------------------------
 # REGRESSION & HEDGING (risk_model.py)

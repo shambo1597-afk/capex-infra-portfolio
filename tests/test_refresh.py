@@ -29,7 +29,7 @@ def test_every_step_uses_the_same_end_date():
         assert "2026-10-03" in cmd
     assert "--review" in steps[3][1] and "--tenth-sweep" in steps[5][1]  # sweep reads the review tables
     # the regressions read the risk summary; performance reads the factor series they write
-    assert steps[-2][1][1] == "risk_model.py" and steps[-1][1][1] == "performance.py"
+    assert [s[1][1] for s in steps[-3:]] == ["risk_model.py", "performance.py", "tracker.py"]
 
 
 class _Proc:
@@ -58,7 +58,7 @@ def test_successful_refresh(tmp_path):
 
 
 def test_tri_failure_is_a_warning_not_a_failed_refresh(tmp_path):
-    codes = iter([1] + [0] * 7)  # niftyindices.com blocked, everything else fine
+    codes = iter([1] + [0] * 8)  # niftyindices.com blocked, everything else fine
     with patch.object(refresh_data, "MANIFEST_PATH", tmp_path / "m.json"), \
             patch("refresh_data.subprocess.Popen", side_effect=lambda *a, **k: _Proc(next(codes))):
         result = run_refresh(date(2026, 10, 3), on_output=lambda line: None)

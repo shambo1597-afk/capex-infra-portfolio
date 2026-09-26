@@ -25,6 +25,7 @@ current weights, held constant (renormalised over the stocks trading on each day
 import io
 import logging
 import math
+import time
 import zipfile
 from datetime import date, datetime
 from pathlib import Path
@@ -128,10 +129,10 @@ def load_factor_series(path: Path = FACTORS_CSV) -> pd.DataFrame:
     return df
 
 
-def fetch_nifty_derivatives(as_of: date, use_cache: bool = True) -> Optional[pd.DataFrame]:
+def fetch_nifty_derivatives(as_of: date, use_cache: bool = True, save: bool = True) -> Optional[pd.DataFrame]:
     """
     Nifty futures and options rows of NSE's F&O bhavcopy for one session (cached as a small CSV in
-    DERIVATIVES_DIR). None when NSE could not be reached and nothing is cached.
+    DERIVATIVES_DIR unless save is False). None when NSE could not be reached and nothing is cached.
     """
     cache = DERIVATIVES_DIR / f"nifty_fo_{as_of:%Y-%m-%d}.csv"
     if use_cache and cache.exists():
@@ -140,7 +141,9 @@ def fetch_nifty_derivatives(as_of: date, use_cache: bool = True) -> Optional[pd.
 
     url = NSE_FO_BHAVCOPY_URL_TEMPLATE.format(yyyymmdd=f"{as_of:%Y%m%d}")
     resp = None
-    for attempt in range(3):
+    for attempt in range(4):
+        if attempt:
+            time.sleep(3 * attempt)  # Akamai blocks are intermittent: back off, refresh the cookies
         try:
             resp = _get_nse_pledge_session(refresh=attempt > 0).get(url, timeout=30)
         except Exception as exc:
@@ -160,9 +163,10 @@ def fetch_nifty_derivatives(as_of: date, use_cache: bool = True) -> Optional[pd.
     keep = ["TradDt", "FinInstrmTp", "XpryDt", "StrkPric", "OptnTp", "ClsPric", "SttlmPric", "UndrlygPric",
             "OpnIntrst", "TtlTradgVol", "NewBrdLotQty"]
     df = df[keep].reset_index(drop=True)
-    DERIVATIVES_DIR.mkdir(parents=True, exist_ok=True)
-    df.to_csv(cache, index=False)
-    logger.info("Saved %d Nifty F&O rows for %s to %s", len(df), as_of, cache)
+    if save:
+        DERIVATIVES_DIR.mkdir(parents=True, exist_ok=True)
+        df.to_csv(cache, index=False)
+        logger.info("Saved %d Nifty F&O rows for %s to %s", len(df), as_of, cache)
     return df
 
 

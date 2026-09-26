@@ -15,7 +15,8 @@ Steps (each a separate process):
   5. sector_screen.py --tenth-sweep   candidate sweep over the rest of the universe
   6. risk_model.py                    factor series, regressions, Nifty F&O prices and the hedge plan
   7. performance.py                   Sharpe, Treynor, XIRR, growth series and the CML plot
-Steps 1-7 are required: the refresh stops at the first failure among them.
+  8. tracker.py                       live value and P&L of the Rs 1 crore from the 28-Sep snapshot
+Steps 1-8 are required: the refresh stops at the first failure among them.
 
 Every step uses the same end date, so all files describe the same price window. Progress and the
 outcome are written to output/refresh_manifest.json (current step, a heartbeat every few seconds,
@@ -63,6 +64,7 @@ def refresh_steps(as_of: date) -> List[Tuple[str, List[str]]]:
         ("Candidate sweep", [py, "sector_screen.py", "--tenth-sweep", "--as-of", end]),
         ("Regression and hedge plan", [py, "risk_model.py", "--as-of", end]),
         ("Performance and CML", [py, "performance.py", "--as-of", end]),
+        ("Live P&L of the Rs 1 crore", [py, "tracker.py", "--as-of", end]),
     ]
 
 

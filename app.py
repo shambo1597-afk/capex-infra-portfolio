@@ -26,6 +26,7 @@ from config import (
     OUTPUT_DIR,
     PORTFOLIO_SYMBOLS,
     EQUITY_ALLOCATION_PCT,
+    EVALUATION_START_DATE,
     PRINCIPAL_INR,
     WEIGHT_MAX_PCT,
     WEIGHT_MIN_PCT,
@@ -596,6 +597,22 @@ tri_staleness = assess_tri_staleness(tri_df, analysis_end_date)
 # 5 TABS NAVIGATION
 # -----------------------------------------------------------------------------
 
+@st.cache_data(show_spinner=False)
+def load_output_csv(name: str, file_mtime: float) -> pd.DataFrame:
+    """One CSV from output/ (empty if missing). file_mtime is only a cache key (see _file_mtime)."""
+    path = OUTPUT_DIR / name
+    return pd.read_csv(path) if path.exists() else pd.DataFrame()
+
+
+def _out(name: str) -> pd.DataFrame:
+    return load_output_csv(name, _file_mtime(OUTPUT_DIR / name))
+
+
+def _fit_height(df: pd.DataFrame) -> int:
+    """Table height showing every row without an inner scrollbar."""
+    return 38 + 35 * len(df)
+
+
 tab_overview, tab_fundamentals, tab_technicals, tab_risk, tab_performance = st.tabs([
     "Portfolio Overview",
     "Fundamentals",
@@ -608,6 +625,90 @@ tab_overview, tab_fundamentals, tab_technicals, tab_risk, tab_performance = st.t
 # TAB 1: PORTFOLIO OVERVIEW
 # =============================================================================
 with tab_overview:
+    # 0. The bottom line: did the Rs 1 crore make money? (tracker.py, from the snapshot close)
+    tracker_summary = _out("tracker_summary.csv")
+    def _inr(x: float) -> str:
+        """Indian digit grouping: 1,08,74,323."""
+        neg, x = x < 0, abs(round(x))
+        s = str(int(x))
+        head, tail = s[:-3], s[-3:]
+        while len(head) > 2:
+            tail = head[-2:] + "," + tail if tail else head[-2:]
+            head = head[:-2]
+        out = (head + "," + tail) if head else tail
+        return ("-₹" if neg else "₹") + out
+
+    if tracker_summary.empty:
+        perf_q = _out("performance_summary.csv")
+        rf_annual = float(perf_q["risk_free_annualised_pct"].iloc[-1]) if not perf_q.empty else float("nan")
+        hurdle = PRINCIPAL_INR * ((1 + rf_annual / 100) ** 0.25 - 1)
+        at_risk = (float(((risk_df["current_price"] - risk_df["stop_loss_price"]).clip(lower=0) * risk_df["shares"]).sum())
+                   if not risk_df.empty else float("nan"))
+        st.markdown(
+            f"""
+            <div class="metric-card" style="border-left: 4px solid #1D4ED8;">
+                <div class="metric-title">The ₹1 crore: did we make money?</div>
+                <div class="metric-value">Tracking starts at the {pd.Timestamp(EVALUATION_START_DATE):%d-%b-%Y} close</div>
+                <div class="metric-sub">The first figures appear after the refresh on that evening. The bar to clear: a liquid fund
+                would earn about {_inr(hurdle)} on the ₹1 crore in 3 months. The most the stop-losses let us lose, if every stock
+                hit its stop at today's prices: {_inr(at_risk)}.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        t = dict(zip(tracker_summary["metric"], tracker_summary["value"]))
+        pnl = float(t["pnl_inr"])
+        colour = "#15803D" if pnl >= 0 else "#B91C1C"
+        verb = "made" if pnl >= 0 else "lost"
+        st.markdown(
+            f"""
+            <div class="metric-card" style="border-left: 4px solid {colour};">
+                <div class="metric-title">The ₹1 crore since the {pd.Timestamp(t['snapshot_date']):%d-%b-%Y} close
+                (as of {pd.Timestamp(t['as_of']):%d-%b-%Y})</div>
+                <div class="metric-value" style="font-size:2rem;">{_inr(float(t['value_inr']))}
+                <span style="color:{colour}; font-size:1.3rem;">&nbsp;We {verb} {_inr(abs(pnl))} ({float(t['pnl_pct']):+.2f}%)</span></div>
+                <div class="metric-sub">Stocks {_inr(float(t['stocks_inr']))} &bull; Nifty puts {_inr(float(t['options_inr']))} &bull;
+                cash {_inr(float(t['cash_inr']))} (overnight rate)</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        l1, l2, l3, l4 = st.columns(4)
+        l1.metric("Same ₹1 crore in the Nifty 500", _inr(float(t["nifty500_value_inr"])),
+                  f"we are {_inr(float(t['vs_nifty500_inr']))} ahead" if float(t["vs_nifty500_inr"]) >= 0
+                  else f"we are {_inr(-float(t['vs_nifty500_inr']))} behind")
+        l2.metric("Same ₹1 crore in a liquid fund", _inr(float(t["liquid_fund_value_inr"])),
+                  f"we are {_inr(float(t['vs_liquid_fund_inr']))} ahead" if float(t["vs_liquid_fund_inr"]) >= 0
+                  else f"we are {_inr(-float(t['vs_liquid_fund_inr']))} behind")
+        l3.metric("Still at risk if every stop is hit", _inr(float(t["at_risk_to_stops_inr"])),
+                  help="Sum over the stocks of (close - stop-loss) x shares; a gap below a stop can lose more.")
+        xirr_val = t.get("xirr_pct")
+        l4.metric("XIRR (annualised)", f"{float(xirr_val):.1f}%" if pd.notna(xirr_val) and str(xirr_val) != "nan"
+                  else "after 30 days", help="Annualising only a few days' return is meaningless, so it is shown from day 30.")
+        if isinstance(t.get("stops_breached"), str) and t["stops_breached"].strip():
+            st.error(f"Stop-loss breached: {t['stops_breached']}. Sell per the rule and record the trade in data/trades.csv.")
+        track = _out("tracker_daily.csv")
+        if len(track) > 1:
+            track["date"] = pd.to_datetime(track["date"])
+            fig_t = go.Figure()
+            for col, name, color in [("total_inr", "Our portfolio", "#B45309"), ("nifty500_inr", "Nifty 500 TRI", "#1D4ED8"),
+                                     ("liquid_fund_inr", "Liquid fund", "#64748B")]:
+                fig_t.add_trace(go.Scatter(x=track["date"], y=track[col] / 1e5, name=name, line=dict(color=color, width=2),
+                                           hovertemplate="%{x|%d-%b}: ₹%{y:,.2f} L<extra>" + name + "</extra>"))
+            fig_t.update_layout(height=280, template="plotly_white", hovermode="x unified", yaxis_title="₹ lakh",
+                                margin=dict(l=10, r=10, t=30, b=10), legend=dict(orientation="h", y=1.12))
+            st.plotly_chart(fig_t, width="stretch")
+        pos = _out("tracker_positions.csv")
+        if not pos.empty:
+            with st.expander("Holdings: cost, value and profit per stock"):
+                st.dataframe(pos.rename(columns={
+                    "symbol": "Stock", "shares": "Shares", "avg_cost": "Avg cost (₹)", "close": "Close (₹)",
+                    "value_inr": "Value (₹)", "pnl_inr": "P&L (₹)", "pnl_pct": "P&L %", "stop_loss_price": "Stop (₹)",
+                    "at_risk_to_stop_inr": "At risk to stop (₹)", "stop_breached": "Stop breached"}),
+                    hide_index=True, width="stretch", height=_fit_height(pos))
+    st.write("")
+
     # 1. Summary Metric Row
     m_col1, m_col2, m_col3, m_col4 = st.columns(4)
     with m_col1:
@@ -1069,20 +1170,6 @@ with tab_technicals:
 # =============================================================================
 # TAB 4: RISK & HEDGING
 # =============================================================================
-@st.cache_data(show_spinner=False)
-def load_output_csv(name: str, file_mtime: float) -> pd.DataFrame:
-    """One CSV from output/ (empty if missing). file_mtime is only a cache key (see _file_mtime)."""
-    path = OUTPUT_DIR / name
-    return pd.read_csv(path) if path.exists() else pd.DataFrame()
-
-
-def _out(name: str) -> pd.DataFrame:
-    return load_output_csv(name, _file_mtime(OUTPUT_DIR / name))
-
-
-def _fit_height(df: pd.DataFrame) -> int:
-    """Table height showing every row without an inner scrollbar."""
-    return 38 + 35 * len(df)
 
 
 SECTOR_CHART_COLORS = {"Capital Goods": "#B45309", "Power": "#047857", "Cement": "#1D4ED8"}
