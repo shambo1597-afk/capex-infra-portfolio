@@ -33,6 +33,9 @@ from config import (
     OUTPUT_DIR,
     PRINCIPAL_INR,
     RISK_SUMMARY_OUTPUT_CSV,
+    HEDGE_MAX_ROLLS,
+    HEDGE_PROFIT_TRIGGER_PCT,
+    TAIL_HEDGE_OTM_PCT,
     TRADES_CSV,
 )
 
@@ -42,6 +45,7 @@ TRACKER_DAILY_CSV = OUTPUT_DIR / "tracker_daily.csv"
 TRACKER_SUMMARY_CSV = OUTPUT_DIR / "tracker_summary.csv"
 TRACKER_POSITIONS_CSV = OUTPUT_DIR / "tracker_positions.csv"
 PUT_MARKS_CSV = DERIVATIVES_DIR / "option_marks.csv"
+HEDGE_ROLL_CSV = OUTPUT_DIR / "hedge_roll.csv"
 MIN_DAYS_FOR_XIRR = 30  # annualising a few days' return gives meaningless four-digit rates
 LEDGER_COLUMNS = ["date", "instrument", "action", "quantity", "price", "note"]
 _OPTION = re.compile(r"^NIFTY (\d{4}-\d{2}-\d{2}) (\d+(?:\.\d+)?) (PE|CE)$")
@@ -239,6 +243,89 @@ def summarise(daily: pd.DataFrame, positions: pd.DataFrame) -> pd.DataFrame:
     ]
     return pd.DataFrame(rows, columns=["metric", "value"])
 
+def rolls_done(ledger: pd.DataFrame) -> int:
+    """Roll-ups recorded: days on which puts were bought at a higher strike than any bought before."""
+    puts = ledger[(ledger["action"].str.upper() == "BUY") & ledger["instrument"].map(lambda i: parse_option(i) is not None)]
+    best, rolls = None, 0
+    for day, grp in puts.sort_values("date").groupby("date", sort=True):
+        top = max(parse_option(i)["strike"] for i in grp["instrument"])
+        if best is not None and top > best:
+            rolls += 1
+        best = top if best is None else max(best, top)
+    return rolls
+
+
+def plan_put_roll(summary: Dict[str, object], ledger: pd.DataFrame, as_of: pd.Timestamp, fo: Optional[pd.DataFrame],
+                  hedge_ratio: float, trigger_pct: float = HEDGE_PROFIT_TRIGGER_PCT,
+                  max_rolls: int = HEDGE_MAX_ROLLS, otm_pct: float = TAIL_HEDGE_OTM_PCT) -> pd.DataFrame:
+    """
+    The profit-lock rule: once the portfolio is up `trigger_pct`, sell the puts held and buy puts of the same
+    expiry about `otm_pct` below the current Nifty, sized to the (larger) stock value x hedge_ratio.
+    Returns rows (field, value); status is 'waiting', 'TRIGGERED' (with the trades), 'done' or 'no prices'.
+    """
+    pnl_pct = float(summary["pnl_pct"])
+    done = rolls_done(ledger)
+    rows = [("as_of", as_of.strftime("%Y-%m-%d")), ("pnl_pct", round(pnl_pct, 2)), ("trigger_pct", trigger_pct),
+            ("rolls_done", done), ("max_rolls", max_rolls)]
+    if done >= max_rolls:
+        return pd.DataFrame(rows + [("status", "done")], columns=["field", "value"])
+    if pnl_pct < trigger_pct:
+        return pd.DataFrame(rows + [("status", "waiting"), ("gap_to_trigger_pp", round(trigger_pct - pnl_pct, 2))],
+                            columns=["field", "value"])
+    if fo is None or fo.empty:
+        return pd.DataFrame(rows + [("status", "no prices")], columns=["field", "value"])
+    held = {i: q for i, q in ledger_positions(ledger).items() if parse_option(i) and q > 0}
+    opts = fo[(fo["FinInstrmTp"] == "IDO") & (fo["OptnTp"] == "PE")]
+    sell_rows, expiry = [], None
+    for inst, qty in held.items():
+        o = parse_option(inst)
+        expiry = o["expiry"]
+        r = opts[(opts["XpryDt"] == o["expiry"]) & np.isclose(opts["StrkPric"], o["strike"])]
+        price = float(r["SttlmPric"].iloc[0]) if not r.empty else 0.0
+        sell_rows.append((inst, qty, price))
+    fut = fo[fo["FinInstrmTp"] == "IDF"]
+    spot = float(fut["UndrlygPric"].iloc[0]) if not fut.empty else float(opts["UndrlygPric"].iloc[0])
+    lot = int(fo["NewBrdLotQty"].iloc[0])
+    chain = opts[(opts["XpryDt"] == expiry) & (opts["OpnIntrst"] > 0)] if expiry else opts
+    if chain.empty:
+        return pd.DataFrame(rows + [("status", "no prices")], columns=["field", "value"])
+    liquid = chain[chain["OpnIntrst"] >= chain["OpnIntrst"].median()]
+    pool = liquid if not liquid.empty else chain
+    target = spot * (1 - otm_pct / 100)
+    new = pool.iloc[(pool["StrkPric"] - target).abs().argsort().iloc[0]]
+    lots = max(1, round(hedge_ratio * float(summary["stocks_inr"]) / (spot * lot)))
+    held_strike = max((parse_option(i)["strike"] for i in held), default=0.0)
+    if float(new["StrkPric"]) <= held_strike:
+        # The Nifty has not risen enough to move the strike up: the gain is stock-specific and the trailing
+        # stops protect it. Never sell and rebuy the same contract; only add lots if the larger portfolio needs them.
+        inst = max(held, key=lambda i: parse_option(i)["strike"])
+        extra = lots * lot - int(held[inst])
+        extra = lots * lot - int(held[inst])
+        price = float(new["SttlmPric"]) if np.isclose(new["StrkPric"], held_strike) else \
+            float(opts[(opts["XpryDt"] == expiry) & np.isclose(opts["StrkPric"], held_strike)]["SttlmPric"].iloc[0])
+        rows += [("status", "TRIGGERED" if extra > 0 else "covered"), ("nifty_spot", round(spot, 2)),
+                 ("note", "Nifty has not risen enough to raise the strike: the gain is stock-specific and the "
+                          "trailing stops protect it; only the lot count is topped up")]
+        if extra > 0:
+            rows.append(("trade", f"BUY {extra} {inst} @ {price:.2f} ({extra // lot} lots, top-up)"))
+        cost = max(extra, 0) * price
+        rows += [("sell_value_inr", 0), ("buy_cost_inr", round(cost)), ("net_cost_inr", round(cost)),
+                 ("cash_inr", round(float(summary["cash_inr"]))),
+                 ("cash_sufficient", bool(float(summary["cash_inr"]) >= cost))]
+        return pd.DataFrame(rows, columns=["field", "value"])
+    new_inst = f"NIFTY {new['XpryDt']} {new['StrkPric']:.0f} PE"
+    buy_cost = lots * lot * float(new["SttlmPric"])
+    sell_value = sum(q * p for _, q, p in sell_rows)
+    rows += [("status", "TRIGGERED"), ("nifty_spot", round(spot, 2))]
+    for inst, qty, price in sell_rows:
+        rows.append(("trade", f"SELL {int(qty)} {inst} @ {price:.2f}"))
+    rows.append(("trade", f"BUY {lots * lot} {new_inst} @ {float(new['SttlmPric']):.2f} ({lots} lots)"))
+    rows += [("new_strike_below_spot_pct", round((1 - new["StrkPric"] / spot) * 100, 2)),
+             ("sell_value_inr", round(sell_value)), ("buy_cost_inr", round(buy_cost)),
+             ("net_cost_inr", round(buy_cost - sell_value)), ("cash_inr", round(float(summary["cash_inr"]))),
+             ("cash_sufficient", bool(float(summary["cash_inr"]) >= buy_cost - sell_value))]
+    return pd.DataFrame(rows, columns=["field", "value"])
+
 
 def run(as_of: Optional[date] = None, fetch=None) -> Optional[Dict[str, pd.DataFrame]]:
     from risk_model import load_factor_series
@@ -248,7 +335,7 @@ def run(as_of: Optional[date] = None, fetch=None) -> Optional[Dict[str, pd.DataF
     end = closes.index[closes.index <= end].max()
     ledger = ensure_ledger(closes, end, fetch)
     if ledger is None:
-        for path in (TRACKER_DAILY_CSV, TRACKER_SUMMARY_CSV, TRACKER_POSITIONS_CSV):
+        for path in (TRACKER_DAILY_CSV, TRACKER_SUMMARY_CSV, TRACKER_POSITIONS_CSV, HEDGE_ROLL_CSV):
             path.unlink(missing_ok=True)
         return None
     factors = load_factor_series()
@@ -265,9 +352,21 @@ def run(as_of: Optional[date] = None, fetch=None) -> Optional[Dict[str, pd.DataF
     daily.to_csv(TRACKER_DAILY_CSV, index=False)
     positions.to_csv(TRACKER_POSITIONS_CSV, index=False)
     summary.to_csv(TRACKER_SUMMARY_CSV, index=False)
-    logger.info("Portfolio value %s: Rs %,.0f (P&L Rs %,.0f).", end.date(), daily.iloc[-1]["total_inr"],
-                daily.iloc[-1]["pnl_inr"])
-    return {"daily": daily, "positions": positions, "summary": summary}
+    logger.info(f"Portfolio value {end.date()}: Rs {daily.iloc[-1]['total_inr']:,.0f} "
+                f"(P&L Rs {daily.iloc[-1]['pnl_inr']:,.0f}).")
+
+    # Profit-lock rule: the option chain is only fetched once the trigger is reached
+    s = dict(zip(summary["metric"], summary["value"]))
+    plan_path = OUTPUT_DIR / "hedge_plan.csv"
+    plan = pd.read_csv(plan_path).set_index("metric")["value"] if plan_path.exists() else pd.Series(dtype=object)
+    ratio = float(plan.get("Tail hedge ratio", 1.0))
+    fo = None
+    if float(s["pnl_pct"]) >= HEDGE_PROFIT_TRIGGER_PCT and rolls_done(ledger) < HEDGE_MAX_ROLLS:
+        from risk_model import fetch_nifty_derivatives
+        fo = (fetch or (lambda d: fetch_nifty_derivatives(d, use_cache=True, save=False)))(end.date())
+    roll = plan_put_roll(s, ledger, end, fo, ratio)
+    roll.to_csv(HEDGE_ROLL_CSV, index=False)
+    return {"daily": daily, "positions": positions, "summary": summary, "roll": roll}
 
 
 if __name__ == "__main__":
@@ -281,3 +380,4 @@ if __name__ == "__main__":
     else:
         print(out["summary"].to_string(index=False))
         print(out["positions"].to_string(index=False))
+        print(out["roll"].to_string(index=False))

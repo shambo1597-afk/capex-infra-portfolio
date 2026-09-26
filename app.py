@@ -29,6 +29,7 @@ from config import (
     EVALUATION_START_DATE,
     MARKET_RISK_PREMIUM_PCT,
     MARKET_RISK_PREMIUM_SOURCE,
+    TAIL_HEDGE_OTM_PCT,
     PRINCIPAL_INR,
     WEIGHT_MAX_PCT,
     WEIGHT_MIN_PCT,
@@ -696,6 +697,32 @@ with tab_overview:
         xirr_val = t.get("xirr_pct")
         l4.metric("XIRR (annualised)", f"{float(xirr_val):.1f}%" if pd.notna(xirr_val) and str(xirr_val) != "nan"
                   else "after 30 days", help="Annualising only a few days' return is meaningless, so it is shown from day 30.")
+        roll_df = _out("hedge_roll.csv")
+        if not roll_df.empty:
+            rv = dict(zip(roll_df["field"], roll_df["value"]))
+            trades = roll_df.loc[roll_df["field"] == "trade", "value"].tolist()
+            if rv.get("status") == "TRIGGERED":
+                st.warning(
+                    f"**Profit lock triggered:** the portfolio is up {float(rv['pnl_pct']):+.2f}% (trigger "
+                    f"+{float(rv['trigger_pct']):g}%). Roll the puts up so a crash cannot take the gain back:\n\n"
+                    + ("\n".join(f"- {x}" for x in trades) if trades else "- no trade needed")
+                    + (f"\n\n_{rv['note']}_" if isinstance(rv.get("note"), str) else "")
+                    + f"\n\nNet cost {_inr(float(rv['net_cost_inr']))} from cash ({_inr(float(rv['cash_inr']))} available"
+                    + ("" if str(rv.get("cash_sufficient")) == "True" else "; NOT enough: use fewer lots")
+                    + "). Prices: NSE settlement today; record the fills in data/trades.csv."
+                )
+            elif rv.get("status") == "waiting":
+                st.caption(f"Profit lock: at +{float(rv['trigger_pct']):g}% the puts are rolled up to about "
+                           f"{TAIL_HEDGE_OTM_PCT:g}% below the Nifty (now {float(rv['pnl_pct']):+.2f}%, "
+                           f"{float(rv['gap_to_trigger_pp']):.2f} pp to go).")
+            elif rv.get("status") == "covered":
+                st.caption(f"Profit lock: the portfolio is up {float(rv['pnl_pct']):+.2f}% but the Nifty has not risen enough "
+                           "to raise the put strike; the gain is stock-specific and the trailing stops protect it. "
+                           "The puts already cover the portfolio.")
+            elif rv.get("status") == "done":
+                st.caption("Profit lock: the puts have been rolled up (recorded in the ledger).")
+            elif rv.get("status") == "no prices":
+                st.warning("Profit lock triggered, but NSE option prices for today are not available yet; refresh later.")
         if isinstance(t.get("stops_breached"), str) and t["stops_breached"].strip():
             st.error(f"Stop-loss breached: {t['stops_breached']}. Sell per the rule and record the trade in data/trades.csv.")
         track = _out("tracker_daily.csv")

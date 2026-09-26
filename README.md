@@ -186,6 +186,8 @@ Daily $r_p = \sum_i w_i r_i$ with today's weights, compounded $R = \prod (1 + r_
 ### 9. Live P&L of the Rs 1 crore (`tracker.py`)
 The bottom line, shown first on the dashboard: what the Rs 1 crore is worth today, the profit or loss in rupees, and the same Rs 1 crore in the Nifty 500 TRI and in a liquid fund (Nifty 1D Rate index), from the 28-Sep-2026 close (`config.EVALUATION_START_DATE`). The trade ledger `data/trades.csv` is created automatically at that close (the stocks with the current weights of the 97% sleeve, the hedge plan's puts at NSE's settlement price); record real purchase prices, stop-loss exits, redeployments and the put roll by editing it. Each session: stocks at the NSE close + puts at the NSE settlement price + cash at the overnight rate. Also shown: the rupees still at risk if every stop were hit, stop breaches, and XIRR (from day 30). Outputs: `output/tracker_*.csv`.
 
+**Profit lock (`tracker.plan_put_roll`, `output/hedge_roll.csv`).** Once the portfolio is up `config.HEDGE_PROFIT_TRIGGER_PCT` (10%), the dashboard shows the roll: sell the puts held and buy puts of the same expiry about 5% below the current Nifty, sized to the larger stock value × the tail hedge ratio, at that day's NSE settlement prices, with the net cost against the cash reserve. If the Nifty has not risen enough to raise the strike, the gain is stock-specific (the trailing stops protect it) and only the lot count is topped up; the same contract is never sold and rebought. `config.HEDGE_MAX_ROLLS` (1) caps the roll-ups; a roll counts once puts are bought at a higher strike.
+
 ## Project Structure
 
 ```
