@@ -424,3 +424,20 @@ def test_committed_locked_portfolio_check():
     assert (check["recent_spike_flag"] == spike).all()
     announced = check["results_date_status"] == "announced"
     assert check.loc[~announced, "next_results_date"].isna().all()  # no date without an NSE announcement
+
+
+def test_results_calendar_fields():
+    from datetime import date
+    from sector_screen import results_calendar_fields
+    today = date(2026, 9, 26)
+    est = results_calendar_fields({"last_results_date": "2026-08-10", "next_results_date": None,
+                                   "prior_year_sep_qtr_results_date": "2025-10-15"}, today)
+    assert est["q2_results_basis"] == "estimate" and est["q2_results_date"] == "2026-10-14"  # same weekday (Wed)
+    assert est["days_to_results"] == 18
+    ann = results_calendar_fields({"last_results_date": "2026-08-10", "next_results_date": "2026-10-20",
+                                   "prior_year_sep_qtr_results_date": "2025-10-15"}, today)
+    assert ann["q2_results_basis"] == "announced" and ann["q2_results_date"] == "2026-10-20"
+    done = results_calendar_fields({"last_results_date": "2026-10-16", "next_results_date": None,
+                                    "prior_year_sep_qtr_results_date": "2025-10-15"}, date(2026, 10, 20))
+    assert done["q2_results_basis"] == "reported" and done["days_to_results"] == -4
+    assert results_calendar_fields({}, today)["q2_results_basis"] == "unknown"

@@ -744,6 +744,42 @@ with tab_overview:
                     "value_inr": "Value (₹)", "pnl_inr": "P&L (₹)", "pnl_pct": "P&L %", "stop_loss_price": "Stop (₹)",
                     "at_risk_to_stop_inr": "At risk to stop (₹)", "stop_breached": "Stop breached"}),
                     hide_index=True, width="stretch", height=_fit_height(pos))
+
+    # 0b. Q2 results calendar: the days a stock can gap through its stop
+    lc = _out("locked_portfolio_runup_catalyst_check.csv")
+    if not lc.empty and "q2_results_date" in lc.columns:
+        cal = lc[["symbol", "q2_results_date", "q2_results_basis"]].dropna(subset=["q2_results_date"]).copy()
+        cal["date"] = pd.to_datetime(cal["q2_results_date"])
+        today_ist = pd.Timestamp.now(tz="Asia/Kolkata").normalize().tz_localize(None)
+        cal["days"] = (cal["date"] - today_ist).dt.days
+        if not risk_df.empty:
+            cal = cal.merge(risk_df[["symbol", "stop_loss_price", "stop_loss_pct_below_current"]], on="symbol", how="left")
+        cal = cal.sort_values("date")
+        soon = cal[(cal["q2_results_basis"] != "reported") & cal["days"].between(0, 7)]
+        for _, r in soon.iterrows():
+            st.warning(f"**{r['symbol']} reports Q2 results {'today' if r['days'] == 0 else f'in {r.days} day(s)'}** "
+                       f"({r['date']:%a %d-%b}, {'announced' if r['q2_results_basis'] == 'announced' else 'ESTIMATE from last year'}). "
+                       f"A bad result can gap the price straight through its stop at ₹{r['stop_loss_price']:,.2f}.")
+        n_est = int((cal["q2_results_basis"] == "estimate").sum())
+        with st.expander(f"Q2 results calendar: next {cal.loc[cal['days'] >= 0, 'symbol'].head(1).tolist()[0] if (cal['days'] >= 0).any() else '—'}"
+                         f" ({n_est} of {len(cal)} dates are estimates until NSE announces them)", expanded=False):
+            basis_label = {"announced": "Announced (NSE)", "estimate": "Estimate: last year's date, same weekday",
+                           "reported": "Reported"}
+            show_cal = pd.DataFrame({
+                "Stock": cal["symbol"],
+                "Q2 results": cal["date"].dt.strftime("%a %d-%b-%Y"),
+                "Basis": cal["q2_results_basis"].map(lambda b: basis_label.get(b, b)),
+                "Days away": cal["days"].map(lambda d: "done" if d < 0 else ("today" if d == 0 else f"{d}")),
+                "Stop (₹)": cal.get("stop_loss_price", pd.Series(dtype=float)).map(lambda x: f"{x:,.2f}" if pd.notna(x) else "—"),
+                "Stop below price": cal.get("stop_loss_pct_below_current", pd.Series(dtype=float)).map(
+                    lambda x: f"{x:.1f}%" if pd.notna(x) else "—"),
+            })
+            st.dataframe(show_cal, hide_index=True, width="stretch", height=_fit_height(show_cal))
+            st.caption("From NSE board-meeting announcements (re-checked every refresh). Until a company announces, the date "
+                       "is last year's September-quarter results date moved to the same weekday this year, labelled as an "
+                       "estimate. Results often come after market hours or on a weekend; the price reacts at the next "
+                       "session, and a gap can go through a stop.")
+
     st.write("")
 
     # 1. Summary Metric Row

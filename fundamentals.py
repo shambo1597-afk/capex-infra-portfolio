@@ -679,13 +679,18 @@ def parse_results_meetings(records: List[Dict[str, Any]], as_of: date) -> Dict[s
         if pd.notna(when) and is_results(rec):
             meetings.append((when.date(), rec))
     upcoming = sorted((m for m in meetings if m[0] >= as_of), key=lambda m: m[0])
+    past = sorted((m for m in meetings if m[0] < as_of), key=lambda m: m[0])
     # Last year's September-quarter results: a results meeting held Oct-Dec of the previous year
     prior = sorted((m for m in meetings if m[0].year == as_of.year - 1 and m[0].month >= 10), key=lambda m: m[0])
     return {
         "next_results_date": upcoming[0][0].isoformat() if upcoming else None,
         "next_results_desc": (upcoming[0][1].get("bm_desc") or "")[:160] if upcoming else None,
         "prior_year_sep_qtr_results_date": prior[0][0].isoformat() if prior else None,
+        "last_results_date": past[-1][0].isoformat() if past else None,
     }
+
+
+BOARD_MEETINGS_MAX_AGE_HOURS = 20
 
 
 def fetch_results_calendar(
@@ -701,11 +706,16 @@ def fetch_results_calendar(
     """
     as_of = as_of or date.today()
     url = NSE_BOARD_MEETINGS_API_URL.format(symbol=urllib.parse.quote(symbol.upper(), safe=""))
-    payload = _fetch_nse_json(url, Path(cache_dir) / f"{symbol.upper()}.board_meetings.json",
-                              f"board meetings for {symbol}", use_cache=use_cache)
+    cache = Path(cache_dir) / f"{symbol.upper()}.board_meetings.json"
+    # Results dates are announced during the window: re-fetch a cache older than a day (stale fallback)
+    fresh = cache.exists() and (time.time() - cache.stat().st_mtime) < BOARD_MEETINGS_MAX_AGE_HOURS * 3600
+    payload = _fetch_nse_json(url, cache, f"board meetings for {symbol}", use_cache=use_cache and fresh)
+    if payload is None and cache.exists():
+        logger.warning("Using stale board-meeting cache for %s (NSE unreachable).", symbol)
+        payload = json.loads(cache.read_text(encoding="utf-8"))
     if payload is None:
-        return {"next_results_date": None, "next_results_desc": None,
-                "prior_year_sep_qtr_results_date": None, "results_date_status": "unavailable"}
+        return {"next_results_date": None, "next_results_desc": None, "prior_year_sep_qtr_results_date": None,
+                "last_results_date": None, "results_date_status": "unavailable"}
     records = payload if isinstance(payload, list) else payload.get("data", [])
     info = parse_results_meetings(records, as_of)
     info["results_date_status"] = "announced" if info["next_results_date"] else "not announced"

@@ -39,6 +39,7 @@ from analysis import evaluate_stock_technicals
 from config import (
     BUSINESS_FOCUS_NOTES,
     DI_GAP_THIN_THRESHOLD,
+    EVALUATION_START_DATE,
     FUNDAMENTAL_HARD_FIELDS,
     HIGH_TURNOVER_ROCE_MIN,
     LOCKED_PORTFOLIO_SYMBOLS,
@@ -525,8 +526,33 @@ def compute_runup_and_catalyst_info(
             "results_within_30_days": (bool(next_date <= today + timedelta(days=CATALYST_WINDOW_DAYS))
                                        if next_date else None),
             "prior_year_sep_qtr_results_date": cal["prior_year_sep_qtr_results_date"],
+            **results_calendar_fields(cal, today),
         })
     return pd.DataFrame(rows)
+
+
+def results_calendar_fields(cal: dict, today: date) -> dict:
+    """
+    The Q2 results date for the calendar: 'reported' once a results meeting on/after EVALUATION_START_DATE
+    has passed, else the NSE-announced date, else an ESTIMATE = last year's September-quarter date plus
+    364 days (the same weekday), labelled as such. days_to_results counts from `today`.
+    """
+    last = cal.get("last_results_date")
+    if last and date.fromisoformat(last) >= date.fromisoformat(EVALUATION_START_DATE):
+        when, status = last, "reported"
+    elif cal.get("next_results_date"):
+        when, status = cal["next_results_date"], "announced"
+    elif cal.get("prior_year_sep_qtr_results_date"):
+        when = (date.fromisoformat(cal["prior_year_sep_qtr_results_date"]) + timedelta(days=364)).isoformat()
+        status = "estimate"
+    else:
+        when, status = None, "unknown"
+    return {
+        "q2_results_date": when,
+        "q2_results_basis": status,
+        "days_to_results": (date.fromisoformat(when) - today).days if when else None,
+        "last_results_date": last,
+    }
 
 
 def build_tenth_candidate_sweep(

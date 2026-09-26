@@ -1,12 +1,12 @@
-symbol,rs_score_vs_nifty500,rs_last_10d,recent_10day_contribution_pct,recent_spike_flag,next_results_date,results_date_status,results_within_30_days,prior_year_sep_qtr_results_date
-WELCORP,89.2,3.52,3.9,False,,not announced,,2025-10-30
-TDPOWERSYS,23.63,0.05,0.2,False,,not announced,,2025-10-30
-APARINDS,12.92,4.02,31.1,False,,not announced,,2025-10-29
-QPOWER,27.43,5.61,20.5,False,,not announced,,2025-11-12
-FINCABLES,25.61,4.52,17.6,False,,not announced,,2025-11-11
-CARBORUNIV,8.99,18.79,209.0,True,,not announced,,2025-10-30
-BEML,20.87,1.89,9.1,False,,not announced,,2025-11-05
-VOLTAMP,7.96,-0.45,-5.7,False,,not announced,,2025-11-08
-USHAMART,8.84,6.17,69.8,True,,not announced,,2025-11-08
-ACMESOLAR,18.51,13.01,70.3,True,,not announced,,2025-11-03
-NUVOCO,12.01,2.77,23.1,False,,not announced,,2025-10-15
+symbol,rs_score_vs_nifty500,rs_last_10d,recent_10day_contribution_pct,recent_spike_flag,next_results_date,results_date_status,results_within_30_days,prior_year_sep_qtr_results_date,q2_results_date,q2_results_basis,days_to_results,last_results_date
+WELCORP,89.2,3.52,3.9,False,,not announced,,2025-10-30,2026-10-29,estimate,33,2026-07-24
+TDPOWERSYS,23.63,0.05,0.2,False,,not announced,,2025-10-30,2026-10-29,estimate,33,2026-08-11
+APARINDS,12.92,4.02,31.1,False,,not announced,,2025-10-29,2026-10-28,estimate,32,2026-07-24
+QPOWER,27.43,5.61,20.5,False,,not announced,,2025-11-12,2026-11-11,estimate,46,2026-08-09
+FINCABLES,25.61,4.52,17.6,False,,not announced,,2025-11-11,2026-11-10,estimate,45,2026-08-11
+CARBORUNIV,8.99,18.79,209.0,True,,not announced,,2025-10-30,2026-10-29,estimate,33,2026-08-07
+BEML,20.87,1.89,9.1,False,,not announced,,2025-11-05,2026-11-04,estimate,39,2026-08-07
+VOLTAMP,7.96,-0.45,-5.7,False,,not announced,,2025-11-08,2026-11-07,estimate,42,2026-07-31
+USHAMART,8.84,6.17,69.8,True,,not announced,,2025-11-08,2026-11-07,estimate,42,2026-07-27
+ACMESOLAR,18.51,13.01,70.3,True,,not announced,,2025-11-03,2026-11-02,estimate,37,2026-07-29
+NUVOCO,12.01,2.77,23.1,False,,not announced,,2025-10-15,2026-10-14,estimate,18,2026-07-13
