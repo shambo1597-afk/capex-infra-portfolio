@@ -843,34 +843,42 @@ with tab_overview:
         plan = pd.read_csv(REPLACEMENT_PLAN_CSV) if REPLACEMENT_PLAN_CSV.exists() else pd.DataFrame()
         if not plan.empty:  # stop hits not yet recorded in the ledger
             lines = []
-            for _, r in plan.iterrows():
-                sell = (f"SELL {int(r['sell_shares']):,} {r['sell']} (closed ₹{r['sell_close']:,.2f}, stop "
-                        f"₹{r['stop_loss_price']:,.2f}; about {_inr(r['proceeds_inr'])})")
-                if isinstance(r.get("buy"), str) and r["buy"]:
+            for sell_sym, group in plan.groupby("sell", sort=False):
+                r0 = group.iloc[0]
+                sell = (f"SELL {int(r0['sell_shares']):,} {sell_sym} (closed ₹{r0['sell_close']:,.2f}, stop "
+                        f"₹{r0['stop_loss_price']:,.2f}; about {_inr(r0['proceeds_inr'])})")
+                buys = [r for _, r in group.iterrows() if isinstance(r.get("buy"), str) and r["buy"]]
+                if buys and r0.get("kind", "reserve") == "reserve":
+                    r = buys[0]
                     buy = (f"BUY {int(r['buy_shares']):,} {r['buy']} (reserve, rank #{int(r['buy_rank'])} of 15; "
-                           f"₹{r['buy_close']:,.2f}, about {_inr(r['buy_inr'])}); {_inr(r['cash_left_inr'])} stays in cash")
+                           f"₹{r['buy_close']:,.2f}, about {_inr(r['buy_inr'])})")
+                elif buys:
+                    buy = ("no reserve stock passes the selection rule today, so the money tops up the other holdings "
+                           "in proportion to their weights: " + ", ".join(
+                               f"BUY {int(r['buy_shares']):,} {r['buy']} ({_inr(r['buy_inr'])})" for r in buys))
                 else:
-                    buy = "no reserve stock passes the selection rule today: the money waits in the liquid fund"
-                note = f" _{r['note']}_" if isinstance(r.get("note"), str) and r["note"] else ""
-                lines.append(f"- {sell} → {buy}.{note}")
-            st.error(f"**Stop-loss hit: {', '.join(plan['sell'])}.** Replace it from the reserve list:\n\n"
-                     + ("\n".join(lines) if lines else "- see output/replacement_plan.csv")
+                    buy = "nothing left to buy: the money stays in cash"
+                note = f" _{r0['note']}_" if r0.get("kind", "reserve") == "reserve" and isinstance(r0.get("note"), str) \
+                    and r0["note"] else ""
+                lines.append(f"- {sell} → {buy}; {_inr(r0['cash_left_inr'])} stays in cash.{note}")
+            st.error(f"**Stop-loss hit: {', '.join(plan['sell'].unique())}.** Redeploy the money:\n\n"
+                     + "\n".join(lines)
                      + "\n\nPrices are today's closes (the fill will be tomorrow's price).")
-            if not plan.empty and not can_edit():
+            if not can_edit():
                 st.caption("To record these trades, unlock editing in the Trade ledger section below.")
-            if not plan.empty and can_edit():
+            else:
                 with st.form("record_replacement"):
-                    st.markdown("**Done the trades? Record them here** (enter the actual fill prices):")
+                    st.markdown("**Done the trades? Record them here** (enter the actual fill prices; the "
+                                "quantities bought follow the actual sale proceeds):")
                     day = st.date_input("Trade date", value=pd.Timestamp.now(tz="Asia/Kolkata").date())
                     fills = {}
                     cols = st.columns(2)
-                    for _, r in plan.iterrows():
-                        fills[r["sell"]] = cols[0].number_input(f"Sold {r['sell']} at (₹)", value=float(r["sell_close"]),
-                                                                min_value=0.01, format="%.2f")
-                        if isinstance(r.get("buy"), str) and r["buy"]:
-                            fills[r["buy"]] = cols[1].number_input(f"Bought {r['buy']} at (₹)",
-                                                                   value=float(r["buy_close"]), min_value=0.01,
-                                                                   format="%.2f")
+                    for sym, px in plan.drop_duplicates("sell")[["sell", "sell_close"]].values:
+                        fills[sym] = cols[0].number_input(f"Sold {sym} at (₹)", value=float(px), min_value=0.01,
+                                                          format="%.2f", key=f"fill_sell_{sym}")
+                    for sym, px in plan.dropna(subset=["buy"]).drop_duplicates("buy")[["buy", "buy_close"]].values:
+                        fills[sym] = cols[1].number_input(f"Bought {sym} at (₹)", value=float(px), min_value=0.01,
+                                                          format="%.2f", key=f"fill_buy_{sym}")
                     if st.form_submit_button("Record these trades", type="primary"):
                         new = replacement_trades(plan, day.isoformat(), fills)
                         _commit_trades(pd.concat([pd.read_csv(TRADES_CSV), new], ignore_index=True),
@@ -1114,7 +1122,8 @@ with tab_overview:
         st.caption(f"The money is in the top {INVESTED_COUNT} of the {len(LOCKED_PORTFOLIO_SYMBOLS)}. When a holding "
                    "closes at or below its stop-loss, its sale proceeds buy the first reserve stock that still passes "
                    "the selection rule that day (hard fundamentals, bullish trend with DI gap ≥ 2, one year of prices, "
-                   "RRG conviction High or Moderate). A stock that has been sold never comes back.")
+                   "RRG conviction High or Moderate); if none does, they top up the other holdings (cash is never left "
+                   "idle). A stock that has been sold never comes back.")
         show_res = pd.DataFrame({
             "Queue": reserve_df["status"],
             "Stock": reserve_df["symbol"],

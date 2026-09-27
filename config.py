@@ -168,7 +168,8 @@ def sector_of(symbol: str) -> str:
 # INVESTED_COUNT (INITIAL_HOLDINGS); the rest are the reserve, in rank order (RESERVE_SYMBOLS).
 # When a holding closes at or below its stop-loss, it is sold and its proceeds buy the first reserve
 # stock that still passes the selection rule that day (tracker.plan_replacements); a stock that has
-# been sold never comes back. No sector minimums: Power has one stock (ACMESOLAR) and Cement none
+# been sold never comes back; if no reserve stock qualifies, the proceeds top up the remaining holdings
+# ("cash cannot sit idle"). No sector minimums: Power has one stock (ACMESOLAR) and Cement none
 # (its best confirmed uptrend, NUVOCO, ranks #32); the group will ask the professor whether a Cement
 # leg is required. Soft exceptions (shown on the dashboard): BEML (ROCE/OPM), GREAVESCOT (OPM),
 # BANSALWIRE (OPM). UTLSOLAR (211 sessions of prices) fails the one-year history rule and was

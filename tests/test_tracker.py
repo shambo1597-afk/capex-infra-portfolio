@@ -200,13 +200,22 @@ def test_two_stops_take_the_queue_in_turn_and_sold_stocks_never_return():
     assert plan["buy"].tolist() == RESERVE_SYMBOLS[1:3]
 
 
-def test_proceeds_wait_in_cash_when_no_reserve_stock_qualifies():
+def test_proceeds_top_up_the_holdings_when_no_reserve_stock_qualifies():
+    """Cash cannot sit idle: with no qualifying reserve stock, the proceeds go into the remaining holdings
+    in proportion to their weights, and the ledger trades follow the actual fill."""
     from config import INITIAL_HOLDINGS, RESERVE_SYMBOLS
-    pos = _positions([(INITIAL_HOLDINGS[0], 10, 90.0, 95.0)])
+    a, b, c = INITIAL_HOLDINGS[:3]
+    pos = _positions([(a, 100, 90.0, 95.0), (b, 10, 200.0, 150.0), (c, 10, 100.0, 80.0)])
+    closes = pd.Series({b: 200.0, c: 100.0, **{s: 50.0 for s in RESERVE_SYMBOLS}})
     plan = tracker.plan_replacements(pos, pd.DataFrame(columns=tracker.LEDGER_COLUMNS),
-                                     _ranking(RESERVE_SYMBOLS, "Low"), pd.Series({s: 50.0 for s in RESERVE_SYMBOLS}))
-    r = plan.iloc[0]
-    assert pd.isna(r["buy"]) and r["buy_shares"] == 0 and r["cash_left_inr"] == 900.0
+                                     _ranking(RESERVE_SYMBOLS, "Low"), closes, pd.Series({a: 20.0, b: 30.0, c: 10.0}))
+    assert plan["kind"].tolist() == ["top-up", "top-up"] and plan["buy"].tolist() == [b, c]
+    assert plan["alloc_pct"].tolist() == [75.0, 25.0]  # 30 : 10 of the holdings that stay
+    assert plan["buy_shares"].tolist() == [9000 * 0.75 // 200, 9000 * 0.25 // 100]
+    assert plan["cash_left_inr"].iloc[0] == pytest.approx(9000 - 33 * 200 - 22 * 100)
+    t = tracker.replacement_trades(plan, "2026-10-05", fills={a: 80.0})
+    assert t[["instrument", "action", "quantity"]].values.tolist() == [[a, "SELL", 100], [b, "BUY", 30], [c, "BUY", 20]]
+    assert "top-up" in t["note"].iloc[1]
 
 
 # ---------------------------------------------------------------------------

@@ -133,19 +133,25 @@ def sold_stocks(ledger: Optional[pd.DataFrame]) -> set:
 
 
 def plan_replacements(positions: pd.DataFrame, ledger: pd.DataFrame, ranking: pd.DataFrame,
-                      closes: pd.Series) -> pd.DataFrame:
+                      closes: pd.Series, weights: Optional[pd.Series] = None) -> pd.DataFrame:
     """
-    Stop-loss replacement rule. Each holding that closed at or below its stop is sold; the sale
-    proceeds (shares x today's close, an estimate of tomorrow's fill) buy whole shares of the first
-    stock in the reserve queue (LOCKED_PORTFOLIO order after the holdings) that is not held, has
-    never been sold, and still passes the selection rule today: listed in `ranking` (the eligible
-    stocks of output/selection_ranking.csv) with conviction in SELECTION_CONVICTION_TIERS. With no
-    such stock the proceeds wait in the liquid fund. Several stops on one day take the queue in turn.
+    Stop-loss replacement rule ("cash cannot sit idle; cash has to be redeployed"). Each holding that
+    closed at or below its stop is sold; the sale proceeds (shares x today's close, an estimate of
+    tomorrow's fill) buy whole shares of the first stock in the reserve queue (LOCKED_PORTFOLIO order after
+    the holdings) that is not held, has never been sold, and still passes the selection rule today: listed
+    in `ranking` (the eligible stocks of output/selection_ranking.csv) with conviction in
+    SELECTION_CONVICTION_TIERS. Several stops on one day take the queue in turn. When no reserve stock
+    qualifies, the proceeds top up the remaining holdings in proportion to their current weights
+    (`weights`, symbol -> weight %; equal weights without it).
+    One row per purchase: `alloc_pct` is the share of that sale's proceeds it uses, `kind` is
+    "reserve" or "top-up".
     """
-    columns = ["sell", "sell_shares", "sell_close", "stop_loss_price", "proceeds_inr", "buy", "buy_rank",
-               "buy_close", "buy_shares", "buy_inr", "cash_left_inr", "note"]
+    columns = ["sell", "sell_shares", "sell_close", "stop_loss_price", "proceeds_inr", "kind", "buy", "buy_rank",
+               "alloc_pct", "buy_close", "buy_shares", "buy_inr", "cash_left_inr", "note"]
     sold = sold_stocks(ledger)  # the whole ledger: a sale recorded after the last close is already done
-    if positions.empty or not (positions["stop_breached"] & ~positions["symbol"].isin(sold)).any():
+    stopped = positions[positions["stop_breached"] & ~positions["symbol"].isin(sold)] if not positions.empty \
+        else positions
+    if positions.empty or stopped.empty:
         return pd.DataFrame(columns=columns)
     held = set(positions["symbol"]) | set(held_stocks(ledger) if not ledger.empty else [])
     ok = ranking[ranking["conviction"].isin(SELECTION_CONVICTION_TIERS)] if "conviction" in ranking else ranking
@@ -153,24 +159,36 @@ def plan_replacements(positions: pd.DataFrame, ledger: pd.DataFrame, ranking: pd
     queue = [s for s in LOCKED_PORTFOLIO_SYMBOLS if s not in held and s not in sold]
     skipped = [s for s in queue if s not in passing]
     queue = [s for s in queue if s in passing]
+    keep = [s for s in positions["symbol"] if s not in set(stopped["symbol"]) and s not in sold]
     rows = []
-    for _, p in positions[positions["stop_breached"] & ~positions["symbol"].isin(sold)].iterrows():
+    for _, p in stopped.iterrows():
         proceeds = float(p["shares"]) * float(p["close"])
-        row = {"sell": p["symbol"], "sell_shares": int(p["shares"]), "sell_close": float(p["close"]),
-               "stop_loss_price": float(p["stop_loss_price"]), "proceeds_inr": round(proceeds, 2)}
+        base = {"sell": p["symbol"], "sell_shares": int(p["shares"]), "sell_close": float(p["close"]),
+                "stop_loss_price": float(p["stop_loss_price"]), "proceeds_inr": round(proceeds, 2)}
         if queue:
             buy = queue.pop(0)
-            price = float(closes[buy])
-            n = int(proceeds // price)
-            row.update({"buy": buy, "buy_rank": LOCKED_PORTFOLIO_SYMBOLS.index(buy) + 1, "buy_close": price,
-                        "buy_shares": n, "buy_inr": round(n * price, 2),
-                        "cash_left_inr": round(proceeds - n * price, 2),
-                        "note": ("skipped (fails the selection rule today): " + ", ".join(skipped)) if skipped else ""})
+            buys = [(buy, 100.0, "reserve", LOCKED_PORTFOLIO_SYMBOLS.index(buy) + 1,
+                     ("skipped (fails the selection rule today): " + ", ".join(skipped)) if skipped else "")]
+        elif keep:
+            w = (weights.reindex(keep).fillna(0.0) if weights is not None else pd.Series(1.0, index=keep))
+            w = w if w.sum() > 0 else pd.Series(1.0, index=keep)
+            note = "no reserve stock passes the selection rule today: the proceeds top up the remaining holdings"
+            buys = [(sym, float(w[sym] / w.sum() * 100), "top-up", None, note) for sym in keep]
         else:
-            row.update({"buy": None, "buy_rank": None, "buy_close": None, "buy_shares": 0, "buy_inr": 0.0,
-                        "cash_left_inr": round(proceeds, 2),
-                        "note": "no reserve stock passes the selection rule today: the proceeds wait in the liquid fund"})
-        rows.append(row)
+            buys = []
+        spent = 0.0
+        for sym, alloc, kind, rank, note in buys:
+            price = float(closes[sym])
+            n = int(proceeds * alloc / 100 // price)
+            spent += n * price
+            rows.append({**base, "kind": kind, "buy": sym, "buy_rank": rank, "alloc_pct": round(alloc, 2),
+                         "buy_close": price, "buy_shares": n, "buy_inr": round(n * price, 2), "note": note})
+        if not buys:
+            rows.append({**base, "kind": "cash", "buy": None, "buy_rank": None, "alloc_pct": 0.0, "buy_close": None,
+                         "buy_shares": 0, "buy_inr": 0.0, "note": "nothing left to buy: the proceeds stay in cash"})
+        for r in rows:
+            if r["sell"] == p["symbol"]:
+                r["cash_left_inr"] = round(proceeds - spent, 2)
     return pd.DataFrame(rows, columns=columns)
 
 
@@ -457,20 +475,27 @@ def save_ledger(ledger: pd.DataFrame) -> list:
 
 
 def replacement_trades(plan: pd.DataFrame, day: str, fills: Optional[Dict[str, float]] = None) -> pd.DataFrame:
-    """Ledger rows for a replacement plan: SELL the stopped stock, BUY the reserve stock (fills override closes).
-    The buy quantity is recomputed from the actual sale proceeds when fill prices are given."""
+    """Ledger rows for a replacement plan: one SELL per stopped stock, then its purchases (the reserve stock, or
+    top-ups of the remaining holdings). Fill prices override the closes; each purchase is recomputed from
+    the actual sale proceeds and its share of them."""
     fills = fills or {}
     rows = []
-    for _, r in plan.iterrows():
-        sell_px = float(fills.get(r["sell"], r["sell_close"]))
-        rows.append({"date": day, "instrument": r["sell"], "action": "SELL", "quantity": int(r["sell_shares"]),
-                     "price": round(sell_px, 2), "note": f"stop-loss exit (stop {float(r['stop_loss_price']):.2f})"})
-        if isinstance(r.get("buy"), str) and r["buy"]:
+    for sell, group in plan.groupby("sell", sort=False):
+        first = group.iloc[0]
+        sell_px = float(fills.get(sell, first["sell_close"]))
+        proceeds = int(first["sell_shares"]) * sell_px
+        rows.append({"date": day, "instrument": sell, "action": "SELL", "quantity": int(first["sell_shares"]),
+                     "price": round(sell_px, 2), "note": f"stop-loss exit (stop {float(first['stop_loss_price']):.2f})"})
+        for _, r in group.iterrows():
+            if not (isinstance(r.get("buy"), str) and r["buy"]):
+                continue
             buy_px = float(fills.get(r["buy"], r["buy_close"]))
-            qty = int(int(r["sell_shares"]) * sell_px // buy_px)
+            qty = int(proceeds * float(r.get("alloc_pct", 100.0)) / 100 // buy_px)
+            note = (f"replaces {sell} (reserve rank #{int(r['buy_rank'])})" if r.get("kind", "reserve") == "reserve"
+                    else f"top-up with {sell}'s proceeds (no reserve stock qualified)")
             if qty > 0:
                 rows.append({"date": day, "instrument": r["buy"], "action": "BUY", "quantity": qty,
-                             "price": round(buy_px, 2), "note": f"replaces {r['sell']} (reserve rank #{int(r['buy_rank'])})"})
+                             "price": round(buy_px, 2), "note": note})
     return pd.DataFrame(rows, columns=LEDGER_COLUMNS)
 
 
@@ -598,9 +623,10 @@ def whatsapp_update(summary: Optional[Dict[str, object]], positions: pd.DataFram
         worst = positions.loc[positions["pnl_pct"].idxmin()]
         lines.append(f"Best: {best['symbol']} {best['pnl_pct']:+.1f}% | Worst: {worst['symbol']} {worst['pnl_pct']:+.1f}%")
     alerts = []
-    for _, r in plan.iterrows():
-        alerts.append(f"STOP HIT {r['sell']}: sell, buy {r['buy']}" if isinstance(r.get("buy"), str) and r["buy"]
-                      else f"STOP HIT {r['sell']}: sell, cash waits (no reserve stock qualifies)")
+    for sell, group in (plan.groupby("sell", sort=False) if not plan.empty else []):
+        kind = group["kind"].iloc[0] if "kind" in group else "reserve"
+        alerts.append(f"STOP HIT {sell}: sell, buy {group['buy'].iloc[0]}" if kind == "reserve"
+                      else f"STOP HIT {sell}: sell, top up the other holdings (no reserve stock qualifies)")
     if not positions.empty and "near_stop" in positions:
         for _, r in positions[positions["near_stop"]].iterrows():
             alerts.append(f"{r['symbol']} is {r['pct_above_stop']:.1f}% above its stop")
@@ -654,7 +680,9 @@ def run(as_of: Optional[date] = None, fetch=None) -> Optional[Dict[str, pd.DataF
 
     # Stop-loss replacement: sell the stopped stock, buy the next reserve stock that still qualifies
     ranking = pd.read_csv(SELECTION_RANKING_CSV) if SELECTION_RANKING_CSV.exists() else pd.DataFrame(columns=["symbol"])
-    replacements = plan_replacements(positions, ledger, ranking, closes.loc[end])
+    risk = pd.read_csv(RISK_SUMMARY_OUTPUT_CSV) if Path(RISK_SUMMARY_OUTPUT_CSV).exists() else pd.DataFrame()
+    weights = risk.set_index("symbol")["weight_pct"] if "weight_pct" in risk else None
+    replacements = plan_replacements(positions, ledger, ranking, closes.loc[end], weights)
     replacements.to_csv(REPLACEMENT_PLAN_CSV, index=False)
     return {"daily": daily, "positions": positions, "summary": summary, "roll": roll, "replacements": replacements}
 
