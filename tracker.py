@@ -45,6 +45,7 @@ from config import (
     SELECTION_CONVICTION_TIERS,
     TAIL_HEDGE_OTM_PCT,
     TRADES_CSV,
+    WEIGHT_MAX_PCT,
 )
 
 logger = logging.getLogger("tracker")
@@ -152,7 +153,7 @@ def parked_proceeds(ledger: pd.DataFrame) -> Dict[str, float]:
 
 def plan_replacements(positions: pd.DataFrame, ledger: pd.DataFrame, ranking: pd.DataFrame,
                       closes: pd.Series, weights: Optional[pd.Series] = None,
-                      trend_ok: Optional[set] = None) -> pd.DataFrame:
+                      trend_ok: Optional[set] = None, max_weight_pct: float = WEIGHT_MAX_PCT) -> pd.DataFrame:
     """
     Stop-loss replacement rule ("cash cannot sit idle; cash has to be redeployed"). Each holding that
     closed at or below its stop is sold; the sale proceeds (shares x today's close, an estimate of
@@ -163,7 +164,9 @@ def plan_replacements(positions: pd.DataFrame, ledger: pd.DataFrame, ranking: pd
          SELECTION_CONVICTION_TIERS when that is set. Several stops on one day take the queue in turn;
       2. else top-ups of the remaining holdings that still pass the trend rule today (`trend_ok`, symbols with
          +DI - -DI >= 2; all holdings when None), in proportion to their weights (`weights`, symbol -> %;
-         equal without it): no money is added to holdings that are themselves falling;
+         equal without it): no money is added to holdings that are themselves falling. No holding is taken
+         above `max_weight_pct` of the stocks' value (the 15% cap): its surplus goes to the other rising
+         holdings, and what none can take stays in the liquid ETF;
       3. else the liquid ETF (kind "parked"), until a stock qualifies: parked proceeds (parked_proceeds of the
          ledger) are redeployed by steps 1-2 on the first day a target qualifies (source "parked", no sale).
     One row per purchase: `alloc_pct` is the share of that sale's proceeds it uses, `kind` is
@@ -186,6 +189,9 @@ def plan_replacements(positions: pd.DataFrame, ledger: pd.DataFrame, ranking: pd
     queue = [s for s in queue if s in passing]
     keep = [s for s in positions["symbol"] if s not in set(stopped["symbol"]) and s not in sold]
     rising = [s for s in keep if trend_ok is None or s in trend_ok]
+    value = ({r["symbol"]: float(r["shares"]) * float(r["close"]) for _, r in positions.iterrows()
+              if r["symbol"] not in sold})
+    cap_inr = max_weight_pct / 100 * (sum(value.values()) + sum(parked.values()))
     sources = [({"sell": p["symbol"], "source": "stop", "sell_shares": int(p["shares"]), "sell_close": float(p["close"]),
                  "stop_loss_price": float(p["stop_loss_price"])}, float(p["shares"]) * float(p["close"]))
                for _, p in stopped.iterrows()]
@@ -201,10 +207,30 @@ def plan_replacements(positions: pd.DataFrame, ledger: pd.DataFrame, ranking: pd
         elif rising:
             w = (weights.reindex(rising).fillna(0.0) if weights is not None else pd.Series(1.0, index=rising))
             w = w if w.sum() > 0 else pd.Series(1.0, index=rising)
+            # Water-fill: pro rata to the weights, no holding above the cap, surplus to the others
+            room = {sym: max(cap_inr - value.get(sym, 0.0), 0.0) for sym in rising}
+            amount, left, free = {sym: 0.0 for sym in rising}, proceeds, [sym for sym in rising if room[sym] > 0]
+            while left > 1e-6 and free:
+                share = {sym: left * w[sym] / w[free].sum() if w[free].sum() > 0 else left / len(free) for sym in free}
+                full = [sym for sym in free if share[sym] >= room[sym] - amount[sym]]
+                if not full:
+                    for sym in free:
+                        amount[sym] += share[sym]
+                    left = 0.0
+                    break
+                for sym in full:
+                    left -= room[sym] - amount[sym]
+                    amount[sym] = room[sym]
+                free = [sym for sym in free if sym not in full]
             left_out = [s for s in keep if s not in rising]
+            capped = [sym for sym in rising if room[sym] - amount[sym] < 1.0]
             note = ("no reserve stock passes the selection rule today: the proceeds top up the remaining holdings"
-                    + (f" still in an uptrend (not {', '.join(left_out)})" if left_out else ""))
-            buys = [(sym, float(w[sym] / w.sum() * 100), "top-up", None, note) for sym in rising]
+                    + (f" still in an uptrend (not {', '.join(left_out)})" if left_out else "")
+                    + (f"; {', '.join(capped)} at the {max_weight_pct:g}% cap" if capped else "")
+                    + ("; the rest stays in the liquid ETF" if left > 1.0 else ""))
+            buys = [(sym, amount[sym] / proceeds * 100, "top-up", None, note) for sym in rising if amount[sym] > 0]
+            for sym in rising:
+                value[sym] = value.get(sym, 0.0) + amount[sym]
         else:
             buys = []
         if not buys:
@@ -212,8 +238,8 @@ def plan_replacements(positions: pd.DataFrame, ledger: pd.DataFrame, ranking: pd
                 continue  # still nothing qualifies: the money stays in the liquid ETF, no action
             rows.append({**base, "kind": "parked", "buy": None, "buy_rank": None, "alloc_pct": 0.0,
                          "buy_close": None, "buy_shares": 0, "buy_inr": 0.0, "cash_left_inr": round(proceeds, 2),
-                         "note": "no reserve stock qualifies and no holding is in an uptrend: the proceeds go to the "
-                                 "liquid ETF until a stock qualifies"})
+                         "note": "no reserve stock qualifies and no holding in an uptrend is below the "
+                                 f"{max_weight_pct:g}% cap: the proceeds go to the liquid ETF until a stock qualifies"})
             continue
         spent, start = 0.0, len(rows)
         for sym, alloc, kind, rank, note in buys:

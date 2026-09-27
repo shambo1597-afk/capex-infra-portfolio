@@ -1156,7 +1156,7 @@ with tab_overview:
                    "closes at or below its stop-loss, its sale proceeds buy the first reserve stock that still passes "
                    "the selection rule that day (hard fundamentals, bullish trend with DI gap ≥ 2, one year of prices, "
                    "turnover ≥ ₹5 cr a day, a real profit that grew in the latest quarter); if none does, they top up the other holdings that are still in an uptrend "
-                   "(DI gap ≥ 2), and only if none is, they wait in the liquid ETF until a stock qualifies. A stock that has been sold never comes back.")
+                   "(DI gap ≥ 2), none above the 15% cap, and only if none is, they wait in the liquid ETF until a stock qualifies. A stock that has been sold never comes back.")
         show_res = pd.DataFrame({
             "Queue": reserve_df["status"],
             "Stock": reserve_df["symbol"],

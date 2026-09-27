@@ -262,7 +262,7 @@ def sector_of(symbol: str) -> str:
 # When a holding closes at or below its stop-loss, it is sold and its proceeds buy the first reserve
 # stock that still passes the selection rule that day (tracker.plan_replacements); a stock that has
 # been sold never comes back; if no reserve stock qualifies, the proceeds top up the remaining holdings
-# still in an uptrend (DI gap >= 2), and if none is, wait in the liquid ETF until a stock qualifies
+# still in an uptrend (DI gap >= 2) up to the 15% cap, and if none is, wait in the liquid ETF until a stock qualifies
 # ("cash cannot sit idle"; revised 27-Sep so money is never added to falling stocks). No sector minimums: Power has one stock (ACMESOLAR) and Cement none
 # (its best confirmed uptrend, NUVOCO, ranks #32); the group will ask the professor whether a Cement
 # leg is required. Soft exceptions (shown on the dashboard): BEML (ROCE/OPM). On 27-Sep the liquidity

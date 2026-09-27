@@ -208,7 +208,7 @@ def test_proceeds_top_up_the_holdings_when_no_reserve_stock_qualifies():
     pos = _positions([(a, 100, 90.0, 95.0), (b, 10, 200.0, 150.0), (c, 10, 100.0, 80.0)])
     closes = pd.Series({b: 200.0, c: 100.0, **{s: 50.0 for s in RESERVE_SYMBOLS}})
     plan = tracker.plan_replacements(pos, pd.DataFrame(columns=tracker.LEDGER_COLUMNS),
-                                     _ranking([]), closes, pd.Series({a: 20.0, b: 30.0, c: 10.0}))
+                                     _ranking([]), closes, pd.Series({a: 20.0, b: 30.0, c: 10.0}), max_weight_pct=100)
     assert plan["kind"].tolist() == ["top-up", "top-up"] and plan["buy"].tolist() == [b, c]
     assert plan["alloc_pct"].tolist() == [75.0, 25.0]  # 30 : 10 of the holdings that stay
     assert plan["buy_shares"].tolist() == [9000 * 0.75 // 200, 9000 * 0.25 // 100]
@@ -225,9 +225,29 @@ def test_top_ups_skip_holdings_that_are_falling():
     pos = _positions([(a, 100, 90.0, 95.0), (b, 10, 200.0, 150.0), (c, 10, 100.0, 80.0)])
     closes = pd.Series({b: 200.0, c: 100.0, **{s: 50.0 for s in RESERVE_SYMBOLS}})
     plan = tracker.plan_replacements(pos, pd.DataFrame(columns=tracker.LEDGER_COLUMNS), _ranking([]), closes,
-                                     pd.Series({a: 20.0, b: 30.0, c: 10.0}), trend_ok={c})
+                                     pd.Series({a: 20.0, b: 30.0, c: 10.0}), trend_ok={c}, max_weight_pct=100)
     assert plan["buy"].tolist() == [c] and plan["alloc_pct"].tolist() == [100.0]
     assert b in plan["note"].iloc[0]
+
+
+def test_top_ups_respect_the_15_pct_cap():
+    """A holding already at the cap gets nothing; one near it gets only its headroom; the surplus goes to the
+    others, and what no holding can take stays in cash."""
+    from config import INITIAL_HOLDINGS, RESERVE_SYMBOLS
+    h = INITIAL_HOLDINGS
+    # Stock value 100,000: h0 (9,000) is stopped; h1 at 15,000 (cap), h2 at 14,000, the other five at 12,400
+    rows = [(h[0], 90, 100.0, 120.0), (h[1], 150, 100.0, 50.0), (h[2], 140, 100.0, 50.0)] + \
+           [(s, 124, 100.0, 50.0) for s in h[3:8]]
+    closes = pd.Series({**{s: 100.0 for s in h[:8]}, **{s: 50.0 for s in RESERVE_SYMBOLS}})
+    plan = tracker.plan_replacements(_positions(rows), pd.DataFrame(columns=tracker.LEDGER_COLUMNS), _ranking([]),
+                                     closes)
+    alloc = dict(zip(plan["buy"], plan["buy_inr"]))
+    assert h[1] not in alloc and alloc[h[2]] == 1000.0  # at the cap / up to the cap
+    assert sum(alloc.values()) == 9000.0 and all(v <= 15000 - 12400 for k, v in alloc.items() if k != h[2])
+    # Everyone rising is at the cap: the proceeds wait in the liquid ETF
+    full = tracker.plan_replacements(_positions(rows), pd.DataFrame(columns=tracker.LEDGER_COLUMNS), _ranking([]),
+                                     closes, trend_ok={h[1]})
+    assert full["kind"].tolist() == ["parked"]
 
 
 def test_proceeds_are_parked_then_redeployed_when_a_stock_qualifies():
