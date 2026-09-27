@@ -146,3 +146,13 @@ def test_holdings_are_exactly_the_selection_rule_picks():
     from config import INITIAL_HOLDINGS, INVESTED_COUNT
     picks = ranking[ranking["rule_pick"]]["symbol"].tolist()
     assert picks == LOCKED_PORTFOLIO_SYMBOLS and INITIAL_HOLDINGS == picks[:INVESTED_COUNT]
+
+
+def test_every_ranked_stock_is_tradable_with_profit_growth():
+    """Selection rules added 27-Sep: median daily turnover >= MIN_TURNOVER_CR, latest quarter's profit up
+    year on year; and no theme exclusion reaches the ranking."""
+    from config import MIN_TURNOVER_CR, THEME_EXCLUSIONS
+    ranking = pd.read_csv(OUTPUT_DIR / "selection_ranking.csv")
+    assert (ranking["median_turnover_cr"] >= MIN_TURNOVER_CR).all()
+    assert (ranking["qtr_profit_yoy"] > 0).all()
+    assert not set(ranking["symbol"]) & set(THEME_EXCLUSIONS)

@@ -44,6 +44,8 @@ from config import (
     HIGH_TURNOVER_ROCE_MIN,
     LOCKED_PORTFOLIO_SYMBOLS,
     MIN_HISTORY_SESSIONS,
+    MIN_TURNOVER_CR,
+    TURNOVER_LOOKBACK_SESSIONS,
     PORTFOLIO_SIZE,
     SCREENER_DOWNLOAD_DATE,
     SELECTION_CONVICTION_TIERS,
@@ -284,6 +286,12 @@ def build_review_table(
             "rs_last_10d": rs_10d,
             "recent_10day_contribution_pct": recent_pct,
             "rs_6m_skip1m": rs_6m_skip1m,
+            "median_turnover_cr": (round(float(sym_prices.sort_values("DATE1")["TURNOVER_LACS"]
+                                               .tail(TURNOVER_LOOKBACK_SESSIONS).median()) / 100, 2)
+                                   if not sym_prices.empty and "TURNOVER_LACS" in sym_prices else float("nan")),
+            "qtr_profit_yoy": record.get("qtr_profit_yoy"),
+            "qtr_sales_yoy": record.get("qtr_sales_yoy"),
+            "pe": record.get("pe"),
         })
     table = pd.DataFrame(rows)
 
@@ -370,9 +378,14 @@ def add_evaluation_columns(table: pd.DataFrame, criteria: List[Tuple[str, str, f
         lambda r: "; ".join(labels[f] for f in soft if not r.get(f"pass_{f}") == True), axis=1)  # noqa: E712
     # Selection rule: hard rules pass, bullish trend with a real DI gap, a year of prices; ranked by rs_6m_skip1m
     sessions = pd.to_numeric(table.get("price_sessions", pd.Series(MIN_HISTORY_SESSIONS, index=table.index)))
+    # plus tradable (median daily turnover >= MIN_TURNOVER_CR) and profit up in the latest quarter (a value
+    # that cannot be read counts as a failure)
+    liquid = (pd.to_numeric(table["median_turnover_cr"]) >= MIN_TURNOVER_CR) if "median_turnover_cr" in table else True
+    earning = (pd.to_numeric(table["qtr_profit_yoy"]) > 0) if "qtr_profit_yoy" in table else True
     table["selection_eligible"] = (table["hard_fundamentals_pass"] & (table["di_gap"] >= DI_GAP_THIN_THRESHOLD)
                                    & (sessions >= MIN_HISTORY_SESSIONS)
-                                   & (table["rs_6m_skip1m"].notna() if "rs_6m_skip1m" in table else True))
+                                   & (table["rs_6m_skip1m"].notna() if "rs_6m_skip1m" in table else True)
+                                   & liquid & earning)
 
     table["full_standard_candidate"] = (
         table["fundamentals_clean"]
@@ -400,8 +413,9 @@ def build_selection_ranking(tables: Dict[str, pd.DataFrame]) -> pd.DataFrame:
     table["rule_pick"] = table["symbol"].isin(select_portfolio(table))
     cols = ["selection_rank", "symbol", "company_name", "sector", "locked", "rule_pick", "rs_6m_skip1m", "rs_score_vs_nifty500",
             "di_gap", "latest_adx", "rrg_quadrant_vs_nifty500", "rrg_quadrant_vs_sector", "conviction",
-            "soft_fundamental_fails", "business_focus_note"]
-    return table[cols].reset_index(drop=True)
+            "soft_fundamental_fails", "median_turnover_cr", "qtr_profit_yoy", "qtr_sales_yoy", "pe",
+            "business_focus_note"]
+    return table[[c for c in cols if c in table]].reset_index(drop=True)
 
 
 def select_portfolio(ranking: pd.DataFrame, size: int = PORTFOLIO_SIZE,

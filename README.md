@@ -80,9 +80,9 @@ A production-grade, mathematically transparent data pipeline and quantitative sc
 - an NSE symbol and a market cap of at least Rs 5,000 crore (`config.UNIVERSE_MIN_MARKET_CAP_CR`);
 - Capital Goods only: no Aerospace & Defense group (`CAPITAL_GOODS_EXCLUDED_GROUPS`) and no industries outside the capex theme such as packaging, rubber, industrial glass, non-ferrous products, commercial vehicles, tractors and dealers (`CAPITAL_GOODS_EXCLUDED_INDUSTRIES`);
 - no InvITs (`NON_EQUITY_INSTRUMENTS`: INDIGRID, PGINVIT);
-- `config.THEME_EXCLUSIONS`: 20 names whose Screener industry sits inside Capital Goods but whose business is not capex/infra, in five stated groups: (1) EMS / electronics, (2) auto and consumer components, (3) defence and shipbuilding, (4) primary steel, (5) packaging and films.
+- `config.THEME_EXCLUSIONS`: 22 names whose Screener industry sits inside Capital Goods but whose business is not capex/infra, in five stated groups: (1) EMS / electronics, (2) auto and consumer components, (3) defence, aerospace and shipbuilding, (4) primary steel, (5) packaging and films.
 
-That leaves **139 stocks: Cement 15, Capital Goods 102, Power 22**. The review tables' `source_index` column shows each stock's Screener industry, and `business_focus_note` records the borderline theme calls (`GREAVESCOT`, `UTLSOLAR`, `RPEL`, `GRASIM`, `NAVA`, `RRKABEL`). Theme is the only constraint on the list: there are no per-sector quotas.
+That leaves **137 stocks: Cement 15, Capital Goods 100, Power 22**. The review tables' `source_index` column shows each stock's Screener industry, and `business_focus_note` records the borderline theme calls (`GREAVESCOT`, `UTLSOLAR`, `RPEL`, `GRASIM`, `NAVA`, `RRKABEL`). Theme is the only constraint on the list: there are no per-sector quotas.
 
 **Locked list (15 stocks tracked, money in 8; `config.LOCKED_PORTFOLIO`; the list is frozen after 5-Oct-2026).** The selection rule (`sector_screen.select_portfolio`; column `rule_pick` of `output/selection_ranking.csv`, rebuilt by every review run):
 
@@ -90,25 +90,29 @@ That leaves **139 stocks: Cement 15, Capital Goods 102, Power 22**. The review t
 2. **At least one year of trading history** (`config.MIN_HISTORY_SESSIONS` = 240 sessions), so every stock has a full year for the risk model and the 6-month ranking.
 3. **Bullish trend with a real DI gap** (+DI minus -DI of at least 2).
 4. **Ranked by 6-month relative strength vs the Nifty 500, excluding the latest month** (momentum from the literature, Jegadeesh & Titman; the 2020-2026 backtest in `research/momentum_study.py` is inconclusive for every signal tested, so no claim beyond the literature is made).
-5. **RRG conviction High or Moderate** (`config.SELECTION_CONVICTION_TIERS`): stocks WEAKENING or LAGGING against both the Nifty 500 and their sector average are skipped. Picks run down the ranking to 15 names (`config.PORTFOLIO_SIZE`, the brief's maximum), listed in rank order.
+5. **Tradable** (`config.MIN_TURNOVER_CR`): median daily turnover of at least Rs 5 crore over the last 63 sessions, so the largest position (~Rs 15 lakh) is under 3% of a day's trading. Market cap alone does not guarantee this (SHANTIGEAR: Rs 5,100 cr of market cap, Rs 0.9 cr a day).
+6. **Profit up in the latest quarter** (year on year, Screener `YOY Quarterly profit growth` > 0): every holding reports September-quarter results inside the 3-month window, and momentum without profit growth is what a bad result breaks.
+7. **RRG conviction High or Moderate** (`config.SELECTION_CONVICTION_TIERS`): stocks WEAKENING or LAGGING against both the Nifty 500 and their sector average are skipped. Picks run down the ranking to 15 names (`config.PORTFOLIO_SIZE`, the brief's maximum), listed in rank order.
 
-| Rank | Stock | Sector | Conviction | Status | Note |
-| :---: | :--- | :--- | :--- | :--- | :--- |
-| 1 | `WELCORP` | Capital Goods | High | invested, 12.42% |  |
-| 2 | `RPEL` | Capital Goods | Moderate | invested, 9.82% | refractory ramming mass for steel plants |
-| 3 | `SBCL` | Capital Goods | Moderate | invested, 11.04% | bimetal and shunt parts for smart meters, electrical, EV |
-| 8 | `ACMESOLAR` | Power | High | invested, 15.00% | the only Power stock |
-| 10 | `FINCABLES` | Capital Goods | High | invested, 11.52% |  |
-| 11 | `GREAVESCOT` | Capital Goods | High | invested, 10.71% | soft exception: OPM |
-| 13 | `ACE` | Capital Goods | High | invested, 14.50% |  |
-| 14 | `CARBORUNIV` | Capital Goods | Moderate | invested, 15.00% |  |
-| 15 | `GOODLUCK` | Capital Goods | Moderate | reserve #1 |  |
-| 16 | `BEML` | Capital Goods | High | reserve #2 | soft exception: ROCE / OPM |
-| 17 | `BANSALWIRE` | Capital Goods | Moderate | reserve #3 | soft exception: OPM |
-| 20 | `TEXRAIL` | Capital Goods | High | reserve #4 |  |
-| 21 | `SHANTIGEAR` | Capital Goods | High | reserve #5 |  |
-| 22 | `USHAMART` | Capital Goods | Moderate | reserve #6 |  |
-| 23 | `AJAXENGG` | Capital Goods | High | reserve #7 |  |
+| Rank | Stock | Sector | Conviction | Profit, latest qtr YoY | Turnover Rs cr/day | P/E | Status | Note |
+| :---: | :--- | :--- | :--- | ---: | ---: | ---: | :--- | :--- |
+| 1 | `WELCORP` | Capital Goods | High | +199% | 218.7 | 32 | invested, 12.09% |  |
+| 2 | `RPEL` | Capital Goods | Moderate | +68% | 10.9 | 124 | invested, 9.50% | refractory ramming mass for steel plants |
+| 3 | `SBCL` | Capital Goods | Moderate | +44% | 27.6 | 62 | invested, 10.73% | bimetal and shunt parts for smart meters, electrical, EV |
+| 8 | `ACMESOLAR` | Power | High | +65% | 58.3 | 53 | invested, 15.00% | the only Power stock |
+| 10 | `FINCABLES` | Capital Goods | High | +53% | 56.1 | 28 | invested, 11.51% |  |
+| 12 | `ACE` | Capital Goods | High | +22% | 32.4 | 33 | invested, 14.36% |  |
+| 13 | `CARBORUNIV` | Capital Goods | High | +23% | 18.9 | 97 | invested, 15.00% |  |
+| 14 | `GOODLUCK` | Capital Goods | Moderate | +60% | 27.0 | 26 | invested, 11.81% |  |
+| 15 | `BEML` | Capital Goods | High | +58% | 49.8 | 95 | reserve #1 | soft exception: ROCE / OPM |
+| 17 | `TEXRAIL` | Capital Goods | High | +67% | 17.8 | 24 | reserve #2 | railway wagons |
+| 18 | `USHAMART` | Capital Goods | High | +41% | 21.1 | 29 | reserve #3 | steel wire ropes |
+| 19 | `GMMPFAUDLR` | Capital Goods | High | +114% | 10.6 | 54 | reserve #4 | glass-lined process equipment |
+| 20 | `ENRIN` | Capital Goods | Moderate | +68% | 125.1 | 77 | reserve #5 | Siemens Energy India: power transmission and generation equipment |
+| 21 | `GRAPHITE` | Capital Goods | High | +28% | 59.5 | 73 | reserve #6 | graphite electrodes for electric-arc steel furnaces |
+| 22 | `MAHSEAMLES` | Capital Goods | High | +16% | 8.5 | 13 | reserve #7 | seamless pipes (oil & gas, power, boilers) |
+
+**Changes on 27-Sep-2026 (before the snapshot).** Rules 5 and 6 were added after checking the list for results and trading risk: they removed GREAVESCOT (latest-quarter profit -23%, RSI 77) from the invested stocks, GOODLUCK (+60%) moved up, and BANSALWIRE (profit -48%, Rs 2.8 cr a day), SHANTIGEAR (-57%, Rs 0.9 cr) and AJAXENGG (Rs 2.9 cr) left the reserve. PTCIL and DYNAMATECH, next in the ranking, were added to the theme exclusions as aerospace/defence businesses (the rule that already excluded HAL, BEL, MAZDOCK), so the reserve fills with GMMPFAUDLR, ENRIN, GRAPHITE and MAHSEAMLES. Valuation is shown, not screened: RPEL (P/E 124), CARBORUNIV (97) and BEML (95) are expensive going into results, which is what their stop-losses are for.
 
 **Recording trades.** No file editing is needed: the dashboard's alerts have **Record these trades** / **Record the put roll** buttons (enter the actual fill prices), and the **Trade ledger** expander edits any row or adds one (for example the real buy prices on the snapshot day). Saving validates the rows (dates, BUY/SELL, whole quantities, no selling more than held), recomputes the P&L, starts a full refresh when the holdings change, and commits `data/trades.csv` alone onto GitHub `main` (`tracker.publish_ledger`: a temporary index on top of `origin/main`, so local output files are never pushed and the working tree is untouched). **Evening alerts:** a scheduled run refreshes the data after each trading day's close and sends a phone notification only when something needs action (a stop hit, a holding within `config.NEAR_STOP_PCT` = 3% of its stop, the profit lock, results tomorrow); it reads the ledger from GitHub, which is why saving pushes it.
 
@@ -391,7 +395,7 @@ The automated fetch routine in `fetch_benchmark_tri_automated()` is completely w
 
 `python sector_screen.py` applies the brief's order ("technical analysis, then financial analysis") identically to each sector:
 
-1. **Universe:** the 139 stocks of the three Screener.in exports in `data/screener/` after the market-cap, industry and theme filters (see Portfolio Universe).
+1. **Universe:** the 137 stocks of the three Screener.in exports in `data/screener/` after the market-cap, industry and theme filters (see Portfolio Universe).
 2. **Technical screen (every constituent):** RS vs Nifty 500 over 63 sessions **> +2 pp** (a margin: RS is a 63-day cumulative spread and one day's return can move it by several points, so a bare `> 0` flips on noise) **and** trend direction (+DI vs −DI) Bullish, computed with the existing indicator pipeline on the complete Bhavcopy history. ADX is reported as a tiebreaker, not a cutoff.
 3. **Fundamental safety screen (technical passers only):** fetched live via `get_fundamentals_summary(..., use_cache=False)` (Screener.in for financials, NSE pledge disclosures for promoter pledge) and scored against the sector's criteria in `config.py`. A metric that cannot be read fails. These are deliberately **light, current-year solvency checks** for a 3-month tactical mandate, not a multi-year quality bar (no 3-year averages or growth):
 

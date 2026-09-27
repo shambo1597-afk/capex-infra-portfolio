@@ -57,7 +57,7 @@ NON_EQUITY_INSTRUMENTS = {
     "PGINVIT": "Infrastructure investment trust (InvIT units, not company shares)",
 }
 # Theme rule: exclude companies whose main business is (1) electronics manufacturing or consumer
-# electronics, (2) automotive or consumer components, (3) defence or shipbuilding, (4) primary steel
+# electronics, (2) automotive or consumer components, (3) defence, aerospace or shipbuilding, (4) primary steel
 # making (a commodity metal, not equipment), or (5) packaging and films.
 THEME_EXCLUSIONS = {
     "CPPLUS": "(1) CCTV and security electronics",
@@ -73,6 +73,8 @@ THEME_EXCLUSIONS = {
     "MAZDOCK": "(3) defence shipbuilding",
     "COCHINSHIP": "(3) defence and commercial shipbuilding",
     "SWANDEF": "(3) defence shipbuilding",
+    "PTCIL": "(3) titanium and superalloy castings, growth led by aerospace and defence (Screener: Castings & Forgings)",
+    "DYNAMATECH": "(3) aerospace structures, plus automotive castings; only the hydraulics fit the theme",
     "SHYAMMETL": "(4) primary steel and metals",
     "GPIL": "(4) primary steel and iron ore",
     "GALLANTT": "(4) primary steel",
@@ -171,14 +173,16 @@ def sector_of(symbol: str) -> str:
 # been sold never comes back; if no reserve stock qualifies, the proceeds top up the remaining holdings
 # ("cash cannot sit idle"). No sector minimums: Power has one stock (ACMESOLAR) and Cement none
 # (its best confirmed uptrend, NUVOCO, ranks #32); the group will ask the professor whether a Cement
-# leg is required. Soft exceptions (shown on the dashboard): BEML (ROCE/OPM), GREAVESCOT (OPM),
-# BANSALWIRE (OPM). UTLSOLAR (211 sessions of prices) fails the one-year history rule and was
+# leg is required. Soft exceptions (shown on the dashboard): BEML (ROCE/OPM). On 27-Sep the liquidity
+# and quarterly-profit rules (MIN_TURNOVER_CR, qtr_profit_yoy > 0) removed GREAVESCOT (profit -23%),
+# BANSALWIRE, SHANTIGEAR and AJAXENGG, and PTCIL / DYNAMATECH were found to be aerospace/defence
+# businesses (THEME_EXCLUSIONS). UTLSOLAR (211 sessions of prices) fails the one-year history rule and was
 # replaced by the rule's pick SBCL (group decision 26-Sep-2026).
 # -----------------------------------------------------------------------------
 
 LOCKED_PORTFOLIO_SYMBOLS = [
-    "WELCORP", "RPEL", "SBCL", "ACMESOLAR", "FINCABLES", "GREAVESCOT", "ACE", "CARBORUNIV",  # invested
-    "GOODLUCK", "BEML", "BANSALWIRE", "TEXRAIL", "SHANTIGEAR", "USHAMART", "AJAXENGG",       # reserve
+    "WELCORP", "RPEL", "SBCL", "ACMESOLAR", "FINCABLES", "ACE", "CARBORUNIV", "GOODLUCK",    # invested
+    "BEML", "TEXRAIL", "USHAMART", "GMMPFAUDLR", "ENRIN", "GRAPHITE", "MAHSEAMLES",          # reserve
 ]
 
 PORTFOLIO_SIZE = 15                          # the brief's maximum; all 15 are tracked
@@ -187,6 +191,13 @@ INITIAL_HOLDINGS = LOCKED_PORTFOLIO_SYMBOLS[:INVESTED_COUNT]
 RESERVE_SYMBOLS = LOCKED_PORTFOLIO_SYMBOLS[INVESTED_COUNT:]  # replacement queue, in rank order
 SECTOR_MIN_HOLDINGS: Dict[str, int] = {}     # none: picked on merit (the group may add a Cement leg)
 SELECTION_CONVICTION_TIERS = ("High", "Moderate")  # RRG confirmation of the momentum ranking
+# Tradability and earnings (added 27-Sep-2026, before the snapshot): a stock must trade at least
+# MIN_TURNOVER_CR a day (median over TURNOVER_LOOKBACK_SESSIONS; the largest position, ~Rs 15 lakh, is
+# then under 3% of a day's value) and its latest quarter's profit must be up on a year earlier: every
+# holding reports September-quarter results inside the 3-month window, and momentum without profit
+# growth is the kind a bad result breaks
+MIN_TURNOVER_CR = 5.0
+TURNOVER_LOOKBACK_SESSIONS = 63
 MIN_HISTORY_SESSIONS = 240                   # about a year of NSE sessions, so 6-month RS is measurable
 
 LOCKED_PORTFOLIO = {

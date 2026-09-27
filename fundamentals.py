@@ -774,6 +774,9 @@ SCREENER_FIELDS = {
     "pledged_pct": "Pledged percentage",
     "sales_growth_3yr": "Sales growth 3Years",
     "profit_growth_3yr": "Profit growth 3Years",
+    "qtr_profit_yoy": "YOY Quarterly profit growth",
+    "qtr_sales_yoy": "YOY Quarterly sales growth",
+    "pe": "Price to Earning",
 }
 
 

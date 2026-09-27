@@ -25,6 +25,9 @@ from config import (
     LOCKED_PORTFOLIO_SYMBOLS,
     SELECTION_CONVICTION_TIERS,
     INVESTED_COUNT,
+    FUNDAMENTAL_HARD_FIELDS,
+    MIN_TURNOVER_CR,
+    TURNOVER_LOOKBACK_SESSIONS,
     NEAR_STOP_PCT,
     TRADES_CSV,
     OUTPUT_DIR,
@@ -1122,7 +1125,7 @@ with tab_overview:
         st.caption(f"The money is in the top {INVESTED_COUNT} of the {len(LOCKED_PORTFOLIO_SYMBOLS)}. When a holding "
                    "closes at or below its stop-loss, its sale proceeds buy the first reserve stock that still passes "
                    "the selection rule that day (hard fundamentals, bullish trend with DI gap ≥ 2, one year of prices, "
-                   "RRG conviction High or Moderate); if none does, they top up the other holdings (cash is never left "
+                   "turnover ≥ ₹5 cr a day, profit up in the latest quarter, RRG conviction High or Moderate); if none does, they top up the other holdings (cash is never left "
                    "idle). A stock that has been sold never comes back.")
         show_res = pd.DataFrame({
             "Queue": reserve_df["status"],
@@ -1134,6 +1137,10 @@ with tab_overview:
                 lambda s_: f"{rk.loc[s_, 'rs_6m_skip1m']:+.1f} pp" if s_ in rk.index else "—"),
             "Trend (DI gap)": reserve_df["di_gap"].map(lambda x: f"{x:+.2f}" if pd.notna(x) else "—"),
             "Conviction": reserve_df["conviction_tier"].fillna("—"),
+            "Profit, latest qtr YoY": reserve_df["symbol"].map(
+                lambda s_: f"{rk.loc[s_, 'qtr_profit_yoy']:+.0f}%" if s_ in rk.index and "qtr_profit_yoy" in rk else "—"),
+            "Turnover (₹ cr/day)": reserve_df["symbol"].map(
+                lambda s_: f"{rk.loc[s_, 'median_turnover_cr']:,.1f}" if s_ in rk.index and "median_turnover_cr" in rk else "—"),
             "Would be bought today?": passes.map({True: "Yes", False: "No: fails the rule today"}),
         })
         st.dataframe(show_res, hide_index=True, width="stretch", height=_fit_height(show_res))
@@ -1249,14 +1256,20 @@ with tab_fundamentals:
     st.write("")
     st.markdown("#### Fundamental Safety Screen (current-year, per sector)")
     st.caption(
-        f"The universe is screened technically (RS vs Nifty 500 > {TECHNICAL_RS_MARGIN_PP:+g} pp and a Bullish trend) and against its "
-        "sector's fundamental safety screen below. Every threshold is strict; a metric that cannot be read counts "
-        "as a failure. Locked stocks that miss a screen are listed as exceptions on the Portfolio Overview tab. "
-        "Full per-sector results: output/*_full_review_table.csv."
+        "**HARD** rules exclude a stock: pledged shares, debt/equity, interest cover and market cap can turn one bad "
+        "quarter into a crash, so they are never waived. **SOFT** criteria (ROCE, OPM, one year's operating cash flow) "
+        "describe business quality over years and are already in the price; failing them is allowed and shown as an "
+        "exception on the Portfolio Overview tab. A metric that cannot be read counts as a failure. On top of these, "
+        f"every stock picked must trade at least ₹{MIN_TURNOVER_CR:g} crore a day (median of the last "
+        f"{TURNOVER_LOOKBACK_SESSIONS} sessions) and have grown its profit in the latest quarter year on year (every "
+        "holding reports results inside our 3-month window). Full per-sector results: output/*_full_review_table.csv."
     )
     for f_col, (sec, spec) in zip(st.columns(len(SECTOR_SCREENS)), SECTOR_SCREENS.items()):
         with f_col:
-            st.markdown(f"**{sec}**\n\n" + "\n".join(f"- {label}" for _, _, _, label in spec["criteria"]))
+            st.markdown(f"**{sec}**\n\n" + "\n".join(
+                f"- {label} ({'HARD' if field in FUNDAMENTAL_HARD_FIELDS else 'soft'})"
+                for field, _, _, label in spec["criteria"])
+                + f"\n- Median daily turnover ≥ ₹{MIN_TURNOVER_CR:g} cr (HARD)\n- Latest quarter profit up YoY (HARD)")
 
 
 # =============================================================================

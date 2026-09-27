@@ -51,8 +51,8 @@ class TestUniverseConfiguration:
             keep &= ~raw["NSE Code"].isin(list(THEME_EXCLUSIONS) + list(NON_EQUITY_INSTRUMENTS))
             assert universe == raw.loc[keep, "NSE Code"].str.strip().tolist()
             assert all(sector_of(sym) == sector for sym in universe)
-        assert (len(CEMENT_STOCKS), len(CAPITAL_GOODS_EPC_STOCKS), len(POWER_SECTOR_STOCKS)) == (15, 102, 22)
-        assert len(set(PORTFOLIO_SYMBOLS)) == len(PORTFOLIO_SYMBOLS) == 139
+        assert (len(CEMENT_STOCKS), len(CAPITAL_GOODS_EPC_STOCKS), len(POWER_SECTOR_STOCKS)) == (15, 100, 22)
+        assert len(set(PORTFOLIO_SYMBOLS)) == len(PORTFOLIO_SYMBOLS) == 137
         assert sector_of("NOT_A_SYMBOL") == "Other"
 
     def test_theme_exclusions_state_a_reason_under_the_rule(self):
@@ -63,8 +63,8 @@ class TestUniverseConfiguration:
             assert sym in PORTFOLIO_SYMBOLS  # notes describe universe members kept on a judgement
 
     def test_locked_portfolio(self):
-        expected_locked = ["WELCORP", "RPEL", "SBCL", "ACMESOLAR", "FINCABLES", "GREAVESCOT", "ACE", "CARBORUNIV",
-                           "GOODLUCK", "BEML", "BANSALWIRE", "TEXRAIL", "SHANTIGEAR", "USHAMART", "AJAXENGG"]
+        expected_locked = ["WELCORP", "RPEL", "SBCL", "ACMESOLAR", "FINCABLES", "ACE", "CARBORUNIV", "GOODLUCK",
+                           "BEML", "TEXRAIL", "USHAMART", "GMMPFAUDLR", "ENRIN", "GRAPHITE", "MAHSEAMLES"]
         assert LOCKED_PORTFOLIO_SYMBOLS == expected_locked
         assert list(LOCKED_PORTFOLIO) == expected_locked
         for sym, info in LOCKED_PORTFOLIO.items():
