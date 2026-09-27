@@ -21,7 +21,7 @@ tangency portfolio (volatility, mean return, Sharpe, effective number of stocks 
 
 CML: the line from the risk-free rate through the market portfolio (Nifty 500 TRI) in (sigma, E[r])
 space, E[r] = r_f + (E[r_m] - r_f) / sigma_m x sigma. Plotted with the invested stocks, the long-only
-efficient frontier of the 11, its tangency (maximum-Sharpe) portfolio, and our portfolio.
+efficient frontier of the invested stocks, its tangency (maximum-Sharpe) portfolio, and our portfolio.
 """
 
 import logging
@@ -187,7 +187,7 @@ def cml_points(returns: pd.DataFrame, port: pd.Series, fx: pd.DataFrame,
     m_mu = float(mkt.mean() * TRADING_DAYS_PER_YEAR)
     points.append({"name": "Nifty 500 TRI (market)", "kind": "market", "sigma": m_sigma, "expected_return": m_mu})
     w_t = tangency_portfolio(mu, cov, rf)
-    points.append({"name": "Tangency (max Sharpe of the 11)", "kind": "tangency",
+    points.append({"name": "Tangency (max Sharpe of the invested stocks)", "kind": "tangency",
                    "sigma": float(np.sqrt(w_t @ cov @ w_t)), "expected_return": float(w_t @ mu)})
     w_g = gmvp(cov)
     w_gb = gmvp(cov, WEIGHT_MIN_PCT / 100, WEIGHT_MAX_PCT / 100)
@@ -235,19 +235,91 @@ def plot_cml(cml: Dict[str, object], path=CML_PNG) -> None:
             label="Efficient frontier of the invested stocks (long-only)")
     styles = {"stock": ("o", "#999999", 40), "portfolio": ("*", "#d62728", 260), "market": ("s", "#1f77b4", 90),
               "tangency": ("D", "#2ca02c", 80), "risk_free": ("o", "#000000", 50),
-              "gmvp": ("^", "#7c3aed", 90), "gmvp_bounded": ("v", "#7c3aed", 90)}
-    for _, r in pts.iterrows():
-        marker, color, size = styles[r["kind"]]
-        ax.scatter(r["sigma"] * 100, r["expected_return"] * 100, marker=marker, color=color, s=size, zorder=3)
-        ax.annotate(r["name"], (r["sigma"] * 100, r["expected_return"] * 100), textcoords="offset points",
-                    xytext=(5, 4), fontsize=7.5)
+              "gmvp": ("^", "#7c3aed", 90), "gmvp_bounded": ("v", "#a855f7", 90)}
+
+    def draw_points(axis, legend: bool) -> None:
+        for _, r in pts.iterrows():
+            marker, color, size = styles[r["kind"]]
+            key = r["kind"] != "stock"
+            axis.scatter(r["sigma"] * 100, r["expected_return"] * 100, marker=marker, color=color, s=size,
+                         zorder=4 if r["kind"] == "portfolio" else 3, edgecolors="white", linewidths=0.6,
+                         label=r["name"] if (legend and key) else None)
+
+    draw_points(ax, legend=True)
+    inset_box = None
+    # Zoomed inset on our portfolio and the GMVPs, which sit within a point or two of each other
+    close = pts[pts["kind"].isin(["portfolio", "gmvp", "gmvp_bounded"])]
+    if len(close) > 1:
+        # In the emptiest corner of the chart (fewest stock markers under it)
+        corners = {"lower right": [0.76, 0.10, 0.22, 0.30], "lower right, wide": [0.70, 0.08, 0.28, 0.30],
+                   "upper right": [0.70, 0.62, 0.28, 0.30], "lower left": [0.06, 0.08, 0.28, 0.30]}
+        xl, yl = ax.get_xlim(), ax.get_ylim()
+        fx_ = (pts["sigma"] * 100 - xl[0]) / (xl[1] - xl[0])
+        fy_ = (pts["expected_return"] * 100 - yl[0]) / (yl[1] - yl[0])
+
+        def covered(b):
+            return int(((fx_ > b[0] - 0.03) & (fx_ < b[0] + b[2] + 0.03) & (fy_ > b[1] - 0.03)
+                        & (fy_ < b[1] + b[3] + 0.03)).sum())
+
+        inset = ax.inset_axes(min(corners.values(), key=covered))
+        inset.plot(frontier["sigma"] * 100, frontier["expected_return"] * 100, color="#555", lw=1.2)
+        draw_points(inset, legend=False)
+        pad_x = max(1.0, (close["sigma"].max() - close["sigma"].min()) * 100 * 0.6)
+        pad_y = max(3.0, (close["expected_return"].max() - close["expected_return"].min()) * 100 * 0.6)
+        inset.set_xlim(close["sigma"].min() * 100 - pad_x, close["sigma"].max() * 100 + pad_x)
+        inset.set_ylim(close["expected_return"].min() * 100 - pad_y, close["expected_return"].max() * 100 + pad_y)
+        offsets = {"portfolio": ((8, 5), "left", "bottom"), "gmvp_bounded": ((-8, -4), "right", "top"),
+                   "gmvp": ((8, 0), "left", "center")}
+        for _, r in close.iterrows():
+            (dx, dy), ha, va = offsets[r["kind"]]
+            inset.annotate(r["name"].replace(" (", "\n("), (r["sigma"] * 100, r["expected_return"] * 100),
+                           textcoords="offset points", xytext=(dx, dy), fontsize=6.5, ha=ha, va=va)
+        inset.tick_params(labelsize=6.5)
+        inset.set_title("zoom: our portfolio vs the GMVPs", fontsize=7)
+        inset.grid(alpha=0.25)
+        ax.indicate_inset_zoom(inset, edgecolor="#999")
+        fig.canvas.draw()
+        ext = inset.get_tightbbox(fig.canvas.get_renderer())
+        inset_box = (ext.x0, ext.y0, ext.x1, ext.y1)
+    # Key portfolios are named in the legend; stock names are placed where they overlap nothing already drawn
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    taken = []
+    for _, r in pts.iterrows():  # every marker's screen box counts as taken
+        x, y = ax.transData.transform((r["sigma"] * 100, r["expected_return"] * 100))
+        taken.append((x - 7, y - 7, x + 7, y + 7))
+    if inset_box is not None:
+        taken.append(inset_box)
+    candidates = [(6, 4, "left", "bottom"), (6, -4, "left", "top"), (-6, 4, "right", "bottom"),
+                  (-6, -4, "right", "top"), (0, 9, "center", "bottom"), (0, -9, "center", "top"),
+                  (10, 12, "left", "bottom"), (-10, -12, "right", "top")]
+
+    def overlaps(box) -> bool:
+        return any(not (box[2] < t[0] or box[0] > t[2] or box[3] < t[1] or box[1] > t[3]) for t in taken)
+
+    for _, r in pts[pts["kind"] == "stock"].iterrows():
+        xy = (r["sigma"] * 100, r["expected_return"] * 100)
+        for dx, dy, ha, va in candidates:
+            text = ax.annotate(r["name"], xy, textcoords="offset points", xytext=(dx, dy), fontsize=7.5,
+                               ha=ha, va=va, color="#444")
+            ext = text.get_window_extent(renderer)
+            box = (ext.x0, ext.y0, ext.x1, ext.y1)
+            if not overlaps(box):
+                break
+            text.remove()
+        else:
+            text = ax.annotate(r["name"], xy, textcoords="offset points", xytext=(6, 4), fontsize=7.5, color="#444")
+            ext = text.get_window_extent(renderer)
+            box = (ext.x0, ext.y0, ext.x1, ext.y1)
+        taken.append(box)
+
     ax.set_xlabel("Annualised volatility (%)")
     ax.set_ylabel("Annualised mean return (%)")
     ax.set_title("Capital Market Line: past year of daily returns (ex-post; the stocks were picked on strong past returns)",
                  fontsize=9.5)
     ax.axhline(rf * 100, color="#bbb", lw=0.6)
     ax.grid(alpha=0.25)
-    ax.legend(fontsize=8, loc="upper left")
+    ax.legend(fontsize=7.5, loc="upper left", framealpha=0.9)
     fig.tight_layout()
     fig.savefig(path)
     plt.close(fig)

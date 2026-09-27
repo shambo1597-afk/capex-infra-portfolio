@@ -9,7 +9,7 @@ CARBORUNIV,stock,0.344946,0.406346
 GOODLUCK,stock,0.432658,0.325835
 Our portfolio,portfolio,0.233558,0.667568
 Nifty 500 TRI (market),market,0.141831,0.013196
-Tangency (max Sharpe of the 11),tangency,0.289500,1.068841
+Tangency (max Sharpe of the invested stocks),tangency,0.289500,1.068841
 GMVP (long-only),gmvp,0.221574,0.545531
 GMVP (5-15% limits),gmvp_bounded,0.231131,0.652896
 Risk-free (1D rate),risk_free,0.000000,0.051976
