@@ -218,6 +218,52 @@ def test_proceeds_top_up_the_holdings_when_no_reserve_stock_qualifies():
     assert "top-up" in t["note"].iloc[1]
 
 
+def test_top_ups_skip_holdings_that_are_falling():
+    """A top-up only goes to holdings still in an uptrend (DI gap >= 2)."""
+    from config import INITIAL_HOLDINGS, RESERVE_SYMBOLS
+    a, b, c = INITIAL_HOLDINGS[:3]
+    pos = _positions([(a, 100, 90.0, 95.0), (b, 10, 200.0, 150.0), (c, 10, 100.0, 80.0)])
+    closes = pd.Series({b: 200.0, c: 100.0, **{s: 50.0 for s in RESERVE_SYMBOLS}})
+    plan = tracker.plan_replacements(pos, pd.DataFrame(columns=tracker.LEDGER_COLUMNS), _ranking([]), closes,
+                                     pd.Series({a: 20.0, b: 30.0, c: 10.0}), trend_ok={c})
+    assert plan["buy"].tolist() == [c] and plan["alloc_pct"].tolist() == [100.0]
+    assert b in plan["note"].iloc[0]
+
+
+def test_proceeds_are_parked_then_redeployed_when_a_stock_qualifies():
+    """Nothing qualifies: the sale goes ahead and the money waits in the liquid ETF; once a reserve stock
+    qualifies, the parked money buys it (no second sale), and after that nothing is left to redeploy."""
+    from config import INITIAL_HOLDINGS, RESERVE_SYMBOLS
+    a, b = INITIAL_HOLDINGS[:2]
+    none = pd.DataFrame(columns=tracker.LEDGER_COLUMNS)
+    closes = pd.Series({b: 200.0, **{s: 50.0 for s in RESERVE_SYMBOLS}})
+    plan = tracker.plan_replacements(_positions([(a, 100, 90.0, 95.0), (b, 10, 200.0, 150.0)]), none, _ranking([]),
+                                     closes, trend_ok=set())
+    assert plan["kind"].tolist() == ["parked"] and plan["cash_left_inr"].iloc[0] == 9000.0
+    t = tracker.replacement_trades(plan, "2026-10-05", fills={a: 88.0})
+    assert t[["instrument", "action", "quantity"]].values.tolist() == [[a, "SELL", 100]]
+    ledger = pd.concat([pd.DataFrame([{"date": "2026-09-28", "instrument": s, "action": "BUY", "quantity": q,
+                                       "price": 100.0, "note": ""} for s, q in [(a, 100), (b, 10)]]), t],
+                       ignore_index=True)
+    assert tracker.parked_proceeds(ledger) == {a: 8800.0}
+    pos_b = _positions([(b, 10, 200.0, 150.0)])
+    # Still nothing qualifies: no action
+    assert tracker.plan_replacements(pos_b, ledger, _ranking([]), closes, trend_ok=set()).empty
+    # A reserve stock qualifies: buy it with the parked money
+    plan2 = tracker.plan_replacements(pos_b, ledger, _ranking(RESERVE_SYMBOLS[:1]), closes, trend_ok=set())
+    assert plan2["source"].tolist() == ["parked"] and plan2["buy"].tolist() == [RESERVE_SYMBOLS[0]]
+    t2 = tracker.replacement_trades(plan2, "2026-10-09")
+    assert t2[["instrument", "action", "quantity"]].values.tolist() == [[RESERVE_SYMBOLS[0], "BUY", 176]]
+    assert tracker.parked_proceeds(pd.concat([ledger, t2], ignore_index=True)) == {}
+
+
+def test_trend_ok_symbols_reads_the_review_tables(tmp_path):
+    pd.DataFrame({"symbol": ["AAA", "BBB"], "di_gap": [5.0, 1.0]}).to_csv(tmp_path / "x_full_review_table.csv",
+                                                                         index=False)
+    assert tracker.trend_ok_symbols(tmp_path) == {"AAA"}
+    assert tracker.trend_ok_symbols(tmp_path / "empty") is None
+
+
 # ---------------------------------------------------------------------------
 # Dashboard trade recording, near-stop warning, WhatsApp update
 # ---------------------------------------------------------------------------

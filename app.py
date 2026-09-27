@@ -866,28 +866,32 @@ with tab_overview:
             elif rv.get("status") == "no prices":
                 st.warning("Profit lock triggered, but NSE option prices for today are not available yet; refresh later.")
         plan = pd.read_csv(REPLACEMENT_PLAN_CSV) if REPLACEMENT_PLAN_CSV.exists() else pd.DataFrame()
-        if not plan.empty:  # stop hits not yet recorded in the ledger
+        if not plan.empty:  # stop hits (or parked money to redeploy) not yet recorded in the ledger
             lines = []
             for sell_sym, group in plan.groupby("sell", sort=False):
                 r0 = group.iloc[0]
-                sell = (f"SELL {int(r0['sell_shares']):,} {sell_sym} (closed ₹{r0['sell_close']:,.2f}, stop "
-                        f"₹{r0['stop_loss_price']:,.2f}; about {_inr(r0['proceeds_inr'])})")
+                parked_src = r0.get("source", "stop") == "parked"
+                sell = (f"{sell_sym}'s parked money (about {_inr(r0['proceeds_inr'])}, in the liquid ETF)" if parked_src
+                        else f"SELL {int(r0['sell_shares']):,} {sell_sym} (closed ₹{r0['sell_close']:,.2f}, stop "
+                             f"₹{r0['stop_loss_price']:,.2f}; about {_inr(r0['proceeds_inr'])})")
                 buys = [r for _, r in group.iterrows() if isinstance(r.get("buy"), str) and r["buy"]]
                 if buys and r0.get("kind", "reserve") == "reserve":
                     r = buys[0]
                     buy = (f"BUY {int(r['buy_shares']):,} {r['buy']} (reserve, rank #{int(r['buy_rank'])} of 15; "
                            f"₹{r['buy_close']:,.2f}, about {_inr(r['buy_inr'])})")
                 elif buys:
-                    buy = ("no reserve stock passes the selection rule today, so the money tops up the other holdings "
-                           "in proportion to their weights: " + ", ".join(
+                    buy = ("no reserve stock passes the selection rule today, so the money tops up the holdings still "
+                           "in an uptrend, in proportion to their weights: " + ", ".join(
                                f"BUY {int(r['buy_shares']):,} {r['buy']} ({_inr(r['buy_inr'])})" for r in buys))
                 else:
-                    buy = "nothing left to buy: the money stays in cash"
-                note = f" _{r0['note']}_" if r0.get("kind", "reserve") == "reserve" and isinstance(r0.get("note"), str) \
-                    and r0["note"] else ""
+                    buy = ("nothing qualifies (no reserve stock passes and no holding is in an uptrend): the money goes "
+                           "to the liquid ETF until a stock qualifies")
+                note = f" _{r0['note']}_" if r0.get("kind", "reserve") in ("reserve", "top-up") \
+                    and isinstance(r0.get("note"), str) and r0["note"] else ""
                 lines.append(f"- {sell} → {buy}; {_inr(r0['cash_left_inr'])} stays in cash.{note}")
-            st.error(f"**Stop-loss hit: {', '.join(plan['sell'].unique())}.** Redeploy the money:\n\n"
-                     + "\n".join(lines)
+            stops = plan[plan.get("source", pd.Series("stop", index=plan.index)) != "parked"]["sell"].unique()
+            head = (f"**Stop-loss hit: {', '.join(stops)}.** " if len(stops) else "**Parked money can be invested again.** ")
+            st.error(head + "Redeploy the money:\n\n" + "\n".join(lines)
                      + "\n\nPrices are today's closes (the fill will be tomorrow's price).")
             if not can_edit():
                 st.caption("To record these trades, unlock editing in the Trade ledger section below.")
@@ -898,7 +902,8 @@ with tab_overview:
                     day = st.date_input("Trade date", value=pd.Timestamp.now(tz="Asia/Kolkata").date())
                     fills = {}
                     cols = st.columns(2)
-                    for sym, px in plan.drop_duplicates("sell")[["sell", "sell_close"]].values:
+                    sales = plan[plan["source"] != "parked"] if "source" in plan else plan
+                    for sym, px in sales.drop_duplicates("sell")[["sell", "sell_close"]].values:
                         fills[sym] = cols[0].number_input(f"Sold {sym} at (₹)", value=float(px), min_value=0.01,
                                                           format="%.2f", key=f"fill_sell_{sym}")
                     for sym, px in plan.dropna(subset=["buy"]).drop_duplicates("buy")[["buy", "buy_close"]].values:
@@ -1150,8 +1155,8 @@ with tab_overview:
         st.caption(f"The money is in the top {INVESTED_COUNT} of the {len(LOCKED_PORTFOLIO_SYMBOLS)}. When a holding "
                    "closes at or below its stop-loss, its sale proceeds buy the first reserve stock that still passes "
                    "the selection rule that day (hard fundamentals, bullish trend with DI gap ≥ 2, one year of prices, "
-                   "turnover ≥ ₹5 cr a day, a real profit that grew in the latest quarter); if none does, they top up the other holdings (cash is never left "
-                   "idle). A stock that has been sold never comes back.")
+                   "turnover ≥ ₹5 cr a day, a real profit that grew in the latest quarter); if none does, they top up the other holdings that are still in an uptrend "
+                   "(DI gap ≥ 2), and only if none is, they wait in the liquid ETF until a stock qualifies. A stock that has been sold never comes back.")
         show_res = pd.DataFrame({
             "Queue": reserve_df["status"],
             "Stock": reserve_df["symbol"],
@@ -1665,7 +1670,7 @@ with tab_risk:
                 f"Market exposure: {stocks_total / PRINCIPAL_INR * 100:.1f}% in stocks (brief: at least 90%). "
                 f"The {100 - EQUITY_ALLOCATION_PCT:g}% reserve pays for the day-0 puts and one profit-trigger roll-up; "
                 "until then it sits in a liquid ETF earning the overnight rate. A stop-loss exit is replaced from the reserve list "
-                "with its own sale proceeds (the rounding stays here). No commodity or other ETF: none has a clear role (copper and aluminium "
+                "with its own sale proceeds (the rounding stays here; if nothing qualifies, the proceeds wait here too). No commodity or other ETF: none has a clear role (copper and aluminium "
                 "are input costs for the cable and transformer makers; gold's crash-protection job is done more "
                 "directly by the Nifty puts)."
             )
