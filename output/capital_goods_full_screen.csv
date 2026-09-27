@@ -99,3 +99,23 @@ VOLTAMP,Volt.Transform.,Screener: Heavy Electrical Equipment,246,10709.0,True,,7
 WAAREEENER,Waaree Energies,Screener: Other Electrical Equipment,246,2495.0,False,RS <= +2 pp; trend Bearish,-11.83,29.12,11.42,20.24,Bearish (Downtrend),40.06,,,,,,,,,,,,,,,,,,False
 WAAREERTL,Waaree Renewab.,Screener: Other Electrical Equipment,246,832.9,False,RS <= +2 pp,-16.08,26.25,24.46,16.07,Bullish (Uptrend),43.05,,,,,,,,,,,,,,,,,,False
 WELCORP,Welspun Corp,Screener: Iron & Steel Products,246,2832.4,True,,89.2,42.51,32.45,18.58,Bullish (Uptrend),66.32,2026-09-26,OK,Screener 2026-09-26,74716.06,True,22.89,True,13.89,True,3204.28,True,0.26,True,0.0,True,True,,True
+AFCONS,Afcons Infrastr.,Screener: Civil Construction,246,252.5,False,RS <= +2 pp; trend Bearish,-18.33,15.95,22.22,31.24,Bearish (Downtrend),35.57,,,,,,,,,,,,,,,,,,False
+CEIGALL,Ceigall India,Screener: Civil Construction,246,384.1,False,RS <= +2 pp,-1.27,42.4,25.96,10.7,Bullish (Uptrend),63.5,,,,,,,,,,,,,,,,,,False
+CEMPRO,Cemindia Project,Screener: Civil Construction,246,1257.2,True,,2.08,14.97,21.87,21.26,Bullish (Uptrend),46.77,2026-09-26,OK,Screener 2026-09-26,21597.14,True,32.76,True,10.35,True,499.78,True,0.42,True,0.0,True,True,,True
+DBL,Dilip Buildcon,Screener: Civil Construction,246,412.45,False,RS <= +2 pp,-9.36,24.79,28.05,18.45,Bullish (Uptrend),50.55,,,,,,,,,,,,,,,,,,False
+ENGINERSIN,Engineers India,Screener: Civil Construction,246,315.65,True,,30.84,38.88,38.32,9.71,Bullish (Uptrend),72.95,2026-09-26,OK,Screener 2026-09-26,17740.87,True,30.4,True,19.35,True,319.02,True,0.01,True,0.0,True,True,,True
+GRINFRA,G R Infraproject,Screener: Civil Construction,246,812.4,False,RS <= +2 pp; trend Bearish,-10.35,15.77,16.15,22.64,Bearish (Downtrend),35.37,,,,,,,,,,,,,,,,,,False
+HCC,Hind.Construct.,Screener: Civil Construction,246,21.26,False,RS <= +2 pp; trend Bearish,-15.52,15.36,19.54,23.97,Bearish (Downtrend),42.17,,,,,,,,,,,,,,,,,,False
+IRB,IRB Infra.Devl.,Screener: Civil Construction,246,17.68,False,RS <= +2 pp; trend Bearish,-16.54,20.43,16.63,28.03,Bearish (Downtrend),29.26,,,,,,,,,,,,,,,,,,False
+IRCON,Ircon Intl.,Screener: Civil Construction,246,105.95,False,RS <= +2 pp; trend Bearish,-17.53,35.53,10.38,31.66,Bearish (Downtrend),23.93,,,,,,,,,,,,,,,,,,False
+ISGEC,ISGEC Heavy,Screener: Civil Construction,246,890.55,False,RS <= +2 pp,-1.86,24.75,29.6,13.14,Bullish (Uptrend),66.44,,,,,,,,,,,,,,,,,,False
+KPIL,Kalpataru Proj.,Screener: Civil Construction,246,1391.2,True,,5.07,31.1,19.83,17.31,Bullish (Uptrend),48.61,2026-09-26,OK,Screener 2026-09-26,23757.88,True,18.28,True,8.32,True,1534.38,True,0.46,True,24.55,False,False,Pledged percentage < 15%,False
+KEC,KEC International,Screener: Civil Construction,246,396.95,False,RS <= +2 pp; trend Bearish,-21.26,44.66,9.94,25.46,Bearish (Downtrend),39.68,,,,,,,,,,,,,,,,,,False
+LT,Larsen & Toubro,Screener: Civil Construction,246,3876.2,False,RS <= +2 pp; trend Bearish,-5.21,14.39,14.01,17.77,Bearish (Downtrend),43.79,,,,,,,,,,,,,,,,,,False
+NBCC,NBCC,Screener: Civil Construction,246,82.86,False,RS <= +2 pp; trend Bearish,-18.87,34.29,15.71,28.22,Bearish (Downtrend),40.27,,,,,,,,,,,,,,,,,,False
+NCC,NCC,Screener: Civil Construction,246,132.82,False,RS <= +2 pp; trend Bearish,-9.69,19.21,15.8,26.23,Bearish (Downtrend),35.14,,,,,,,,,,,,,,,,,,False
+POWERMECH,Power Mech Proj.,Screener: Civil Construction,246,2407.3,False,RS <= +2 pp; trend Bearish,-9.77,16.5,20.13,21.57,Bearish (Downtrend),47.13,,,,,,,,,,,,,,,,,,False
+RVNL,Rail Vikas,Screener: Civil Construction,246,207.0,False,RS <= +2 pp; trend Bearish,-11.12,18.75,22.12,28.09,Bearish (Downtrend),44.16,,,,,,,,,,,,,,,,,,False
+RITES,Rites,Screener: Civil Construction,246,199.31,False,RS <= +2 pp; trend Bearish,-1.58,19.61,11.15,23.99,Bearish (Downtrend),28.53,,,,,,,,,,,,,,,,,,False
+TECHNOE,Techno Elec.Engg,Screener: Civil Construction,246,1006.2,False,RS <= +2 pp,-5.73,15.91,25.38,16.85,Bullish (Uptrend),52.99,,,,,,,,,,,,,,,,,,False
+WELENT,Welspun Enterp,Screener: Civil Construction,246,754.5,True,,33.14,43.87,27.52,15.87,Bullish (Uptrend),54.34,2026-09-26,OK,Screener 2026-09-26,10443.32,True,16.74,True,20.19,True,112.19,True,0.65,True,0.0,True,True,,True

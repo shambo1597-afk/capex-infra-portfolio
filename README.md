@@ -75,14 +75,14 @@ A production-grade, mathematically transparent data pipeline and quantitative sc
 
 ## Portfolio Universe & Locked Portfolio
 
-**Universe (single source of truth: three Screener.in exports, `data/screener/`, downloaded 26-Sep-2026).** `cement.csv` (42 rows), `capital_goods.csv` (887) and `power.csv` (49); `data/screener/SOURCE.md` records how they were exported. `config._read_screener` applies the same rules to every row, and the fundamentals (pledge, debt/equity, interest cover, ROCE, OPM, operating cash flow, market cap) come straight from those rows:
+**Universe (single source of truth: four Screener.in exports, `data/screener/`, downloaded 26/27-Sep-2026).** `cement.csv` (42 rows), `capital_goods.csv` (887), `construction.csv` (181, all Civil Construction: the EPC contractors, screened with Capital Goods because the professor's sheet names the theme "Cement, Capital Goods & EPC, Power") and `power.csv` (49); `data/screener/SOURCE.md` records how they were exported. `config._read_screener` applies the same rules to every row, and the fundamentals (pledge, debt/equity, interest cover, ROCE, OPM, operating cash flow, market cap) come straight from those rows:
 
 - an NSE symbol and a market cap of at least Rs 5,000 crore (`config.UNIVERSE_MIN_MARKET_CAP_CR`);
 - Capital Goods only: no Aerospace & Defense group (`CAPITAL_GOODS_EXCLUDED_GROUPS`) and no industries outside the capex theme such as packaging, rubber, industrial glass, non-ferrous products, commercial vehicles, tractors and dealers (`CAPITAL_GOODS_EXCLUDED_INDUSTRIES`);
-- no InvITs (`NON_EQUITY_INSTRUMENTS`: INDIGRID, PGINVIT);
-- `config.THEME_EXCLUSIONS`: 22 names whose Screener industry sits inside Capital Goods but whose business is not capex/infra, in five stated groups: (1) EMS / electronics, (2) auto and consumer components, (3) defence, aerospace and shipbuilding, (4) primary steel, (5) packaging and films.
+- no InvITs (`NON_EQUITY_INSTRUMENTS`: INDIGRID, PGINVIT, NXT-INFRA, SHREMINVIT);
+- `config.THEME_EXCLUSIONS`: 24 names (23 above the floor) whose Screener industry sits inside the theme but whose business is not capex/infra, in six stated groups: (1) EMS / electronics, (2) auto and consumer components, (3) defence, aerospace and shipbuilding, (4) primary steel, (5) packaging and films, (6) mining services (CMPDI).
 
-That leaves **137 stocks: Cement 15, Capital Goods 100, Power 22**. The review tables' `source_index` column shows each stock's Screener industry, and `business_focus_note` records the borderline theme calls (`GREAVESCOT`, `UTLSOLAR`, `RPEL`, `GRASIM`, `NAVA`, `RRKABEL`). Theme is the only constraint on the list: there are no per-sector quotas.
+That leaves **157 stocks: Cement 15, Capital Goods & EPC 120 (100 + 20 EPC), Power 22**. The review tables' `source_index` column shows each stock's Screener industry, and `business_focus_note` records the borderline theme calls (`GREAVESCOT`, `UTLSOLAR`, `RPEL`, `GRASIM`, `NAVA`, `RRKABEL`). Theme is the only constraint on the list: there are no per-sector quotas.
 
 **Locked list (15 stocks tracked, money in 8; `config.LOCKED_PORTFOLIO`; the list is frozen after 5-Oct-2026).** The selection rule (`sector_screen.select_portfolio`; column `rule_pick` of `output/selection_ranking.csv`, rebuilt by every review run):
 
@@ -95,23 +95,25 @@ That leaves **137 stocks: Cement 15, Capital Goods 100, Power 22**. The review t
 7. **Ranking signal tested against published refinements** (`research/signal_extensions_study.py`, pre-registered, monthly 2021-2026): residual momentum (Blitz, Huij & Martens 2011) trailed our 6-month RS ranking in both periods (-2.5 pp and -2.0 pp per quarter), and a frog-in-the-pan filter for smooth trends (Da, Gurun & Warachka 2014) was significantly worse (t = -4.6: here, momentum built from news-driven jumps persisted better). The ranking stays as it is. An earnings-surprise test (`research/earnings_study.py`) used the price reaction to each results announcement since 2020 (NSE board-meeting dates in `data/results_history/`), the documented substitute for surprise vs analyst estimates (Chan, Jegadeesh & Lakonishok 1996; Brandt et al. 2008). It predicts in the right direction (rank IC +0.05 in both periods), but ranking by it, confirming momentum with it, or dropping stocks marked down on results all trailed the plain momentum ranking.
 8. **No RRG conviction filter.** Until 27-Sep-2026 stocks whose momentum was fading in both RRG views (Low conviction) were skipped. A pre-registered backtest (`research/conviction_study.py`, monthly 2021-2026) found that the filter changed the top 8 on 95% of dates and trailed the plain ranking in both periods (-2.7 pp per quarter in 2021-23, -1.1 pp in 2024-26; not significant, t = -0.8); a simpler "still beating the Nifty over 3 months" filter did not help either. So picks are simply the top 15 of the ranking (`config.PORTFOLIO_SIZE`, the brief's maximum), in rank order, and the RRG and conviction tier are shown as context. The filter was built on 63-session RS, the weakest signal in `research/momentum_study.py`.
 
-| Rank | Stock | Sector | Conviction | Profit, latest qtr YoY | Turnover Rs cr/day | P/E | Status | Note |
-| :---: | :--- | :--- | :--- | ---: | ---: | ---: | :--- | :--- |
-| 1 | `WELCORP` | Capital Goods | High | +199% | 218.7 | 32 | invested, 13.85% |  |
-| 2 | `RPEL` | Capital Goods | Moderate | +68% | 10.9 | 124 | invested, 11.21% | refractory ramming mass for steel plants |
-| 3 | `SBCL` | Capital Goods | Moderate | +44% | 27.6 | 62 | invested, 12.70% | bimetal and shunt parts for switchgear, smart meters |
-| 4 | `AEROFLEX` | Capital Goods | Low | +162% | 52.6 | 104 | invested, 9.21% | stainless flexible hoses and flow assemblies |
-| 5 | `TDPOWERSYS` | Capital Goods | Low | +72% | 124.1 | 86 | invested, 11.33% | generators and motors |
-| 6 | `RAMRAT` | Capital Goods | Low | +128% | 8.3 | 41 | invested, 14.32% | copper winding wires; soft exceptions OPM, cash flow |
-| 7 | `APARINDS` | Capital Goods | Low | +78% | 213.8 | 62 | invested, 12.37% | transmission conductors, cables, transformer oils |
-| 8 | `ACMESOLAR` | Power | High | +65% | 58.3 | 53 | invested, 15.00% | the only Power stock |
-| 9 | `QPOWER` | Capital Goods | Low | +50% | 24.1 | 88 | reserve #1 | HV grid equipment |
-| 10 | `FINCABLES` | Capital Goods | High | +53% | 56.1 | 28 | reserve #2 |  |
-| 11 | `GRINDWELL` | Capital Goods | Low | +22% | 6.2 | 50 | reserve #3 | abrasives and ceramics (Saint-Gobain) |
-| 12 | `ACE` | Capital Goods | High | +22% | 32.4 | 33 | reserve #4 |  |
-| 13 | `CARBORUNIV` | Capital Goods | High | +23% | 18.9 | 97 | reserve #5 |  |
-| 14 | `GOODLUCK` | Capital Goods | Moderate | +60% | 27.0 | 26 | reserve #6 |  |
-| 15 | `VOLTAMP` | Capital Goods | Low | +15% | 24.8 | 34 | reserve #7 | power and distribution transformers |
+| Rank | Stock | Sector | Profit, latest qtr YoY | Turnover Rs cr/day | P/E | Status | Note |
+| :---: | :--- | :--- | ---: | ---: | ---: | :--- | :--- |
+| 1 | `WELCORP` | Capital Goods | +199% | 218.7 | 32 | invested, 13.85% |  |
+| 2 | `RPEL` | Capital Goods | +68% | 10.9 | 124 | invested, 11.21% | refractory ramming mass for steel plants |
+| 3 | `SBCL` | Capital Goods | +44% | 27.6 | 62 | invested, 12.70% | bimetal and shunt parts for switchgear, smart meters |
+| 4 | `AEROFLEX` | Capital Goods | +162% | 52.6 | 104 | invested, 9.21% | stainless flexible hoses and flow assemblies |
+| 5 | `TDPOWERSYS` | Capital Goods | +72% | 124.1 | 86 | invested, 11.33% | generators and motors |
+| 6 | `RAMRAT` | Capital Goods | +128% | 8.3 | 41 | invested, 14.32% | copper winding wires; soft exceptions OPM, cash flow |
+| 7 | `APARINDS` | Capital Goods | +78% | 213.8 | 62 | invested, 12.37% | transmission conductors, cables, transformer oils |
+| 8 | `ACMESOLAR` | Power | +65% | 58.3 | 53 | invested, 15.00% | the only Power stock |
+| 9 | `QPOWER` | Capital Goods | +50% | 24.1 | 88 | reserve #1 | HV grid equipment |
+| 10 | `FINCABLES` | Capital Goods | +53% | 56.1 | 28 | reserve #2 |  |
+| 11 | `GRINDWELL` | Capital Goods | +22% | 6.2 | 50 | reserve #3 | abrasives and ceramics (Saint-Gobain) |
+| 12 | `ACE` | Capital Goods | +22% | 32.4 | 33 | reserve #4 |  |
+| 13 | `CARBORUNIV` | Capital Goods | +23% | 18.9 | 97 | reserve #5 |  |
+| 14 | `GOODLUCK` | Capital Goods | +60% | 27.0 | 26 | reserve #6 |  |
+| 15 | `ENGINERSIN` | Capital Goods (EPC) | +142% | 49.4 | 23 | reserve #7 | engineering consultancy and turnkey EPC (refineries, petrochemicals, infrastructure) |
+
+**EPC added (27-Sep-2026, before the snapshot).** The professor's group sheet names the theme "Cement, Capital Goods & EPC, Power", and Screener lists EPC contractors under Construction, so `construction.csv` joined the universe (20 stocks above the floor after two InvITs and CMPDI). The invested 8 are unchanged; ENGINERSIN ranks #15 and replaces VOLTAMP (#16) in the reserve. The other EPC leaders fail a rule: CEMPRO (6-month RS +139%) has no real trend (DI gap 0.6), HCC and KPIL have 82% and 25% of promoter shares pledged, WELENT's latest-quarter profit fell 27%, and L&T and KEC are not in an uptrend. The backtests in `research/` were run on the 137-stock universe before this addition.
 
 **Changes on 27-Sep-2026 (before the snapshot).** Rules 5 and 6 were added after checking the list for results and trading risk: they removed GREAVESCOT (latest-quarter profit -23%, RSI 77) from the invested stocks, GOODLUCK (+60%) moved up, and BANSALWIRE (profit -48%, Rs 2.8 cr a day), SHANTIGEAR (-57%, Rs 0.9 cr) and AJAXENGG (Rs 2.9 cr) left the reserve. PTCIL and DYNAMATECH, next in the ranking, were added to the theme exclusions as aerospace/defence businesses (the rule that already excluded HAL, BEL, MAZDOCK), so the reserve fills with GMMPFAUDLR, ENRIN, GRAPHITE and MAHSEAMLES. Valuation is shown, not screened: RPEL (P/E 124), CARBORUNIV (97) and BEML (95) are expensive going into results, which is what their stop-losses are for.
 
@@ -125,7 +127,7 @@ That leaves **137 stocks: Cement 15, Capital Goods 100, Power 22**. The review t
 
 **Money in 8, 15 tracked (group decision 26-Sep-2026).** The money goes into the top 8 (`config.INVESTED_COUNT`, `INITIAL_HOLDINGS`), the brief's minimum; the other 7 (`RESERVE_SYMBOLS`) are tracked with no money, in rank order. **Replacement rule** (`tracker.plan_replacements`, `output/replacement_plan.csv`, shown as an alert on the dashboard): when a holding closes at or below its stop-loss it is sold, and the sale proceeds buy whole shares of the first reserve stock that still passes the selection rule that day (listed in `output/selection_ranking.csv`); a reserve stock that fails the rule that day is skipped but stays in the queue, and a stock that has been sold never comes back. If no reserve stock qualifies, the proceeds top up the remaining holdings that are still in an uptrend (DI gap ≥ 2) in proportion to their weights, never taking a holding above the 15% cap (its surplus goes to the others), since the brief says cash cannot sit idle; if none of them is in an uptrend either (a theme-wide sell-off), the proceeds wait in the liquid ETF and are redeployed the same way on the first day a reserve stock or holding qualifies (`tracker.parked_proceeds`). This last step was added on 27-Sep-2026 so that stop-loss money is never added to stocks that are themselves falling. Several stops on one day take the queue in turn. The trades are recorded in `data/trades.csv`; from then on the risk summary, weights, hedge and performance use the new holdings (`tracker.current_holdings`).
 
-`UTLSOLAR` (High conviction, 6-month RS +118%) was in an earlier draft but has only 211 sessions of prices, under the one-year rule, so the rule's pick `SBCL` holds the place (group decision 26-Sep-2026). No Cement stock makes the 15: NUVOCO passes every rule but ranks #22 (6-month RS +1%). Whether a Cement leg is required is a question for the professor. With 8 stocks the 15% weight cap binds for the least volatile (ACMESOLAR), which then carries less risk than the others; the other seven carry exactly equal shares (`weights.equal_risk_contribution`, an active-set solver).
+`UTLSOLAR` (High conviction, 6-month RS +118%) was in an earlier draft but has only 211 sessions of prices, under the one-year rule, so the rule's pick `SBCL` holds the place (group decision 26-Sep-2026). No Cement stock makes the 15: NUVOCO passes every rule but ranks #24 (6-month RS +1%). Whether a Cement leg is required is a question for the professor. With 8 stocks the 15% weight cap binds for the least volatile (ACMESOLAR), which then carries less risk than the others; the other seven carry exactly equal shares (`weights.equal_risk_contribution`, an active-set solver).
 
 **Weights and allocation.** Equal risk contribution (`weights.py`): each stock carries the same share of portfolio variance $w_i (\Sigma w)_i / w^\top \Sigma w = 1/N$, with every weight bounded 5-15% (`config.WEIGHT_MIN_PCT`, `WEIGHT_MAX_PCT`) and $\Sigma$ from one year of daily returns. It needs no return forecast (none is reliable, `research/momentum_study.py`) and gives volatile names less capital. The weights apply to the 97% equity sleeve (`config.EQUITY_ALLOCATION_PCT`) of the Rs 1 crore principal; the other 3% is the hedge reserve (day-0 Nifty puts and one profit-trigger roll-up, see `risk_model.py`), held in a liquid ETF at the overnight rate until used. `output/portfolio_risk_summary.csv` gives the whole shares at the latest close, the amount invested and each stock's risk contribution. Recompute at the actual purchase prices.
 
@@ -402,7 +404,7 @@ The automated fetch routine in `fetch_benchmark_tri_automated()` is completely w
 
 `python sector_screen.py` applies the brief's order ("technical analysis, then financial analysis") identically to each sector:
 
-1. **Universe:** the 137 stocks of the three Screener.in exports in `data/screener/` after the market-cap, industry and theme filters (see Portfolio Universe).
+1. **Universe:** the 157 stocks of the four Screener.in exports in `data/screener/` after the market-cap, industry and theme filters (see Portfolio Universe).
 2. **Technical screen (every constituent):** RS vs Nifty 500 over 63 sessions **> +2 pp** (a margin: RS is a 63-day cumulative spread and one day's return can move it by several points, so a bare `> 0` flips on noise) **and** trend direction (+DI vs −DI) Bullish, computed with the existing indicator pipeline on the complete Bhavcopy history. ADX is reported as a tiebreaker, not a cutoff.
 3. **Fundamental safety screen (technical passers only):** fetched live via `get_fundamentals_summary(..., use_cache=False)` (Screener.in for financials, NSE pledge disclosures for promoter pledge) and scored against the sector's criteria in `config.py`. A metric that cannot be read fails. These are deliberately **light, current-year solvency checks** for a 3-month tactical mandate, not a multi-year quality bar (no 3-year averages or growth):
 

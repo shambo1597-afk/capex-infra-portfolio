@@ -20,6 +20,7 @@ from config import (
     CAPITAL_GOODS_EXCLUDED_GROUPS,
     CAPITAL_GOODS_EXCLUDED_INDUSTRIES,
     NON_EQUITY_INSTRUMENTS,
+    SCREENER_EXTRA_FILES,
     SCREENER_FILES,
     THEME_EXCLUSIONS,
     UNIVERSE_MIN_MARKET_CAP_CR,
@@ -43,7 +44,8 @@ class TestUniverseConfiguration:
         cap floor, theme industries, no InvITs, the theme exclusions), and every stock maps to one sector."""
         for sector, universe in (("Cement", CEMENT_STOCKS), ("Capital Goods", CAPITAL_GOODS_EPC_STOCKS),
                                  ("Power", POWER_SECTOR_STOCKS)):
-            raw = pd.read_csv(SCREENER_FILES[sector])
+            raw = pd.concat([pd.read_csv(f) for f in [SCREENER_FILES[sector], *SCREENER_EXTRA_FILES.get(sector, [])]],
+                            ignore_index=True)
             keep = raw["NSE Code"].notna() & (raw["Market Capitalization"] >= UNIVERSE_MIN_MARKET_CAP_CR)
             if sector == "Capital Goods":
                 keep &= ~raw["Industry Group"].isin(CAPITAL_GOODS_EXCLUDED_GROUPS)
@@ -51,20 +53,20 @@ class TestUniverseConfiguration:
             keep &= ~raw["NSE Code"].isin(list(THEME_EXCLUSIONS) + list(NON_EQUITY_INSTRUMENTS))
             assert universe == raw.loc[keep, "NSE Code"].str.strip().tolist()
             assert all(sector_of(sym) == sector for sym in universe)
-        assert (len(CEMENT_STOCKS), len(CAPITAL_GOODS_EPC_STOCKS), len(POWER_SECTOR_STOCKS)) == (15, 100, 22)
-        assert len(set(PORTFOLIO_SYMBOLS)) == len(PORTFOLIO_SYMBOLS) == 137
+        assert (len(CEMENT_STOCKS), len(CAPITAL_GOODS_EPC_STOCKS), len(POWER_SECTOR_STOCKS)) == (15, 120, 22)
+        assert len(set(PORTFOLIO_SYMBOLS)) == len(PORTFOLIO_SYMBOLS) == 157  # 137 + 20 EPC contractors
         assert sector_of("NOT_A_SYMBOL") == "Other"
 
     def test_theme_exclusions_state_a_reason_under_the_rule(self):
         for sym, reason in THEME_EXCLUSIONS.items():
-            assert reason[:3] in {"(1)", "(2)", "(3)", "(4)", "(5)"}  # one of the five stated categories
+            assert reason[:3] in {"(1)", "(2)", "(3)", "(4)", "(5)", "(6)"}  # one of the six stated categories
             assert sym not in PORTFOLIO_SYMBOLS
         for sym in BUSINESS_FOCUS_NOTES:
             assert sym in PORTFOLIO_SYMBOLS  # notes describe universe members kept on a judgement
 
     def test_locked_portfolio(self):
         expected_locked = ["WELCORP", "RPEL", "SBCL", "AEROFLEX", "TDPOWERSYS", "RAMRAT", "APARINDS", "ACMESOLAR",
-                           "QPOWER", "FINCABLES", "GRINDWELL", "ACE", "CARBORUNIV", "GOODLUCK", "VOLTAMP"]
+                           "QPOWER", "FINCABLES", "GRINDWELL", "ACE", "CARBORUNIV", "GOODLUCK", "ENGINERSIN"]
         assert LOCKED_PORTFOLIO_SYMBOLS == expected_locked
         assert list(LOCKED_PORTFOLIO) == expected_locked
         for sym, info in LOCKED_PORTFOLIO.items():

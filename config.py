@@ -46,6 +46,11 @@ SCREENER_FILES = {
     "Capital Goods": SCREENER_DIR / "capital_goods.csv",
     "Power": SCREENER_DIR / "power.csv",
 }
+# The professor's theme is "Cement, Capital Goods & EPC, Power": Screener lists EPC contractors under its
+# Construction sector (all "Civil Construction", downloaded 27-Sep-2026), screened as part of Capital Goods
+SCREENER_EXTRA_FILES = {
+    "Capital Goods": [SCREENER_DIR / "construction.csv"],
+}
 # Rs 5,000 cr is a QUALITY floor, not the liquidity test (research/liquidity_study.py, 27-Sep-2026):
 # tradability is MIN_TURNOVER_CR below. Lowering it to Rs 1,000-2,000 cr adds no stock between Rs 1,000
 # and 2,000 cr that trades Rs 5 cr a day, and among the Rs 2,000-5,000 cr names that would enter the top
@@ -60,10 +65,12 @@ CAPITAL_GOODS_EXCLUDED_INDUSTRIES = {
 NON_EQUITY_INSTRUMENTS = {
     "INDIGRID": "Infrastructure investment trust (InvIT units, not company shares)",
     "PGINVIT": "Infrastructure investment trust (InvIT units, not company shares)",
+    "NXT-INFRA": "Infrastructure investment trust (InvIT units, not company shares)",
+    "SHREMINVIT": "Infrastructure investment trust (InvIT units, not company shares)",
 }
 # Theme rule: exclude companies whose main business is (1) electronics manufacturing or consumer
 # electronics, (2) automotive or consumer components, (3) defence, aerospace or shipbuilding, (4) primary steel
-# making (a commodity metal, not equipment), or (5) packaging and films.
+# making (a commodity metal, not equipment), (5) packaging and films, or (6) mining services.
 THEME_EXCLUSIONS = {
     "CPPLUS": "(1) CCTV and security electronics",
     "SYRMA": "(1) electronics manufacturing services",
@@ -88,14 +95,20 @@ THEME_EXCLUSIONS = {
     "SUNFLAG": "(4) alloy steel, mainly for automotive",
     "GRWRHITECH": "(5) plastic films",
     "TIMETECHNO": "(5) packaging and polymer products",
+    "CMPDI": "(6) mine planning, design and coal exploration for Coal India (Screener: Civil Construction)",
 }
 
 
 def _read_screener(sector: str) -> List[Dict[str, object]]:
     """Universe rows {symbol, name, index, industry, record} of one Screener export after the universe rule."""
-    path = SCREENER_FILES[sector]
-    if not path.exists():
-        return []
+    rows = []
+    for path in [SCREENER_FILES[sector], *SCREENER_EXTRA_FILES.get(sector, [])]:
+        if path.exists():
+            rows += _read_screener_file(path, sector)
+    return rows
+
+
+def _read_screener_file(path: Path, sector: str) -> List[Dict[str, object]]:
     rows = []
     with open(path, newline="", encoding="utf-8-sig") as f:
         for row in csv.DictReader(f):
@@ -202,6 +215,10 @@ BUSINESS_FOCUS_NOTES = {
         "FIT: abrasives and performance ceramics for manufacturing (Saint-Gobain subsidiary), like CARBORUNIV; "
         "small plastics and IT-services lines."
     ),
+    "ENGINERSIN": (
+        "FIT: engineering consultancy and turnkey (LSTK) EPC for refineries, petrochemicals, fertilisers and "
+        "infrastructure; Screener: Construction > Civil Construction (EPC)."
+    ),
     "VOLTAMP": "FIT: oil-filled power and distribution transformers (~96% products); power T&D equipment.",
     "ENRIN": "FIT: Siemens Energy India, power generation and transmission equipment; Nifty Capital Goods member.",
     "GRAPHITE": (
@@ -264,18 +281,21 @@ def sector_of(symbol: str) -> str:
 # been sold never comes back; if no reserve stock qualifies, the proceeds top up the remaining holdings
 # still in an uptrend (DI gap >= 2) up to the 15% cap, and if none is, wait in the liquid ETF until a stock qualifies
 # ("cash cannot sit idle"; revised 27-Sep so money is never added to falling stocks). No sector minimums: Power has one stock (ACMESOLAR) and Cement none
-# (its best confirmed uptrend, NUVOCO, ranks #32); the group will ask the professor whether a Cement
+# (its best confirmed uptrend, NUVOCO, ranks #24); the group will ask the professor whether a Cement
 # leg is required. Soft exceptions (shown on the dashboard): BEML (ROCE/OPM). On 27-Sep the liquidity
 # and quarterly-profit rules (MIN_TURNOVER_CR; latest-quarter net profit > 0 and up year on year) removed
 # GREAVESCOT (profit -23%), and later BEML (a Rs 27 cr loss that Screener shows as +58% "growth"),
 # BANSALWIRE, SHANTIGEAR and AJAXENGG, and PTCIL / DYNAMATECH were found to be aerospace/defence
 # businesses (THEME_EXCLUSIONS). UTLSOLAR (211 sessions of prices) fails the one-year history rule and was
-# replaced by the rule's pick SBCL (group decision 26-Sep-2026).
+# replaced by the rule's pick SBCL (group decision 26-Sep-2026). On 27-Sep the professor's group sheet named the
+# theme "Cement, Capital Goods & EPC, Power", so Screener's Construction export (EPC contractors) joined the
+# universe (SCREENER_EXTRA_FILES): the invested 8 are unchanged and ENGINERSIN (#15) replaces VOLTAMP (#16)
+# in the reserve; WELENT fails the quarterly-profit rule, KPIL and HCC the pledge rule, CEMPRO the DI gap.
 # -----------------------------------------------------------------------------
 
 LOCKED_PORTFOLIO_SYMBOLS = [
     "WELCORP", "RPEL", "SBCL", "AEROFLEX", "TDPOWERSYS", "RAMRAT", "APARINDS", "ACMESOLAR",  # invested
-    "QPOWER", "FINCABLES", "GRINDWELL", "ACE", "CARBORUNIV", "GOODLUCK", "VOLTAMP",          # reserve
+    "QPOWER", "FINCABLES", "GRINDWELL", "ACE", "CARBORUNIV", "GOODLUCK", "ENGINERSIN",       # reserve
 ]
 
 # The list is the selection rule's output on the prices through LOCK_AS_OF (the last session before the

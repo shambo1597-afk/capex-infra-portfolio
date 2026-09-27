@@ -1,18 +1,22 @@
 # Screener.in sector exports (single source of truth for the universe)
 
-Downloaded 26-Sep-2026 from screener.in sector pages, all rows, one file per sector:
+Downloaded from screener.in sector pages, all rows, one file per sector:
 
-- `capital_goods.csv`: Capital Goods (887 companies, all five industry groups)
-- `power.csv`: Power (49 companies)
-- `cement.csv`: Cement & Cement Products (42 companies)
+- `capital_goods.csv`: Capital Goods (887 companies, all five industry groups), 26-Sep-2026
+- `power.csv`: Power (49 companies), 26-Sep-2026
+- `cement.csv`: Cement & Cement Products (42 companies), 26-Sep-2026
+- `construction.csv`: Construction (181 companies, all Civil Construction: the EPC contractors), 27-Sep-2026.
+  Added because the professor's group sheet names the theme "Cement, Capital Goods & EPC, Power";
+  screened with Capital Goods (`config.SCREENER_EXTRA_FILES`).
 
 Universe rule (`config._read_screener`): NSE-listed, market cap >= Rs 5,000 cr; Capital Goods without
 Aerospace & Defense, Packaging, Rubber, Glass, Aluminium/Copper/Zinc products, commercial vehicles,
-tractors and vehicle dealers; no InvITs; 23 named theme exclusions (`config.THEME_EXCLUSIONS`).
+tractors and vehicle dealers; no InvITs; 24 named theme exclusions (`config.THEME_EXCLUSIONS`).
 
-Funnel: 978 rows -> 620 with an NSE code (358 BSE-only, all under Rs 3,300 cr) -> 186 at Rs 5,000 cr
-or more -> minus 17 Aerospace & Defense, 8 excluded industries, 2 InvITs and 22 theme exclusions (the 23rd, KSL, is below the floor)
-= 137 (Cement 15, Capital Goods 100, Power 22). The one-year-history rule is applied at selection.
+Funnel: 1,159 rows -> 751 with an NSE code -> 209 at Rs 5,000 cr or more -> minus 17 Aerospace & Defense,
+8 excluded industries, 4 InvITs (INDIGRID, PGINVIT, NXT-INFRA, SHREMINVIT) and 23 theme exclusions (the 24th,
+KSL, is below the floor) = 157 (Cement 15, Capital Goods & EPC 120, Power 22). The one-year-history rule is
+applied at selection. Before EPC was added (26-Sep): 978 rows -> 137 (Capital Goods 100).
 
 Why Rs 5,000 cr (tested 27-Sep-2026, `research/liquidity_study.py`, `output/liquidity_vs_marketcap.csv`):
 the floor is kept as a QUALITY floor. It is NOT the liquidity test. Tradability is its own rule at
