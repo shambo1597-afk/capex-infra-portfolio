@@ -1,8 +1,8 @@
 {
   "as_of": "2026-09-27",
-  "started": "2026-09-27T14:28:11+05:30",
+  "started": "2026-09-27T15:01:03+05:30",
   "status": "ok",
-  "pid": 662,
+  "pid": 615,
   "total_steps": 10,
   "step_names": [
     "Nifty 500 TRI (niftyindices.com)",
@@ -17,22 +17,22 @@
     "Performance and CML"
   ],
   "expected_seconds": {
-    "Nifty 500 TRI (niftyindices.com)": 18,
+    "Nifty 500 TRI (niftyindices.com)": 100,
     "Prices, technicals and risk summary": 7,
-    "Technical-first sector screens": 6,
-    "Review tables, RRG and plots": 24,
-    "Locked-portfolio run-up check": 4,
-    "Candidate sweep": 6,
-    "RRG weekly tails": 23,
-    "Regression and hedge plan": 4,
+    "Technical-first sector screens": 7,
+    "Review tables, RRG and plots": 26,
+    "Locked-portfolio run-up check": 5,
+    "Candidate sweep": 7,
+    "RRG weekly tails": 24,
+    "Regression and hedge plan": 5,
     "Live P&L of the Rs 1 crore": 1,
-    "Performance and CML": 91
+    "Performance and CML": 134
   },
   "steps": [
     {
       "name": "Nifty 500 TRI (niftyindices.com)",
-      "returncode": 1,
-      "seconds": 100
+      "returncode": 0,
+      "seconds": 33
     },
     {
       "name": "Prices, technicals and risk summary",
@@ -62,30 +62,27 @@
     {
       "name": "RRG weekly tails",
       "returncode": 0,
-      "seconds": 24
+      "seconds": 23
     },
     {
       "name": "Regression and hedge plan",
       "returncode": 0,
-      "seconds": 5
+      "seconds": 4
     },
     {
       "name": "Live P&L of the Rs 1 crore",
       "returncode": 0,
-      "seconds": 1
+      "seconds": 0
     },
     {
       "name": "Performance and CML",
       "returncode": 0,
-      "seconds": 134
+      "seconds": 137
     }
   ],
-  "heartbeat": "2026-09-27T14:33:27+05:30",
+  "heartbeat": "2026-09-27T15:05:12+05:30",
   "current_step": 10,
   "current_step_name": "Performance and CML",
-  "current_step_started": "2026-09-27T14:31:13+05:30",
-  "warnings": [
-    "Nifty 500 TRI (niftyindices.com) failed; the dashboard keeps the existing TRI file. Last message: RuntimeError: niftyindices.com rejected 4 browser sessions (Akamai bot protection); last: page returned HTTP 403"
-  ],
-  "finished": "2026-09-27T14:33:27+05:30"
+  "current_step_started": "2026-09-27T15:02:56+05:30",
+  "finished": "2026-09-27T15:05:12+05:30"
 }
