@@ -344,7 +344,8 @@ def load_risk_summary(file_mtime: float) -> pd.DataFrame:
 RRG_COLUMNS = ["rs_momentum_vs_nifty500", "rrg_quadrant_vs_nifty500", "rs_score_vs_sector_avg",
                "rs_momentum_vs_sector", "rrg_quadrant_vs_sector", "di_gap", "thin_trend_flag",
                "fundamentals_failed", "high_turnover_business_flag", "technically_attractive",
-               "hard_fundamentals_pass", "soft_fundamental_fails"]
+               "hard_fundamentals_pass", "soft_fundamental_fails", "rs_last_10d",
+               "recent_10day_contribution_pct", "recent_spike_flag", "business_focus_note"]
 
 
 @st.cache_data(show_spinner=False)
@@ -1163,6 +1164,17 @@ with tab_overview:
                         if r.get("high_turnover_business_flag") == True else "")  # noqa: E712
                 exceptions.append(f"**{r['symbol']}** fails SOFT criteria only ({failed}): acceptable for a 3-month "
                                   f"holding, since long-run quality measures are already in the price.{note}")
+    for _, r in portfolio_df[portfolio_df["status"] == "Invested"].iterrows():
+        if r.get("recent_spike_flag") == True:  # noqa: E712
+            exceptions.append(
+                f"**{r['symbol']}**: recent run-up. {r['recent_10day_contribution_pct']:.0f}% of its "
+                f"{TECHNICAL_RS_LOOKBACK_DAYS}-session outperformance of the Nifty 500 came in the last 10 sessions "
+                f"({r['rs_last_10d']:+.1f} pp of {r['rs_score_vs_nifty500']:+.1f} pp). A late surge can reverse; its "
+                "stop-loss and the reserve list cover that.")
+    borderline = portfolio_df[portfolio_df["business_focus_note"].astype(str).str.startswith("KEPT (borderline)")]
+    for _, r in borderline.iterrows():
+        exceptions.append(f"**{r['symbol']}** ({r['status'].lower()}): theme fit is borderline. "
+                          + (lambda n: n[:1].upper() + n[1:])(str(r["business_focus_note"]).replace("KEPT (borderline): ", "")))
     if exceptions:
         st.markdown("#### Screen exceptions")
         st.caption("Locked stocks that do not pass every screen, stated so the selection can be defended. HARD rules "

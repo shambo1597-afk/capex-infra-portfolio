@@ -122,7 +122,69 @@ BUSINESS_FOCUS_NOTES = {
         "electric two-wheeler business (Greaves Electric Mobility). Verify the segment split."
     ),
     "UTLSOLAR": "KEPT: solar power equipment (panels, inverters, batteries), part of the power build-out.",
-    "RPEL": "KEPT: refractory ramming mass used inside steel plants' induction furnaces (an industrial consumable).",
+    # Business-focus audit of the 15 (27-Sep-2026): Screener "About"/key points, company and broker
+    # segment disclosures. FIT = primary revenue is capital goods / infrastructure equipment or power;
+    # KEPT (borderline) = fits on the primary business, with a stated minority outside the theme.
+    "WELCORP": (
+        "FIT: large-diameter line pipe (oil, gas and water pipelines) is the core, plus DI pipes, steel "
+        "billets/TMT for its own chain and Sintex water tanks; Nifty Capital Goods member."
+    ),
+    "RPEL": (
+        "KEPT (borderline): ramming mass, the refractory lining of induction furnaces, sold to secondary "
+        "steel makers (mostly TMT for construction). An industrial consumable, not equipment; NSE classes "
+        "it Capital Goods > Industrial Products > Electrodes & Refractories."
+    ),
+    "SBCL": (
+        "FIT: precision electrical components. Thermostatic bimetals (~40% of revenue; ~65% of that goes "
+        "into switchgear and circuit breakers), shunt resistors (~40%: smart meters, EV battery management, "
+        "energy storage) and electrical contacts (~19%). Mostly power distribution / switchgear supply "
+        "chain; the EV part is a minority. Screener's 'Iron & Steel Products' label understates this."
+    ),
+    "ACMESOLAR": "FIT: renewable independent power producer (solar, wind, hybrid, firm power), 25-year PPAs.",
+    "FINCABLES": (
+        "FIT: electrical and communication cables are most of revenue; a small consumer-electricals "
+        "(FMEG) line. Nifty Capital Goods member."
+    ),
+    "ACE": (
+        "FIT: cranes, construction and material-handling equipment ~92% of FY25 revenue; agri equipment "
+        "(incl. tractors) ~8%."
+    ),
+    "CARBORUNIV": (
+        "FIT: abrasives (~44%), technical ceramics and refractories (wear linings for mining, power, "
+        "steel) and electrominerals; industrial consumables and engineered materials for manufacturing. "
+        "Nifty Capital Goods member."
+    ),
+    "GOODLUCK": (
+        "KEPT (borderline): steel engineering products. CR coils, pipes and tubes (~37%: roads, bridges, "
+        "railways) and engineering structures (~23%: transmission towers, solar structures) fit; precision "
+        "and auto tubes (~25%) are automotive; forgings (~15%) include a new defence (shell) unit."
+    ),
+    "BEML": (
+        "KEPT: mining and construction equipment ~50% of revenue, rail and metro coaches ~20%, defence "
+        "vehicles ~30% (a minority; the defence exclusion applies where defence is the main business). "
+        "Nifty Capital Goods member."
+    ),
+    "TEXRAIL": "FIT: railway wagons and rolling stock, rail EPC, hydro-mechanical equipment, bridges and steel structures.",
+    "USHAMART": (
+        "FIT: steel wire ropes, strands and wires for mining, cranes, oil & gas, bridges and elevators; "
+        "Nifty Capital Goods member."
+    ),
+    "GMMPFAUDLR": (
+        "FIT (capex, not infrastructure): glass-lined reactors and process equipment (mixing, filtration, "
+        "drying) for chemical and pharmaceutical plants; ~50% domestic share. Demand follows the "
+        "chemical/pharma capex cycle rather than public infrastructure."
+    ),
+    "ENRIN": "FIT: Siemens Energy India, power generation and transmission equipment; Nifty Capital Goods member.",
+    "GRAPHITE": (
+        "KEPT (borderline): graphite electrodes for electric-arc steel furnaces (~40% exported), plus "
+        "carbon products and impervious graphite equipment. Like RPEL, a steel-making consumable that NSE "
+        "classes as Capital Goods > Electrodes & Refractories."
+    ),
+    "MAHSEAMLES": (
+        "FIT: seamless and ERW steel pipes (55% share of Indian seamless pipes) for oil & gas (about 42% "
+        "of the order book), boilers, power and engineering; small renewable power and rig businesses. "
+        "Dependent on oil & gas capex."
+    ),
     "GRASIM": (
         "CONGLOMERATE CONCERN. Consolidated results include UltraTech (cement) but also VSF and chemicals, "
         "paints, B2B e-commerce and financial services (Aditya Birla Capital)."

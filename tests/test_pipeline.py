@@ -319,3 +319,11 @@ class TestOfficialIndexBenchmark:
                 patch("fetch_data.yf.download", return_value=yf_df) as yf_download:
             fetch_benchmark_nifty500("2025-09-24", "2026-09-24")
         assert yf_download.call_args.kwargs["end"] == "2026-09-25"  # yfinance's end is exclusive
+
+
+def test_every_locked_stock_has_a_business_focus_review():
+    """Each of the 15 carries the outcome of its business-focus check (FIT / KEPT ...), so no widened-universe
+    name enters the list unreviewed."""
+    from config import BUSINESS_FOCUS_NOTES, LOCKED_PORTFOLIO_SYMBOLS
+    for sym in LOCKED_PORTFOLIO_SYMBOLS:
+        assert BUSINESS_FOCUS_NOTES.get(sym, "").startswith(("FIT", "KEPT")), sym

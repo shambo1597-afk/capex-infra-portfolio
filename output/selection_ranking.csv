@@ -1,26 +1,26 @@
 selection_rank,symbol,company_name,sector,locked,rule_pick,rs_6m_skip1m,rs_score_vs_nifty500,di_gap,latest_adx,rrg_quadrant_vs_nifty500,rrg_quadrant_vs_sector,conviction,soft_fundamental_fails,median_turnover_cr,qtr_profit_yoy,qtr_sales_yoy,pe,business_focus_note
-1,WELCORP,Welspun Corp,Capital Goods,True,True,185.19,89.2,13.87,42.51,LEADING,LEADING,High,,218.72,198.64,14.91,32.36,
-2,RPEL,Raghav Product.,Capital Goods,True,True,179.48,48.35,6.49,29.49,WEAKENING,LEADING,Moderate,,10.95,67.55,48.72,124.49,KEPT: refractory ramming mass used inside steel plants' induction furnaces (an industrial consumable).
-3,SBCL,Shivalik Bimetal,Capital Goods,True,True,152.23,56.29,10.91,34.27,WEAKENING,LEADING,Moderate,,27.64,44.07,33.38,62.39,
+1,WELCORP,Welspun Corp,Capital Goods,True,True,185.19,89.2,13.87,42.51,LEADING,LEADING,High,,218.72,198.64,14.91,32.36,"FIT: large-diameter line pipe (oil, gas and water pipelines) is the core, plus DI pipes, steel billets/TMT for its own chain and Sintex water tanks; Nifty Capital Goods member."
+2,RPEL,Raghav Product.,Capital Goods,True,True,179.48,48.35,6.49,29.49,WEAKENING,LEADING,Moderate,,10.95,67.55,48.72,124.49,"KEPT (borderline): ramming mass, the refractory lining of induction furnaces, sold to secondary steel makers (mostly TMT for construction). An industrial consumable, not equipment; NSE classes it Capital Goods > Industrial Products > Electrodes & Refractories."
+3,SBCL,Shivalik Bimetal,Capital Goods,True,True,152.23,56.29,10.91,34.27,WEAKENING,LEADING,Moderate,,27.64,44.07,33.38,62.39,"FIT: precision electrical components. Thermostatic bimetals (~40% of revenue; ~65% of that goes into switchgear and circuit breakers), shunt resistors (~40%: smart meters, EV battery management, energy storage) and electrical contacts (~19%). Mostly power distribution / switchgear supply chain; the EV part is a minority. Screener's 'Iron & Steel Products' label understates this."
 4,AEROFLEX,Aeroflex,Capital Goods,False,False,126.19,13.81,5.23,26.95,WEAKENING,WEAKENING,Low,,52.6,162.06,72.39,103.6,
 5,TDPOWERSYS,TD Power Systems,Capital Goods,False,False,63.57,23.63,10.58,28.54,WEAKENING,WEAKENING,Low,,124.07,72.34,72.1,85.74,
 6,RAMRAT,Ram Ratna Wires,Capital Goods,False,False,61.46,42.59,13.1,25.23,WEAKENING,WEAKENING,Low,OPM > 8%; Cash from operations last year > 0 (Rs Cr),8.29,127.75,88.63,41.11,
 7,APARINDS,Apar Inds.,Capital Goods,False,False,60.01,12.92,5.74,28.73,WEAKENING,WEAKENING,Low,,213.83,77.8,29.13,61.75,
-8,ACMESOLAR,ACME Solar Hold.,Power,True,True,52.67,18.51,15.36,33.11,LEADING,LEADING,High,,58.27,64.83,67.81,52.58,
+8,ACMESOLAR,ACME Solar Hold.,Power,True,True,52.67,18.51,15.36,33.11,LEADING,LEADING,High,,58.27,64.83,67.81,52.58,"FIT: renewable independent power producer (solar, wind, hybrid, firm power), 25-year PPAs."
 9,QPOWER,Quality Power El,Capital Goods,False,False,48.93,27.43,3.99,23.15,WEAKENING,WEAKENING,Low,,24.06,49.59,31.66,88.18,
-10,FINCABLES,Finolex Cables,Capital Goods,True,True,45.07,25.61,18.69,44.3,LEADING,LEADING,High,,56.13,53.14,44.26,27.92,
+10,FINCABLES,Finolex Cables,Capital Goods,True,True,45.07,25.61,18.69,44.3,LEADING,LEADING,High,,56.13,53.14,44.26,27.92,FIT: electrical and communication cables are most of revenue; a small consumer-electricals (FMEG) line. Nifty Capital Goods member.
 11,GRINDWELL,Grindwell Norton,Capital Goods,False,False,36.69,-6.39,7.63,26.85,LAGGING,LAGGING,Low,,6.18,22.3,14.19,50.06,
-12,ACE,Action Const.Eq.,Capital Goods,True,True,32.76,26.23,13.4,32.83,LEADING,LEADING,High,,32.4,22.28,20.49,33.44,
-13,CARBORUNIV,Carborundum Uni.,Capital Goods,True,True,32.35,8.99,30.95,29.12,LEADING,LEADING,High,,18.88,23.44,17.03,97.12,
-14,GOODLUCK,Goodluck India,Capital Goods,True,True,29.86,8.66,10.54,25.32,LEADING,IMPROVING,Moderate,,27.0,59.54,30.93,25.67,
-15,BEML,BEML Ltd,Capital Goods,True,True,24.49,20.87,2.72,25.75,LEADING,LEADING,High,ROCE > 8%; OPM > 8%,49.76,57.87,29.28,95.05,
+12,ACE,Action Const.Eq.,Capital Goods,True,True,32.76,26.23,13.4,32.83,LEADING,LEADING,High,,32.4,22.28,20.49,33.44,"FIT: cranes, construction and material-handling equipment ~92% of FY25 revenue; agri equipment (incl. tractors) ~8%."
+13,CARBORUNIV,Carborundum Uni.,Capital Goods,True,True,32.35,8.99,30.95,29.12,LEADING,LEADING,High,,18.88,23.44,17.03,97.12,"FIT: abrasives (~44%), technical ceramics and refractories (wear linings for mining, power, steel) and electrominerals; industrial consumables and engineered materials for manufacturing. Nifty Capital Goods member."
+14,GOODLUCK,Goodluck India,Capital Goods,True,True,29.86,8.66,10.54,25.32,LEADING,IMPROVING,Moderate,,27.0,59.54,30.93,25.67,"KEPT (borderline): steel engineering products. CR coils, pipes and tubes (~37%: roads, bridges, railways) and engineering structures (~23%: transmission towers, solar structures) fit; precision and auto tubes (~25%) are automotive; forgings (~15%) include a new defence (shell) unit."
+15,BEML,BEML Ltd,Capital Goods,True,True,24.49,20.87,2.72,25.75,LEADING,LEADING,High,ROCE > 8%; OPM > 8%,49.76,57.87,29.28,95.05,"KEPT: mining and construction equipment ~50% of revenue, rail and metro coaches ~20%, defence vehicles ~30% (a minority; the defence exclusion applies where defence is the main business). Nifty Capital Goods member."
 16,VOLTAMP,Volt.Transform.,Capital Goods,False,False,18.25,7.96,2.41,23.25,WEAKENING,LAGGING,Low,,24.82,14.67,28.38,34.17,
-17,TEXRAIL,Texmaco Rail,Capital Goods,True,True,15.22,18.58,21.72,29.63,LEADING,LEADING,High,,17.76,66.86,-16.9,23.55,
-18,USHAMART,Usha Martin,Capital Goods,True,True,14.08,8.84,8.56,16.72,LEADING,LEADING,High,,21.05,40.67,16.44,29.01,
-19,GMMPFAUDLR,GMM Pfaudler,Capital Goods,True,True,9.91,91.59,33.21,68.1,LEADING,LEADING,High,,10.64,114.35,16.39,53.72,
-20,ENRIN,Siemens Ener.Ind,Capital Goods,True,True,9.35,-5.83,3.92,14.94,IMPROVING,IMPROVING,Moderate,,125.07,67.83,39.28,77.29,
-21,GRAPHITE,Graphite India,Capital Goods,True,True,8.24,35.27,17.86,39.9,LEADING,LEADING,High,ROCE > 8%; OPM > 8%,59.53,28.36,26.62,73.18,
-22,MAHSEAMLES,Mah. Seamless,Capital Goods,True,True,4.37,17.26,15.28,47.76,LEADING,LEADING,High,,8.47,15.67,-4.72,12.98,
+17,TEXRAIL,Texmaco Rail,Capital Goods,True,True,15.22,18.58,21.72,29.63,LEADING,LEADING,High,,17.76,66.86,-16.9,23.55,"FIT: railway wagons and rolling stock, rail EPC, hydro-mechanical equipment, bridges and steel structures."
+18,USHAMART,Usha Martin,Capital Goods,True,True,14.08,8.84,8.56,16.72,LEADING,LEADING,High,,21.05,40.67,16.44,29.01,"FIT: steel wire ropes, strands and wires for mining, cranes, oil & gas, bridges and elevators; Nifty Capital Goods member."
+19,GMMPFAUDLR,GMM Pfaudler,Capital Goods,True,True,9.91,91.59,33.21,68.1,LEADING,LEADING,High,,10.64,114.35,16.39,53.72,"FIT (capex, not infrastructure): glass-lined reactors and process equipment (mixing, filtration, drying) for chemical and pharmaceutical plants; ~50% domestic share. Demand follows the chemical/pharma capex cycle rather than public infrastructure."
+20,ENRIN,Siemens Ener.Ind,Capital Goods,True,True,9.35,-5.83,3.92,14.94,IMPROVING,IMPROVING,Moderate,,125.07,67.83,39.28,77.29,"FIT: Siemens Energy India, power generation and transmission equipment; Nifty Capital Goods member."
+21,GRAPHITE,Graphite India,Capital Goods,True,True,8.24,35.27,17.86,39.9,LEADING,LEADING,High,ROCE > 8%; OPM > 8%,59.53,28.36,26.62,73.18,"KEPT (borderline): graphite electrodes for electric-arc steel furnaces (~40% exported), plus carbon products and impervious graphite equipment. Like RPEL, a steel-making consumable that NSE classes as Capital Goods > Electrodes & Refractories."
+22,MAHSEAMLES,Mah. Seamless,Capital Goods,True,True,4.37,17.26,15.28,47.76,LEADING,LEADING,High,,8.47,15.67,-4.72,12.98,"FIT: seamless and ERW steel pipes (55% share of Indian seamless pipes) for oil & gas (about 42% of the order book), boilers, power and engineering; small renewable power and rig businesses. Dependent on oil & gas capex."
 23,NUVOCO,Nuvoco Vistas,Cement,False,False,0.97,12.01,5.52,14.91,LEADING,LEADING,High,ROCE > 8%,9.89,19.98,8.91,28.87,
 24,APLAPOLLO,APL Apollo Tubes,Capital Goods,False,False,-0.01,25.62,5.61,28.58,LEADING,LEADING,High,OPM > 8%,104.87,10.94,8.45,50.03,
 25,WAAREERTL,Waaree Renewab.,Capital Goods,False,False,-4.35,-16.08,8.39,26.25,LAGGING,IMPROVING,Moderate,,10.85,32.3,34.53,17.03,

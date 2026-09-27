@@ -1,8 +1,8 @@
 {
   "as_of": "2026-09-27",
-  "started": "2026-09-27T12:38:33+05:30",
+  "started": "2026-09-27T13:00:46+05:30",
   "status": "ok",
-  "pid": 1312,
+  "pid": 848,
   "total_steps": 10,
   "step_names": [
     "Nifty 500 TRI (niftyindices.com)",
@@ -17,22 +17,22 @@
     "Performance and CML"
   ],
   "expected_seconds": {
-    "Nifty 500 TRI (niftyindices.com)": 121,
-    "Prices, technicals and risk summary": 8,
-    "Technical-first sector screens": 8,
-    "Review tables, RRG and plots": 28,
-    "Locked-portfolio run-up check": 5,
-    "Candidate sweep": 7,
-    "RRG weekly tails": 25,
+    "Nifty 500 TRI (niftyindices.com)": 124,
+    "Prices, technicals and risk summary": 7,
+    "Technical-first sector screens": 6,
+    "Review tables, RRG and plots": 25,
+    "Locked-portfolio run-up check": 8,
+    "Candidate sweep": 9,
+    "RRG weekly tails": 23,
     "Regression and hedge plan": 4,
     "Live P&L of the Rs 1 crore": 1,
-    "Performance and CML": 140
+    "Performance and CML": 91
   },
   "steps": [
     {
       "name": "Nifty 500 TRI (niftyindices.com)",
-      "returncode": 1,
-      "seconds": 124
+      "returncode": 0,
+      "seconds": 18
     },
     {
       "name": "Prices, technicals and risk summary",
@@ -47,17 +47,17 @@
     {
       "name": "Review tables, RRG and plots",
       "returncode": 0,
-      "seconds": 25
+      "seconds": 24
     },
     {
       "name": "Locked-portfolio run-up check",
       "returncode": 0,
-      "seconds": 8
+      "seconds": 4
     },
     {
       "name": "Candidate sweep",
       "returncode": 0,
-      "seconds": 9
+      "seconds": 6
     },
     {
       "name": "RRG weekly tails",
@@ -80,12 +80,9 @@
       "seconds": 91
     }
   ],
-  "heartbeat": "2026-09-27T12:43:31+05:30",
+  "heartbeat": "2026-09-27T13:03:50+05:30",
   "current_step": 10,
   "current_step_name": "Performance and CML",
-  "current_step_started": "2026-09-27T12:42:00+05:30",
-  "warnings": [
-    "Nifty 500 TRI (niftyindices.com) failed; the dashboard keeps the existing TRI file. Last message: RuntimeError: niftyindices.com rejected 4 browser sessions (Akamai bot protection); last: page returned HTTP 403"
-  ],
-  "finished": "2026-09-27T12:43:31+05:30"
+  "current_step_started": "2026-09-27T13:02:19+05:30",
+  "finished": "2026-09-27T13:03:50+05:30"
 }
