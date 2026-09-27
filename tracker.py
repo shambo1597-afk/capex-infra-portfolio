@@ -139,8 +139,8 @@ def plan_replacements(positions: pd.DataFrame, ledger: pd.DataFrame, ranking: pd
     closed at or below its stop is sold; the sale proceeds (shares x today's close, an estimate of
     tomorrow's fill) buy whole shares of the first stock in the reserve queue (LOCKED_PORTFOLIO order after
     the holdings) that is not held, has never been sold, and still passes the selection rule today: listed
-    in `ranking` (the eligible stocks of output/selection_ranking.csv) with conviction in
-    SELECTION_CONVICTION_TIERS. Several stops on one day take the queue in turn. When no reserve stock
+    in `ranking` (the eligible stocks of output/selection_ranking.csv), with conviction in
+    SELECTION_CONVICTION_TIERS when that is set. Several stops on one day take the queue in turn. When no reserve stock
     qualifies, the proceeds top up the remaining holdings in proportion to their current weights
     (`weights`, symbol -> weight %; equal weights without it).
     One row per purchase: `alloc_pct` is the share of that sale's proceeds it uses, `kind` is
@@ -154,7 +154,8 @@ def plan_replacements(positions: pd.DataFrame, ledger: pd.DataFrame, ranking: pd
     if positions.empty or stopped.empty:
         return pd.DataFrame(columns=columns)
     held = set(positions["symbol"]) | set(held_stocks(ledger) if not ledger.empty else [])
-    ok = ranking[ranking["conviction"].isin(SELECTION_CONVICTION_TIERS)] if "conviction" in ranking else ranking
+    ok = (ranking[ranking["conviction"].isin(SELECTION_CONVICTION_TIERS)]
+          if SELECTION_CONVICTION_TIERS is not None and "conviction" in ranking else ranking)
     passing = set(ok["symbol"])
     queue = [s for s in LOCKED_PORTFOLIO_SYMBOLS if s not in held and s not in sold]
     skipped = [s for s in queue if s not in passing]

@@ -9,7 +9,7 @@ NSE endpoint specifications, header requirements, and directory paths.
 import csv
 from datetime import date
 from pathlib import Path
-from typing import Dict, List
+from typing import Optional, Dict, List
 
 # Base Paths
 BASE_DIR = Path(__file__).resolve().parent
@@ -181,6 +181,28 @@ BUSINESS_FOCUS_NOTES = {
         "chemical/pharma capex cycle rather than public infrastructure."
     ),
     "NUVOCO": "FIT: Nuvoco Vistas (Nirma group), cement and ready-mix concrete; the only Cement stock in the 15.",
+    "AEROFLEX": (
+        "FIT: stainless-steel metallic flexible hoses, bellows and flow assemblies for industrial, oil & gas, "
+        "HVAC and process plants (Sat Industries group)."
+    ),
+    "TDPOWERSYS": (
+        "FIT: AC generators (steam, gas, hydro, wind turbine generators up to 250 MVA) and electric and traction "
+        "motors; power-generation equipment."
+    ),
+    "RAMRAT": (
+        "FIT: enamelled copper winding wires, the windings of motors, transformers and generators (2nd largest in "
+        "South Asia); electrical-equipment supply chain. Soft exceptions: OPM, operating cash flow."
+    ),
+    "APARINDS": (
+        "FIT: power-transmission conductors (~51%, world's largest aluminium conductor maker), transformer and "
+        "speciality oils, power and telecom cables; Nifty Capital Goods member."
+    ),
+    "QPOWER": "FIT: high-voltage grid equipment (reactors, HVDC/FACTS components) for power transmission and energy transition.",
+    "GRINDWELL": (
+        "FIT: abrasives and performance ceramics for manufacturing (Saint-Gobain subsidiary), like CARBORUNIV; "
+        "small plastics and IT-services lines."
+    ),
+    "VOLTAMP": "FIT: oil-filled power and distribution transformers (~96% products); power T&D equipment.",
     "ENRIN": "FIT: Siemens Energy India, power generation and transmission equipment; Nifty Capital Goods member.",
     "GRAPHITE": (
         "KEPT (borderline): graphite electrodes for electric-arc steel furnaces (~40% exported), plus "
@@ -231,9 +253,9 @@ def sector_of(symbol: str) -> str:
 #   ranked    by 6-month relative strength vs the Nifty 500 excluding the latest month (momentum;
 #               research/momentum_study.py found a small positive but statistically inconclusive
 #               effect, so this is a stated method, not a proven edge);
-#   confirmed by the RRG: conviction High or Moderate (rrg.conviction_tier: not weakening/lagging in
-#               both views vs the Nifty 500 and vs the sector), so names whose momentum is visibly
-#               fading in both views are skipped (a judgement filter, not a back-tested one);
+#   no RRG conviction filter: it was dropped on 27-Sep-2026 after research/conviction_study.py found
+#               that skipping Low-conviction names trailed the plain ranking in both periods
+#               (2021-23 and 2024-26). The RRG and conviction tier stay on the dashboard as context;
 #   the top PORTFOLIO_SIZE confirmed names.
 # The list of 15 is frozen after 5-Oct-2026; all 15 are tracked. The money goes into the top
 # INVESTED_COUNT (INITIAL_HOLDINGS); the rest are the reserve, in rank order (RESERVE_SYMBOLS).
@@ -251,8 +273,8 @@ def sector_of(symbol: str) -> str:
 # -----------------------------------------------------------------------------
 
 LOCKED_PORTFOLIO_SYMBOLS = [
-    "WELCORP", "RPEL", "SBCL", "ACMESOLAR", "FINCABLES", "ACE", "CARBORUNIV", "GOODLUCK",    # invested
-    "TEXRAIL", "USHAMART", "GMMPFAUDLR", "ENRIN", "GRAPHITE", "MAHSEAMLES", "NUVOCO",        # reserve
+    "WELCORP", "RPEL", "SBCL", "AEROFLEX", "TDPOWERSYS", "RAMRAT", "APARINDS", "ACMESOLAR",  # invested
+    "QPOWER", "FINCABLES", "GRINDWELL", "ACE", "CARBORUNIV", "GOODLUCK", "VOLTAMP",          # reserve
 ]
 
 PORTFOLIO_SIZE = 15                          # the brief's maximum; all 15 are tracked
@@ -260,7 +282,9 @@ INVESTED_COUNT = 8                           # the brief's minimum holds the mon
 INITIAL_HOLDINGS = LOCKED_PORTFOLIO_SYMBOLS[:INVESTED_COUNT]
 RESERVE_SYMBOLS = LOCKED_PORTFOLIO_SYMBOLS[INVESTED_COUNT:]  # replacement queue, in rank order
 SECTOR_MIN_HOLDINGS: Dict[str, int] = {}     # none: picked on merit (the group may add a Cement leg)
-SELECTION_CONVICTION_TIERS = ("High", "Moderate")  # RRG confirmation of the momentum ranking
+# RRG tiers a pick must be in; None = no conviction filter (dropped 27-Sep-2026, see
+# research/conviction_study_results.md: the High/Moderate filter trailed the plain ranking in both periods)
+SELECTION_CONVICTION_TIERS: Optional[tuple] = None
 # Tradability and earnings (added 27-Sep-2026, before the snapshot): a stock must trade at least
 # MIN_TURNOVER_CR a day (median over TURNOVER_LOOKBACK_SESSIONS; the largest position, ~Rs 15 lakh, is
 # then under 3% of a day's value) and its latest quarter's profit must be up on a year earlier: every

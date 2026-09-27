@@ -1076,7 +1076,8 @@ with tab_overview:
     st.caption(
         "Conviction tier from the Relative Rotation Graph: **High** = LEADING vs both the Nifty 500 and the "
         "equal-weighted sector average; **Moderate** = LEADING in one view only, or IMPROVING in either; "
-        "**Low conviction** = WEAKENING or LAGGING in both views."
+        "**Low conviction** = WEAKENING or LAGGING in both views. Shown as context, not a selection rule: a "
+        "backtest (research/conviction_study.py) found that skipping Low-conviction names lowered 3-month returns."
     )
     if missing_symbols:
         st.warning(f"No pipeline data for {', '.join(missing_symbols)}. Run `python main.py` to refresh the outputs.")
@@ -1121,12 +1122,13 @@ with tab_overview:
         ranking_path = OUTPUT_DIR / "selection_ranking.csv"
         ranking = pd.read_csv(ranking_path) if ranking_path.exists() else pd.DataFrame(columns=["symbol", "conviction"])
         rk = ranking.set_index("symbol")
-        passes = reserve_df["symbol"].map(lambda s_: s_ in rk.index and rk.loc[s_, "conviction"] in SELECTION_CONVICTION_TIERS)
+        passes = reserve_df["symbol"].map(lambda s_: s_ in rk.index and (
+            SELECTION_CONVICTION_TIERS is None or rk.loc[s_, "conviction"] in SELECTION_CONVICTION_TIERS))
         st.markdown(f"### Reserve list ({len(RESERVE_QUEUE)} stocks, tracked, no money yet)")
         st.caption(f"The money is in the top {INVESTED_COUNT} of the {len(LOCKED_PORTFOLIO_SYMBOLS)}. When a holding "
                    "closes at or below its stop-loss, its sale proceeds buy the first reserve stock that still passes "
                    "the selection rule that day (hard fundamentals, bullish trend with DI gap ≥ 2, one year of prices, "
-                   "turnover ≥ ₹5 cr a day, profit up in the latest quarter, RRG conviction High or Moderate); if none does, they top up the other holdings (cash is never left "
+                   "turnover ≥ ₹5 cr a day, a real profit that grew in the latest quarter); if none does, they top up the other holdings (cash is never left "
                    "idle). A stock that has been sold never comes back.")
         show_res = pd.DataFrame({
             "Queue": reserve_df["status"],

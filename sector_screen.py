@@ -416,8 +416,9 @@ def build_selection_ranking(tables: Dict[str, pd.DataFrame]) -> pd.DataFrame:
     table["locked"] = table["symbol"].isin(LOCKED_PORTFOLIO_SYMBOLS)  # in the 15 tracked
     table["rule_pick"] = table["symbol"].isin(select_portfolio(table))
     table["why_not_picked"] = [
-        "" if pick else ("RRG conviction Low: momentum fading vs both the Nifty 500 and the sector"
-                         if conv not in SELECTION_CONVICTION_TIERS else f"below the top {PORTFOLIO_SIZE} confirmed names")
+        "" if pick else ("RRG conviction outside the selection tiers"
+                         if SELECTION_CONVICTION_TIERS is not None and conv not in SELECTION_CONVICTION_TIERS
+                         else f"ranked below the top {PORTFOLIO_SIZE}")
         for pick, conv in zip(table["rule_pick"], table["conviction"])]
     cols = ["selection_rank", "symbol", "company_name", "sector", "locked", "rule_pick", "why_not_picked", "rs_6m_skip1m", "rs_score_vs_nifty500",
             "di_gap", "latest_adx", "rrg_quadrant_vs_nifty500", "rrg_quadrant_vs_sector", "conviction",

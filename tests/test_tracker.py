@@ -180,7 +180,7 @@ def test_stopped_stock_is_replaced_by_the_first_qualifying_reserve_stock():
     pos = _positions([(s, 100, 500.0, 450.0) for s in held[1:]] + [(held[0], 200, 440.0, 450.0)])
     closes = pd.Series({s: (300.0 if s == RESERVE_SYMBOLS[1] else 100.0) for s in RESERVE_SYMBOLS})
     # The first reserve stock no longer passes the selection rule; the second does
-    ranking = pd.concat([_ranking([RESERVE_SYMBOLS[0]], "Low"), _ranking(RESERVE_SYMBOLS[1:])])
+    ranking = _ranking(RESERVE_SYMBOLS[1:])  # the ranking lists only stocks passing the selection rule
     plan = tracker.plan_replacements(pos, pd.DataFrame(columns=tracker.LEDGER_COLUMNS), ranking, closes)
     assert len(plan) == 1
     r = plan.iloc[0]
@@ -208,7 +208,7 @@ def test_proceeds_top_up_the_holdings_when_no_reserve_stock_qualifies():
     pos = _positions([(a, 100, 90.0, 95.0), (b, 10, 200.0, 150.0), (c, 10, 100.0, 80.0)])
     closes = pd.Series({b: 200.0, c: 100.0, **{s: 50.0 for s in RESERVE_SYMBOLS}})
     plan = tracker.plan_replacements(pos, pd.DataFrame(columns=tracker.LEDGER_COLUMNS),
-                                     _ranking(RESERVE_SYMBOLS, "Low"), closes, pd.Series({a: 20.0, b: 30.0, c: 10.0}))
+                                     _ranking([]), closes, pd.Series({a: 20.0, b: 30.0, c: 10.0}))
     assert plan["kind"].tolist() == ["top-up", "top-up"] and plan["buy"].tolist() == [b, c]
     assert plan["alloc_pct"].tolist() == [75.0, 25.0]  # 30 : 10 of the holdings that stay
     assert plan["buy_shares"].tolist() == [9000 * 0.75 // 200, 9000 * 0.25 // 100]

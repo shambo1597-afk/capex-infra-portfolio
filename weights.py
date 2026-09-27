@@ -7,8 +7,9 @@ every RC_i as equal as the bounds allow, so no stock dominates portfolio varianc
   - no return forecast is needed (research/momentum_study.py found stock-level forecasts weak),
   - volatile names get less capital, calm names more,
   - bounds WEIGHT_MIN_PCT..WEIGHT_MAX_PCT keep every stock a real position and cap concentration.
-Solved in numpy: fixed-point iteration w <- 1 / (C w) (the ERC condition), each step projected
-onto {sum w = 1, lo <= w_i <= hi}.
+Solved in numpy by an active-set method: the free weights are updated multiplicatively,
+w_i <- w_i * sqrt(mean RC / RC_i), and rescaled to their budget; a weight that breaches a bound is held
+at it and the rest re-solved, so the free stocks end with exactly equal risk contributions.
 """
 
 import logging
@@ -43,16 +44,46 @@ def risk_contributions(weights: np.ndarray, cov: np.ndarray) -> np.ndarray:
     return weights * marginal / (weights @ marginal)
 
 
-def equal_risk_contribution(cov: np.ndarray, lo: float, hi: float, iterations: int = 5000) -> np.ndarray:
-    """ERC weights under the bounds (see the module docstring)."""
-    n = cov.shape[0]
-    w = np.full(n, 1.0 / n)
+def _erc_free(cov: np.ndarray, w: np.ndarray, free: np.ndarray, budget: float, iterations: int) -> np.ndarray:
+    """Equalise w_i * (C w)_i over the free weights (the others held), free weights summing to budget."""
+    w = w.copy()
+    w[free] = budget * w[free] / w[free].sum()
     for _ in range(iterations):
-        inv = 1.0 / (cov @ w)
-        w_next = project_to_bounded_simplex(0.5 * w + 0.5 * inv / inv.sum(), lo, hi)
-        if np.abs(w_next - w).max() < 1e-12:
-            break
+        rc = w * (cov @ w)
+        target = rc[free].mean()
+        w_next = w.copy()
+        w_next[free] = w[free] * np.sqrt(target / rc[free])
+        w_next[free] *= budget / w_next[free].sum()
+        if np.abs(w_next - w).max() < 1e-13:
+            return w_next
         w = w_next
+    return w
+
+
+def equal_risk_contribution(cov: np.ndarray, lo: float, hi: float, iterations: int = 20000) -> np.ndarray:
+    """
+    ERC weights under the bounds (see the module docstring). Active set: stocks whose ERC weight would
+    breach a bound are held at it, and the rest are solved to exactly equal risk contributions with the
+    remaining budget; repeated until no free weight breaches a bound (a stock held at the cap then carries
+    less risk than the others, one held at the floor more).
+    """
+    n = cov.shape[0]
+    if not (n * lo <= 1 + 1e-12 and n * hi >= 1 - 1e-12):
+        raise ValueError(f"Bounds [{lo}, {hi}] are infeasible for {n} weights summing to 1.")
+    w = np.full(n, 1.0 / n)
+    fixed = np.zeros(n, dtype=bool)
+    for _ in range(n + 1):
+        free = ~fixed
+        budget = 1.0 - w[fixed].sum()
+        w = _erc_free(cov, w, free, budget, iterations)
+        over, under = free & (w > hi + 1e-12), free & (w < lo - 1e-12)
+        if not over.any() and not under.any():
+            break
+        # Fix the worst breach first (fixing one changes the others' ERC weights)
+        excess = np.where(over, w - hi, 0.0) + np.where(under, lo - w, 0.0)
+        i = int(np.argmax(excess))
+        w[i] = hi if over[i] else lo
+        fixed[i] = True
     return w
 
 
