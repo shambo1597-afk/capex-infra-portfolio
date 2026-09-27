@@ -108,7 +108,9 @@ def run_refresh(as_of: Optional[date] = None, on_output: Callable[[str], None] =
                             current_step_started=datetime.now(IST).isoformat(timespec="seconds"))
             on_output(f"=== Step {index}/{len(steps)}: {name} ===")
             t0 = time.time()
-            proc = subprocess.Popen(cmd, cwd=BASE_DIR, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            no_window = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {}
+            proc = subprocess.Popen(cmd, cwd=BASE_DIR, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                                    **no_window)
             tail: List[str] = []
             for line in proc.stdout:
                 line = line.rstrip()
@@ -176,7 +178,9 @@ def start_background_refresh() -> bool:
         "expected_seconds": _expected_seconds(load_manifest())}, indent=2), encoding="utf-8")
     kwargs = {}
     if os.name == "nt":
-        kwargs["creationflags"] = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+        # CREATE_NO_WINDOW (not DETACHED_PROCESS): the refresh gets a hidden console that its step
+        # processes inherit, so Windows opens no blank python.exe window for each step
+        kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP
     else:
         kwargs["start_new_session"] = True
     with open(LOG_PATH, "w", encoding="utf-8") as log:
