@@ -43,7 +43,6 @@ from config import (
     HISTORICAL_OHLCV_CSV,
     LOCKED_PORTFOLIO,
     LOCKED_PORTFOLIO_SYMBOLS,
-    SELECTION_CONVICTION_TIERS,
     INVESTED_COUNT,
     LOCK_AS_OF,
     FUNDAMENTAL_HARD_FIELDS,
@@ -52,7 +51,6 @@ from config import (
     NEAR_STOP_PCT,
     TRADES_CSV,
     OUTPUT_DIR,
-    PORTFOLIO_SYMBOLS,
     EQUITY_ALLOCATION_PCT,
     EVALUATION_START_DATE,
     MARKET_RISK_PREMIUM_PCT,
@@ -80,7 +78,7 @@ from tracker import (LEDGER_COLUMNS, REPLACEMENT_PLAN_CSV, TRACKER_SUMMARY_CSV, 
                      publish_ledger, publish_ledger_via_api, replacement_trades, roll_trades, save_ledger, sold_stocks,
                      whatsapp_update)
 from tracker import run as run_tracker
-from rrg import CONVICTION_HIGH, CONVICTION_LOW, CONVICTION_MODERATE, QUADRANT_STYLE, conviction_tier
+from rrg import QUADRANT_STYLE
 
 QUADRANT_COLOURS = {q: s["color"] for q, s in QUADRANT_STYLE.items()}
 from refresh_data import (
@@ -176,26 +174,6 @@ st.markdown(
         border: 1px solid rgba(5, 150, 105, 0.25);
     }
     
-    /* Conviction tier badges (RRG): colour plus a text label, never colour alone */
-    .tier {
-        display: inline-block;
-        padding: 0.15rem 0.55rem;
-        border-radius: 999px;
-        font-size: 0.72rem;
-        font-weight: 700;
-        white-space: nowrap;
-        border: 1px solid transparent;
-    }
-    .tier-high { background: rgba(22, 163, 74, 0.14); color: #166534; border-color: rgba(22, 163, 74, 0.35); }
-    .tier-moderate { background: rgba(217, 119, 6, 0.14); color: #92400E; border-color: rgba(217, 119, 6, 0.35); }
-    .tier-low { background: rgba(220, 38, 38, 0.12); color: #991B1B; border-color: rgba(220, 38, 38, 0.35); }
-    .tier-none { background: rgba(128, 128, 128, 0.12); color: inherit; }
-    @media (prefers-color-scheme: dark) {
-        .tier-high { color: #86EFAC; }
-        .tier-moderate { color: #FCD34D; }
-        .tier-low { color: #FCA5A5; }
-    }
-
     /* Per-stock portfolio table (one row per stock, scrolls sideways on narrow screens) */
     .pf-wrap { overflow-x: auto; margin: 0.3rem 0 0.6rem 0; }
     .pf-table { border-collapse: collapse; width: 100%; font-size: 0.8rem; }
@@ -372,18 +350,15 @@ RRG_COLUMNS = ["rs_momentum_vs_nifty500", "rrg_quadrant_vs_nifty500", "rs_score_
 @st.cache_data(show_spinner=False)
 def load_rrg_data(file_mtimes: tuple) -> pd.DataFrame:
     """
-    RRG quadrants (vs Nifty 500 and vs sector average), DI gap and fundamental-screen failures
-    for the locked stocks, read from the three per-sector review tables, plus the conviction
-    tier (rrg.conviction_tier). file_mtimes is only a cache key (see _file_mtime).
+    DI gap, screen flags and fundamental-screen failures for the locked stocks, read from the three
+    per-sector review tables. file_mtimes is only a cache key (see _file_mtime).
     """
     frames = [pd.read_csv(review_table_path(sector)) for sector in SECTOR_SCREENS
               if review_table_path(sector).exists()]
     if not frames:
-        return pd.DataFrame(columns=["symbol", *RRG_COLUMNS, "conviction_tier"])
+        return pd.DataFrame(columns=["symbol", *RRG_COLUMNS])
     df = pd.concat(frames, ignore_index=True)
     df = df[df["symbol"].isin(LOCKED_PORTFOLIO_SYMBOLS)][["symbol", *RRG_COLUMNS]].copy()
-    df["conviction_tier"] = [conviction_tier(a, b) for a, b in
-                             zip(df["rrg_quadrant_vs_nifty500"], df["rrg_quadrant_vs_sector"])]
     return df.reset_index(drop=True)
 
 
@@ -445,17 +420,8 @@ def load_fundamentals_summary(file_mtimes: tuple, force_refresh: bool = False) -
 # PORTFOLIO TABLE RENDERING
 # -----------------------------------------------------------------------------
 
-TIER_CLASSES = {CONVICTION_HIGH: "tier-high", CONVICTION_MODERATE: "tier-moderate", CONVICTION_LOW: "tier-low"}
-TIER_LABELS = {CONVICTION_HIGH: "High conviction", CONVICTION_MODERATE: "Moderate conviction",
-               CONVICTION_LOW: "Low conviction"}
 STOP_METHOD_LABELS = {"atr": f"{STOP_LOSS_ATR_MULTIPLE:g} x ATR", "support": "Below support",
                       "trailed": "Trailed (prev. stop)", "breached": "BREACHED"}
-
-
-def tier_badge(tier) -> str:
-    if tier is None or pd.isna(tier):
-        return '<span class="tier tier-none">Unclassified</span>'
-    return f'<span class="tier {TIER_CLASSES[tier]}">{TIER_LABELS[tier]}</span>'
 
 
 def _fmt(value, spec: str, prefix: str = "", suffix: str = "") -> str:
@@ -463,9 +429,9 @@ def _fmt(value, spec: str, prefix: str = "", suffix: str = "") -> str:
 
 
 def portfolio_table_html(df: pd.DataFrame) -> str:
-    """One row per stock: conviction tier plus the eight fields the brief requires."""
+    """One row per stock with the fields the brief requires."""
     header = (
-        "<tr><th>Stock</th><th>Conviction (RRG)</th><th>Price (₹)</th>"
+        "<tr><th>Stock</th><th>Price (₹)</th>"
         "<th>Volatility<span class='sub'>annualised</span></th>"
         "<th>Expected return<span class='sub'>CAPM, annual · 3-month</span></th>"
         "<th>Weight<span class='sub'>equal-risk · shares · ₹</span></th>"
@@ -480,7 +446,6 @@ def portfolio_table_html(df: pd.DataFrame) -> str:
         rows.append(
             "<tr>"
             f"<td><strong>{r['symbol']}</strong><span class='sub'>{r['display_name']}</span></td>"
-            f"<td>{tier_badge(r.get('conviction_tier'))}</td>"
             f"<td>{_fmt(r['current_price'], ',.2f')}</td>"
             f"<td>{_fmt(r.get('annualized_volatility_pct'), '.2f', suffix='%')}</td>"
             f"<td>{_fmt(r.get('capm_expected_return_pct'), '.2f', suffix='%')}"
@@ -508,7 +473,7 @@ st.markdown(
         <div class="app-title">Indian Equity Portfolio Management Terminal</div>
         <div class="app-subtitle">
             Coursework: Security Analysis & Portfolio Management (SAPM) / Derivatives &bull;
-            IIM Bodh Gaya &bull; Infrastructure & Capex Portfolio Universe
+            IIM Bodh Gaya &bull; Infrastructure & Capex Portfolio &bull; Benchmark: Nifty 500
         </div>
     </div>
     """,
@@ -1038,9 +1003,9 @@ with tab_overview:
 
     st.write("")
 
-    # 1. Summary Metric Row
-    m_col1, m_col2, m_col3, m_col4 = st.columns(4)
-    with m_col1:
+    # 1. The list and, before the snapshot, the planned deployment (afterwards the P&L card has the actual split)
+    list_col, capital_col = st.columns(2)
+    with list_col:
         st.markdown(
             f"""
             <div class="metric-card">
@@ -1052,60 +1017,22 @@ with tab_overview:
             """,
             unsafe_allow_html=True,
         )
-    with m_col2:
-        sector_counts = pd.Series([LOCKED_PORTFOLIO[s_]["sector"] for s_ in HELD if s_ in LOCKED_PORTFOLIO]).value_counts()
-        sector_breakdown = " &bull; ".join(f"{sec} ({sector_counts.get(sec, 0)})" for sec in SECTOR_SCREENS)
-        st.markdown(
-            f"""
-            <div class="metric-card">
-                <div class="metric-title">Sectors of the invested stocks</div>
-                <div class="metric-value">{len(SECTOR_SCREENS)} Sectors</div>
-                <div class="metric-sub">{sector_breakdown}</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    with m_col3:
-        st.markdown(
-            """
-            <div class="metric-card">
-                <div class="metric-title">Benchmark Series</div>
-                <div class="metric-value">Nifty 500</div>
-                <div class="metric-sub">Price index: NSE official daily closes</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    with m_col4:
-        invested_total = float(portfolio_df["invested_inr"].sum()) if "invested_inr" in portfolio_df else 0.0
-        st.markdown(
-            f"""
-            <div class="metric-card">
-                <div class="metric-title">Capital Deployed</div>
-                <div class="metric-value">₹{invested_total / 1e5:,.2f} L of ₹{PRINCIPAL_INR / 1e5:,.0f} L</div>
-                <div class="metric-sub">{invested_total / PRINCIPAL_INR * 100:.2f}% invested &bull; cash ₹{PRINCIPAL_INR - invested_total:,.0f} ({100 - EQUITY_ALLOCATION_PCT:g}% hedge budget + rounding)</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    if tracker_summary.empty:
+        with capital_col:
+            invested_total = float(portfolio_df["invested_inr"].sum()) if "invested_inr" in portfolio_df else 0.0
+            st.markdown(
+                f"""
+                <div class="metric-card">
+                    <div class="metric-title">Capital Deployed</div>
+                    <div class="metric-value">₹{invested_total / 1e5:,.2f} L of ₹{PRINCIPAL_INR / 1e5:,.0f} L</div>
+                    <div class="metric-sub">{invested_total / PRINCIPAL_INR * 100:.2f}% invested &bull; cash ₹{PRINCIPAL_INR - invested_total:,.0f} ({100 - EQUITY_ALLOCATION_PCT:g}% hedge budget + rounding)</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
     st.write("")
 
-    # 2. Conviction tier summary
-    tier_counts = portfolio_df["conviction_tier"].value_counts()
-    st.markdown(
-        " &nbsp; ".join(
-            f'{tier_badge(t)} <span style="font-size:0.8rem;">{tier_counts.get(t, 0)} stock(s)</span>'
-            for t in (CONVICTION_HIGH, CONVICTION_MODERATE, CONVICTION_LOW)
-        ),
-        unsafe_allow_html=True,
-    )
-    st.caption(
-        "Conviction tier from the Relative Rotation Graph: **High** = LEADING vs both the Nifty 500 and the "
-        "equal-weighted sector average; **Moderate** = LEADING in one view only, or IMPROVING in either; "
-        "**Low conviction** = WEAKENING or LAGGING in both views. Shown as context, not a selection rule: a "
-        "backtest (research/conviction_study.py) found that skipping Low-conviction names lowered 3-month returns."
-    )
     if missing_symbols:
         st.warning(f"No pipeline data for {', '.join(missing_symbols)}. Run `python main.py` to refresh the outputs.")
 
@@ -1147,10 +1074,9 @@ with tab_overview:
     reserve_df = portfolio_df[portfolio_df["status"] != "Invested"].copy()
     if not reserve_df.empty:
         ranking_path = OUTPUT_DIR / "selection_ranking.csv"
-        ranking = pd.read_csv(ranking_path) if ranking_path.exists() else pd.DataFrame(columns=["symbol", "conviction"])
+        ranking = pd.read_csv(ranking_path) if ranking_path.exists() else pd.DataFrame(columns=["symbol"])
         rk = ranking.set_index("symbol")
-        passes = reserve_df["symbol"].map(lambda s_: s_ in rk.index and (
-            SELECTION_CONVICTION_TIERS is None or rk.loc[s_, "conviction"] in SELECTION_CONVICTION_TIERS))
+        passes = reserve_df["symbol"].map(lambda s_: s_ in rk.index)
         st.markdown(f"### Reserve list ({len(RESERVE_QUEUE)} stocks, tracked, no money yet)")
         st.caption(f"The money is in the top {INVESTED_COUNT} of the {len(LOCKED_PORTFOLIO_SYMBOLS)}. When a holding "
                    "closes at or below its stop-loss, its sale proceeds buy the first reserve stock that still passes "
@@ -1166,7 +1092,6 @@ with tab_overview:
             "6-month RS (skip 1m)": reserve_df["symbol"].map(
                 lambda s_: f"{rk.loc[s_, 'rs_6m_skip1m']:+.1f} pp" if s_ in rk.index else "—"),
             "Trend (DI gap)": reserve_df["di_gap"].map(lambda x: f"{x:+.2f}" if pd.notna(x) else "—"),
-            "Conviction": reserve_df["conviction_tier"].fillna("—"),
             "Profit, latest qtr YoY": reserve_df["symbol"].map(
                 lambda s_: f"{rk.loc[s_, 'qtr_profit_yoy']:+.0f}%" if s_ in rk.index and "qtr_profit_yoy" in rk else "—"),
             "Turnover (₹ cr/day)": reserve_df["symbol"].map(
@@ -1181,8 +1106,7 @@ with tab_overview:
         if r.get("technically_attractive") == False:  # noqa: E712
             exceptions.append(
                 f"**{r['symbol']}** does not pass the technical screen (RS vs Nifty 500 "
-                f"{r['rs_score_vs_nifty500']:+.2f} pp, needs > {TECHNICAL_RS_MARGIN_PP:+g} pp; trend {str(r['trend_direction']).split(' (')[0]}); "
-                f"conviction tier: {r.get('conviction_tier') or 'Unclassified'}.")
+                f"{r['rs_score_vs_nifty500']:+.2f} pp, needs > {TECHNICAL_RS_MARGIN_PP:+g} pp; trend {str(r['trend_direction']).split(' (')[0]}).")
         failed = r.get("fundamentals_failed")
         if isinstance(failed, str) and failed.strip():
             if r.get("hard_fundamentals_pass") == False:  # noqa: E712
@@ -1218,29 +1142,9 @@ with tab_overview:
 with tab_fundamentals:
     st.markdown("### Fundamental Analysis & Quality Screening")
     st.caption(
-        "Fundamental metrics fetched directly from authentic Screener.in company pages (/consolidated/ with standalone fallback) "
-        "and cached locally in data/fundamentals_cache/. Evaluates core financial health, capital productivity, leverage, "
-        "and cash flow resilience across the locked portfolio constituents."
+        "The figures the safety screen uses, for the 15 locked stocks, from Screener.in (consolidated accounts, "
+        "standalone if none) and NSE pledge disclosures. Screen exceptions are listed on the Portfolio Overview tab."
     )
-
-    # Locked stocks that do not pass every criterion of their sector's safety screen (review tables)
-    screen_exceptions = portfolio_df[portfolio_df["fundamentals_failed"].notna()
-                                     & (portfolio_df["fundamentals_failed"].astype(str).str.strip() != "")]
-    for _, exc in screen_exceptions.iterrows():
-        reason = (" SOFT criteria only: acceptable for a 3-month holding." if exc.get("hard_fundamentals_pass") != False  # noqa: E712
-                  else " A HARD rule: not acceptable.")
-        if exc.get("high_turnover_business_flag") == True:  # noqa: E712
-            reason += (f" The OPM-exception check flagged it (fails only OPM, ROCE above {HIGH_TURNOVER_ROCE_MIN:g}%): "
-                       "a high-turnover business for which OPM is the wrong yardstick.")
-        st.markdown(
-            f"""
-            <div class="caveat-box">
-                <strong>Screen exception: {exc['symbol']}</strong> fails <em>{exc['fundamentals_failed']}</em>
-                on the {exc['sector']} safety screen.{reason}
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
 
     # Keyed on the review tables: a data refresh rewrites them after re-fetching fundamentals
     fund_raw_df = load_fundamentals_summary(tuple(_file_mtime(review_table_path(s)) for s in SECTOR_SCREENS))
@@ -1260,17 +1164,13 @@ with tab_fundamentals:
                     "Company Name": row.get("name", sym),
                     "Sector": row.get("sector", "Other"),
                     "Market Cap (₹ Cr)": "Data Unavailable",
-                    "Price (₹)": "Data Unavailable",
                     "ROCE (%)": "Data Unavailable",
-                    "3-Yr Avg ROCE (%)": "Data Unavailable",
-                    "ROE (%)": "Data Unavailable",
                     "Debt / Equity": "Data Unavailable",
                     "Operating Cash Flow (₹ Cr)": "Data Unavailable",
                     "OPM (%)": "Data Unavailable",
                     "Interest Coverage (x)": "Data Unavailable",
                     "Pledged (%)": "Data Unavailable",
-                    "3-Yr Sales Growth (%)": "Data Unavailable",
-                    "3-Yr Profit Growth (%)": "Data Unavailable",
+                    "Latest qtr profit YoY (%)": "Data Unavailable",
                 })
             else:
                 formatted_rows.append({
@@ -1278,17 +1178,13 @@ with tab_fundamentals:
                     "Company Name": row.get("name", sym),
                     "Sector": row.get("sector", "Other"),
                     "Market Cap (₹ Cr)": f"₹{row['market_cap']:,.0f} Cr" if pd.notna(row.get("market_cap")) else "Data Unavailable",
-                    "Price (₹)": f"₹{row['current_price']:,.2f}" if pd.notna(row.get("current_price")) else "Data Unavailable",
                     "ROCE (%)": f"{row['roce']:.2f}%" if pd.notna(row.get("roce")) else "Data Unavailable",
-                    "3-Yr Avg ROCE (%)": f"{row['roce_3yr_avg']:.2f}%" if pd.notna(row.get("roce_3yr_avg")) else "Data Unavailable",
-                    "ROE (%)": f"{row['roe']:.2f}%" if pd.notna(row.get("roe")) else "Data Unavailable",
                     "Debt / Equity": f"{row['debt_to_equity']:.2f}" if pd.notna(row.get("debt_to_equity")) else "Data Unavailable",
                     "Operating Cash Flow (₹ Cr)": f"₹{row['operating_cash_flow']:,.0f} Cr" if pd.notna(row.get("operating_cash_flow")) else "Data Unavailable",
                     "OPM (%)": f"{row['opm']:.2f}%" if pd.notna(row.get("opm")) else "Data Unavailable",
                     "Interest Coverage (x)": f"{row['interest_coverage']:.2f}" if pd.notna(row.get("interest_coverage")) else "Data Unavailable",
                     "Pledged (%)": f"{row['pledged_pct']:.2f}%" if pd.notna(row.get("pledged_pct")) else "Data Unavailable",
-                    "3-Yr Sales Growth (%)": f"{row['sales_growth_3yr']:+.1f}%" if pd.notna(row.get("sales_growth_3yr")) else "Data Unavailable",
-                    "3-Yr Profit Growth (%)": f"{row['profit_growth_3yr']:+.1f}%" if pd.notna(row.get("profit_growth_3yr")) else "Data Unavailable",
+                    "Latest qtr profit YoY (%)": f"{row['qtr_profit_yoy']:+.1f}%" if pd.notna(row.get("qtr_profit_yoy")) else "Data Unavailable",
                 })
 
         display_fund_df = pd.DataFrame(formatted_rows)
@@ -1337,9 +1233,6 @@ with tab_technicals:
         "DI Gap (+DI − −DI)": portfolio_df["di_gap"].apply(
             lambda x: "—" if pd.isna(x) else f"{x:+.2f}" + (" (thin)" if abs(x) < DI_GAP_THIN_THRESHOLD else "")),
         "RS Spread vs N500": portfolio_df["rs_score_vs_nifty500"].apply(lambda x: f"{x:+.2f} pp" if pd.notna(x) else "—"),
-        "RRG vs Nifty 500": portfolio_df["rrg_quadrant_vs_nifty500"].fillna("—"),
-        "RRG vs Sector": portfolio_df["rrg_quadrant_vs_sector"].fillna("—"),
-        "Conviction": portfolio_df["conviction_tier"].fillna("Unclassified"),
         "Support (₹)": portfolio_df["nearest_support"].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) else "—"),
         "Resistance (₹)": portfolio_df["nearest_resistance"].apply(
             lambda x: "ATH / Blue Sky" if pd.isna(x) or x is None else f"₹{x:,.2f}"
@@ -1363,13 +1256,12 @@ with tab_technicals:
     st.dataframe(styled_table, hide_index=True, width="stretch")
 
     # RRG scatter plots (static PNGs written by rrg.py / sector_screen.py --review)
-    st.markdown("#### Relative Rotation Graphs")
+    st.markdown("#### Relative Rotation Graph (weekly tails)")
     st.caption(
         f"x = {TECHNICAL_RS_LOOKBACK_DAYS}-session RS (pp); y = RS-Momentum = RS averaged over the last "
         f"{RRG_MOMENTUM_SMOOTHING_DAYS} sessions minus the same average {RRG_MOMENTUM_DAYS} sessions earlier (pp). "
-        "Locked stocks are ringed and bold. Regenerate with `python rrg.py --as-of <date>` after a pipeline run."
+        "Context for the theme and the holdings, not a selection rule (the ranking uses 6-month RS)."
     )
-    st.markdown("##### Rotation over time (weekly tails)")
     tail_view = st.radio("Show", ["Our holdings", "Sector rotation (NSE sectors + our sub-themes)"], horizontal=True,
                          key="rrg_tail_view", label_visibility="collapsed")
     tails_df = _out("rrg_tails_holdings.csv" if tail_view == "Our holdings" else "rrg_tails_sectors.csv")
@@ -1433,77 +1325,6 @@ with tab_technicals:
             "Our sub-themes are equal-weighted baskets of our universe; 'Our portfolio' uses the current weights."
         )
 
-    rrg_left, rrg_right = st.columns(2)
-    with rrg_left:
-        combined_png = OUTPUT_DIR / "rrg_all_vs_nifty500.png"
-        if combined_png.exists():
-            st.image(str(combined_png), caption=f"All {len(PORTFOLIO_SYMBOLS)} universe stocks vs Nifty 500",
-                     width="stretch")
-        else:
-            st.info("output/rrg_all_vs_nifty500.png not found. Run `python rrg.py --as-of <date>`.")
-    with rrg_right:
-        rrg_sector = st.selectbox("Sector RRG (vs equal-weighted sector average):", list(SECTOR_SCREENS),
-                                  index=1, key="rrg_sector")
-        sector_png = OUTPUT_DIR / f"rrg_{rrg_sector.lower().replace(' ', '_')}_vs_sector.png"
-        if sector_png.exists():
-            st.image(str(sector_png), caption=f"Nifty {rrg_sector} vs sector average", width="stretch")
-        else:
-            st.info(f"{sector_png.name} not found. Run `python rrg.py --as-of <date>`.")
-
-    st.write("")
-    st.markdown("---")
-
-    # 2. Risk, Sizing & Stop-Loss (risk/position-sizing data, deliberately separate from momentum)
-    with st.container(border=True):
-        st.markdown("### Risk, Sizing & Stop-Loss")
-        st.caption(
-            "Risk and position-sizing figures, not momentum signals. Volatility and historical return use "
-            "~1 year of daily returns (close vs. the exchange's previous close). Stop-loss = price - "
-            f"{STOP_LOSS_ATR_MULTIPLE:g} x ATR({STOP_LOSS_ATR_PERIOD}), about a one-month, one-standard-deviation "
-            f"move; if a support level sits up to {STOP_LOSS_SUPPORT_BAND_ATR:g} ATR below that, the stop moves just under the support. "
-            "For the 3-month holding period the stop is sized for one month and, from the 28-Sep snapshot on, trailed "
-            "automatically: every refresh keeps the previous stop as a floor, so a stop only ever rises."
-        )
-        st.markdown(
-            f"""
-            <span style="font-size: 0.82rem;">
-                <strong>Expected return</strong> is CAPM: risk-free (Nifty 1D Rate, last quarter) + beta vs the Nifty 500 ×
-                {MARKET_RISK_PREMIUM_PCT:g}% India equity risk premium ({MARKET_RISK_PREMIUM_SOURCE}); the past year's average
-                return is shown next to it for comparison only (it is not a forecast). <strong>Weight</strong> is final: equal risk contribution within {WEIGHT_MIN_PCT:g}-{WEIGHT_MAX_PCT:g}%
-                (each of the {len(HELD)} invested stocks carries the same share of portfolio variance, from one year
-                of daily returns). It needs no return forecast, which no signal provides reliably (research/momentum_study.py).
-            </span>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        if risk_df.empty:
-            st.info("Risk summary not found. Run `python main.py` to generate output/portfolio_risk_summary.csv.")
-        else:
-            risk_table_df = pd.DataFrame({
-                "Symbol": risk_df["symbol"],
-                "Sector": risk_df["sector"],
-                "Current Price (₹)": risk_df["current_price"].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) else "—"),
-                "Ann. Volatility (%)": risk_df["annualized_volatility_pct"].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
-                "Expected Return: CAPM (annual)": risk_df.get("capm_expected_return_pct", pd.Series(dtype=float)).apply(
-                    lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
-                "CAPM over 3 months": risk_df.get("capm_3m_return_pct", pd.Series(dtype=float)).apply(
-                    lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
-                "Past-year average return (not a forecast)": risk_df[
-                    "historical_expected_return_pct"].apply(lambda x: f"{x:+.2f}%" if pd.notna(x) else "—"),
-                "Weight (equal risk)": risk_df["weight_pct"].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
-                "Risk Contribution (%)": risk_df["risk_contribution_pct"].apply(
-                    lambda x: f"{x:.1f}%" if pd.notna(x) else "—"),
-                "Shares": risk_df["shares"].apply(lambda x: f"{x:,.0f}" if pd.notna(x) else "—"),
-                "Invested (₹)": risk_df["invested_inr"].apply(lambda x: f"₹{x:,.0f}" if pd.notna(x) else "—"),
-                f"ATR({STOP_LOSS_ATR_PERIOD}) (%)": risk_df["atr_pct"].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
-                "Stop-Loss (₹)": risk_df["stop_loss_price"].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) else "—"),
-                "Stop Below Price (%)": risk_df["stop_loss_pct_below_current"].apply(
-                    lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
-                "Stop Method": risk_df["stop_loss_method"].map(lambda m: STOP_METHOD_LABELS.get(m, "Unavailable")),
-            })
-            st.dataframe(risk_table_df, hide_index=True, width="stretch")
-
     st.write("")
     st.markdown("---")
 
@@ -1525,28 +1346,8 @@ with tab_technicals:
 
     if not stock_history.empty and stock_info is not None:
         stock_history = stock_history.sort_values("DATE1").reset_index(drop=True)
-        curr_p = float(stock_info["current_price"])
         supp_p = float(stock_info["nearest_support"]) if pd.notna(stock_info["nearest_support"]) else None
         res_p = float(stock_info["nearest_resistance"]) if pd.notna(stock_info["nearest_resistance"]) and stock_info["nearest_resistance"] is not None else None
-
-        # Display key metrics for selected stock in columns
-        c_p1, c_p2, c_p3, c_p4, c_p5, c_p6 = st.columns(6)
-        with c_p1:
-            st.metric("Latest Close", f"₹{curr_p:,.2f}")
-        with c_p2:
-            rsi_val = stock_info["latest_rsi"]
-            st.metric("RSI (14)", f"{rsi_val:.2f}", delta="Overbought" if rsi_val > 70 else ("Oversold" if rsi_val < 30 else "Neutral"))
-        with c_p3:
-            adx_val = stock_info["latest_adx"]
-            st.metric("ADX (14)", f"{adx_val:.2f}", delta="Strong Trend" if adx_val > 25 else "Consolidation")
-        with c_p4:
-            st.metric("Trend", stock_info["trend_direction"])
-        with c_p5:
-            dist_supp = f"{((curr_p - supp_p) / curr_p) * 100:.1f}% buffer" if supp_p else "N/A"
-            st.metric("Support Floor", f"₹{supp_p:,.2f}" if supp_p else "N/A", delta=dist_supp, delta_color="normal")
-        with c_p6:
-            dist_res = f"{((res_p - curr_p) / curr_p) * 100:.1f}% to ceiling" if res_p else "Blue Sky"
-            st.metric("Resistance Ceiling", f"₹{res_p:,.2f}" if res_p else "ATH / Blue Sky", delta=dist_res, delta_color="normal")
 
         # Build Interactive Plotly Price Chart with Horizontal Reference Lines
         fig = go.Figure()
@@ -1675,6 +1476,20 @@ with tab_risk:
                 "directly by the Nifty puts)."
             )
 
+        # 1b. The weights: equal risk contribution, checked
+        if not risk_df.empty:
+            st.markdown("### Weights: equal risk contribution")
+            st.caption(
+                f"Each stock's share of portfolio variance, w_i (Σw)_i / w'Σw, from one year of daily returns. ERC sets these "
+                f"equal within {WEIGHT_MIN_PCT:g}-{WEIGHT_MAX_PCT:g}%; a stock held at the cap carries less than the others. It "
+                "needs no return forecast, which no signal provides reliably (research/momentum_study.py).")
+            st.dataframe(pd.DataFrame({
+                "Stock": risk_df["symbol"],
+                "Volatility (annual)": risk_df["annualized_volatility_pct"].map(lambda x: f"{x:.1f}%" if pd.notna(x) else "—"),
+                "Weight": risk_df["weight_pct"].map(lambda x: f"{x:.2f}%" if pd.notna(x) else "—"),
+                "Share of portfolio risk": risk_df["risk_contribution_pct"].map(lambda x: f"{x:.1f}%" if pd.notna(x) else "—"),
+            }), hide_index=True, width="stretch", height=_fit_height(risk_df))
+
         # 2. Single-index model
         st.markdown("### Beta: explained and unexplained risk (single-index model vs Nifty 500 TRI)")
         st.caption(
@@ -1739,12 +1554,8 @@ with tab_risk:
             st.caption(
                 "E[r] = r_f + β × MRP. r_f = Nifty 1D Rate index annualised over the last quarter; β = single-index beta vs "
                 f"the Nifty 500 TRI (above); MRP = {MARKET_RISK_PREMIUM_SOURCE}. CAPM is what the market pays for the risk "
-                "taken, not a forecast of our picks: our thesis is to beat it (alpha)."
+                "taken, not a forecast of our picks: our thesis is to beat it (alpha). Per stock: Portfolio Overview table."
             )
-            st.dataframe(capm_df.drop(columns=["source"]).rename(columns={
-                "symbol": "Stock", "beta": "Beta", "risk_free_pct": "Risk-free %", "market_risk_premium_pct": "MRP %",
-                "capm_expected_return_pct": "CAPM annual %", "capm_3m_return_pct": "CAPM 3-month %"}),
-                hide_index=True, width="stretch", height=_fit_height(capm_df))
 
         # 3c. Autocorrelation: stock returns against their own past returns
         ac_df = _out("autocorrelation.csv")
@@ -1839,10 +1650,9 @@ with tab_risk:
             st.plotly_chart(fig_s, width="stretch")
             st.caption("Market-driven P&L only (beta × Nifty move; the down-day beta for falls). Stock-specific moves come on top "
                        "and are handled by the stop-losses.")
-        with st.expander("Hedge plan details, put strikes compared, scenario table"):
+        with st.expander("Hedge plan details and put strikes compared"):
             st.dataframe(plan_df, hide_index=True, width="stretch", height=_fit_height(plan_df))
             st.dataframe(puts_df, hide_index=True, width="stretch", height=_fit_height(puts_df))
-            st.dataframe(scen_df, hide_index=True, width="stretch", height=_fit_height(scen_df))
 
 
 # =============================================================================
