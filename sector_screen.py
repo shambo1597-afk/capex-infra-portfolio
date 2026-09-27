@@ -518,8 +518,6 @@ sum to approximately zero by construction.
 - **`full_standard_candidate`** = every fundamental criterion passed AND LEADING vs both the
   Nifty 500 and the sector AND di_gap >= {DI_GAP_THIN_THRESHOLD:g} (a real, bullish trend). The
   spike flag is reported beside it, not folded in.
-
-Plots: `rrg_{sector.lower().replace(' ', '_')}_vs_sector.png` and the combined `rrg_all_vs_nifty500.png`.
 """
 
 
@@ -700,10 +698,6 @@ if __name__ == "__main__":
             last_sessions.append(run_review_table(sector, review_table_path(sector), as_of=as_of).attrs["last_session"])
         tables = {sec: pd.read_csv(review_table_path(sec)) for sec in SECTOR_SCREENS}
         build_selection_ranking(tables).to_csv(OUTPUT_DIR / "selection_ranking.csv", index=False)
-        # Redraw the RRG plots from all three review tables (whichever were just refreshed)
-        from rrg import plot_all_rrgs
-        plot_all_rrgs({sec: pd.read_csv(review_table_path(sec)) for sec in SECTOR_SCREENS},
-                      as_of_label=f"prices to {max(last_sessions):%d-%b-%Y}")
     else:
         print_screen_summary(run_sector_screens(as_of=as_of))
     sys.exit(0)

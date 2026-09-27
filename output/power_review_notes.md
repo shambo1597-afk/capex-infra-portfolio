@@ -37,5 +37,3 @@ sum to approximately zero by construction.
 - **`full_standard_candidate`** = every fundamental criterion passed AND LEADING vs both the
   Nifty 500 and the sector AND di_gap >= 2 (a real, bullish trend). The
   spike flag is reported beside it, not folded in.
-
-Plots: `rrg_power_vs_sector.png` and the combined `rrg_all_vs_nifty500.png`.

@@ -272,7 +272,7 @@ def sector_of(symbol: str) -> str:
 #               effect, so this is a stated method, not a proven edge);
 #   no RRG conviction filter: it was dropped on 27-Sep-2026 after research/conviction_study.py found
 #               that skipping Low-conviction names trailed the plain ranking in both periods
-#               (2021-23 and 2024-26). The RRG and conviction tier stay on the dashboard as context;
+#               (2021-23 and 2024-26). The RRG is not used anywhere in selection or on the dashboard;
 #   the top PORTFOLIO_SIZE confirmed names.
 # The list of 15 is frozen after 5-Oct-2026; all 15 are tracked. The money goes into the top
 # INVESTED_COUNT (INITIAL_HOLDINGS); the rest are the reserve, in rank order (RESERVE_SYMBOLS).
@@ -522,13 +522,6 @@ RRG_MOMENTUM_DAYS = 10
 # move flipped a stock's RRG tier on ~17% of days (WELCORP and FINCABLES fell from High to Low
 # on 25-Sep-2026 and back); a 5-session average halves the flip rate while staying responsive.
 RRG_MOMENTUM_SMOOTHING_DAYS = 5
-# RRG tails (rrg_tails.py): weekly points over the past 8 weeks, and the NSE sector indices shown
-# with our sub-themes on the sector-rotation RRG
-RRG_TAIL_WEEKS = 8        # weekly points kept (dashboard slider range)
-RRG_PLOT_TAIL_WEEKS = 4   # tail length on the static PNGs (longer tails tangle)
-RRG_SECTOR_INDICES = ["Nifty Auto", "Nifty Bank", "Nifty IT", "Nifty Metal", "Nifty Pharma", "Nifty FMCG",
-                      "Nifty Realty", "Nifty Energy", "Nifty Infrastructure", "Nifty India Defence"]
-
 # |+DI - -DI| below this is a thin, borderline trend whichever way it points: the direction
 # label can flip on a single bar (e.g. JKCEMENT +DI 19.50 vs -DI 18.95)
 DI_GAP_THIN_THRESHOLD = 2.0

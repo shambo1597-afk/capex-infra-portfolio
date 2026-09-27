@@ -19,7 +19,6 @@ from rrg import (
     WEAKENING,
     classify_quadrant,
     conviction_tier,
-    plot_rrg,
 )
 from sector_screen import add_evaluation_columns, review_table_path
 
@@ -214,13 +213,6 @@ def test_committed_review_tables_carry_consistent_evaluation_columns(sector):
     assert (table["di_gap"] - (table["plus_di"] - table["minus_di"])).abs().max() <= 0.011
     # Momentum vs sector sums to ~0 (both RS spreads do), up to 2-decimal rounding
     assert abs(table["rs_momentum_vs_sector"].sum()) <= len(table) * 0.01
-
-
-def test_plot_rrg_writes_png(tmp_path):
-    df = pd.DataFrame({"symbol": ["A", "B", "C", "D"], "x": [5, 5, -5, -5], "y": [1, -1, -1, 1]})
-    df["q"] = [classify_quadrant(x, y) for x, y in zip(df["x"], df["y"])]
-    out = plot_rrg(df, "x", "y", "q", "Test", tmp_path / "rrg.png", highlight_symbols=["A"])
-    assert out.exists() and out.stat().st_size > 10_000
 
 
 class TestConvictionTier:

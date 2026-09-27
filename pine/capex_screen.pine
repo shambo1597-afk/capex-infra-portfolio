@@ -3,8 +3,6 @@
 // pipeline, for a TradingView chart or the Pine Screener. Use on a DAILY chart of an NSE stock.
 //
 //   RS vs Nifty 500      63-session return minus the Nifty 500's (pp)             indicators.compute_relative_strength
-//   RS-Momentum          mean RS of the last 5 sessions minus the same 10 earlier  indicators.compute_rs_momentum
-//   RRG quadrant         LEADING / WEAKENING / LAGGING / IMPROVING from (RS, momentum)          rrg.classify_quadrant
 //   Trend                ADX(14) with +DI / -DI (Wilder); DI gap = +DI - (-DI); Bullish when +DI > -DI
 //   RSI(14)              Wilder
 //   Support/Resistance   nearest 20-session swing low below / swing high above the close, over ~1 year
@@ -22,8 +20,6 @@ indicator("Capex portfolio screen (SAPM)", shorttitle = "Capex screen", overlay 
 benchSym   = input.symbol("NSE:CNX500", "Benchmark (Nifty 500)")
 rsLen      = input.int(63, "RS lookback (sessions)")
 rsMargin   = input.float(2.0, "RS margin for the technical screen (pp)")
-momDays    = input.int(10, "RS-Momentum distance (sessions)")
-smoothDays = input.int(5, "RS-Momentum smoothing (sessions)")
 selLen     = input.int(105, "Selection RS length (sessions)")
 skipLen    = input.int(21, "Selection RS skip (sessions)")
 diGapMin   = input.float(2.0, "Minimum DI gap")
@@ -36,12 +32,10 @@ bufferAtr  = input.float(0.25, "Stop: buffer under support (ATR)")
 // Benchmark closes on the same sessions as the stock
 bench = request.security(benchSym, "D", close, gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
 
-// Relative strength and RRG
+// Relative strength
 pctChange(src, len) => (src / src[len] - 1) * 100
 rs     = pctChange(close, rsLen) - pctChange(bench, rsLen)
-rsMom  = ta.sma(rs, smoothDays) - ta.sma(rs, smoothDays)[momDays]
 rs6m   = (close[skipLen] / close[skipLen + selLen] - 1) * 100 - (bench[skipLen] / bench[skipLen + selLen] - 1) * 100
-quadrant = rs > 0 ? (rsMom > 0 ? "LEADING" : "WEAKENING") : (rsMom > 0 ? "IMPROVING" : "LAGGING")
 
 // Trend, momentum oscillator, volatility
 [diPlus, diMinus, adx] = ta.dmi(14, 14)
@@ -86,7 +80,7 @@ if barstate.islast
         resLine := line.new(bar_index - 30, resistance, bar_index + 5, resistance, color = color.orange, style = line.style_dashed)
 
 // Summary table
-var table t = table.new(position.top_right, 2, 12, bgcolor = color.new(color.white, 10), border_width = 1)
+var table t = table.new(position.top_right, 2, 10, bgcolor = color.new(color.white, 10), border_width = 1)
 cell(row, label, value, col) =>
     table.cell(t, 0, row, label, text_size = size.small, text_halign = text.align_left)
     table.cell(t, 1, row, value, text_size = size.small, text_color = col, text_halign = text.align_right)
@@ -94,21 +88,17 @@ if barstate.islast
     okCol = color.new(color.green, 0)
     badCol = color.new(color.red, 0)
     cell(0, "RS vs Nifty 500 (63d)", str.tostring(rs, "#.##") + " pp", rs > 0 ? okCol : badCol)
-    cell(1, "RS-Momentum", str.tostring(rsMom, "#.##") + " pp", rsMom > 0 ? okCol : badCol)
-    cell(2, "RRG quadrant", quadrant, quadrant == "LEADING" ? okCol : quadrant == "LAGGING" ? badCol : color.orange)
-    cell(3, "6m RS (skip 1m)", str.tostring(rs6m, "#.##") + " pp", rs6m > 0 ? okCol : badCol)
-    cell(4, "ADX / DI gap", str.tostring(adx, "#.#") + " / " + str.tostring(diGap, "#.##"), selectOk ? okCol : badCol)
-    cell(5, "Trend", bullish ? "Bullish" : "Bearish", bullish ? okCol : badCol)
-    cell(6, "RSI (14)", str.tostring(rsi, "#.#"), color.black)
-    cell(7, "Support / Resistance", str.tostring(support, "#.##") + " / " + (na(resistance) ? "blue sky" : str.tostring(resistance, "#.##")), color.black)
-    cell(8, "Stop-loss", str.tostring(stopLoss, "#.##") + " (" + str.tostring((close - stopLoss) / close * 100, "#.#") + "% below)", badCol)
-    cell(9, "Technical screen (RS > +2pp, Bullish)", techPass ? "PASS" : "FAIL", techPass ? okCol : badCol)
-    cell(10, "Selection trend rule (DI gap >= 2)", selectOk ? "PASS" : "FAIL", selectOk ? okCol : badCol)
-    cell(11, "Fundamentals", "check in the pipeline", color.gray)
-
+    cell(1, "6m RS (skip 1m)", str.tostring(rs6m, "#.##") + " pp", rs6m > 0 ? okCol : badCol)
+    cell(2, "ADX / DI gap", str.tostring(adx, "#.#") + " / " + str.tostring(diGap, "#.##"), selectOk ? okCol : badCol)
+    cell(3, "Trend", bullish ? "Bullish" : "Bearish", bullish ? okCol : badCol)
+    cell(4, "RSI (14)", str.tostring(rsi, "#.#"), color.black)
+    cell(5, "Support / Resistance", str.tostring(support, "#.##") + " / " + (na(resistance) ? "blue sky" : str.tostring(resistance, "#.##")), color.black)
+    cell(6, "Stop-loss", str.tostring(stopLoss, "#.##") + " (" + str.tostring((close - stopLoss) / close * 100, "#.#") + "% below)", badCol)
+    cell(7, "Technical screen (RS > +2pp, Bullish)", techPass ? "PASS" : "FAIL", techPass ? okCol : badCol)
+    cell(8, "Selection trend rule (DI gap >= 2)", selectOk ? "PASS" : "FAIL", selectOk ? okCol : badCol)
+    cell(9, "Fundamentals", "check in the pipeline", color.gray)
 // Values for the Pine Screener / Data Window (filter on these columns)
 plot(rs, "RS vs Nifty 500 (pp)", display = display.data_window)
-plot(rsMom, "RS-Momentum (pp)", display = display.data_window)
 plot(rs6m, "6m RS skip 1m (pp)", display = display.data_window)
 plot(adx, "ADX", display = display.data_window)
 plot(diGap, "DI gap", display = display.data_window)

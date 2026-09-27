@@ -69,8 +69,6 @@ from config import (
     TECHNICAL_RS_MARGIN_PP,
     DI_GAP_THIN_THRESHOLD,
     HIGH_TURNOVER_ROCE_MIN,
-    RRG_MOMENTUM_DAYS,
-    RRG_MOMENTUM_SMOOTHING_DAYS,
 )
 from fetch_data import TRI_REDOWNLOAD_INSTRUCTIONS, TriStaleness, assess_tri_staleness, load_benchmark_tri
 from fundamentals import get_fundamentals_summary
@@ -78,9 +76,7 @@ from tracker import (LEDGER_COLUMNS, REPLACEMENT_PLAN_CSV, TRACKER_SUMMARY_CSV, 
                      publish_ledger, publish_ledger_via_api, replacement_trades, roll_trades, save_ledger, sold_stocks,
                      whatsapp_update)
 from tracker import run as run_tracker
-from rrg import QUADRANT_STYLE
 
-QUADRANT_COLOURS = {q: s["color"] for q, s in QUADRANT_STYLE.items()}
 from refresh_data import (
     latest_expected_session,
     load_manifest,
@@ -90,7 +86,6 @@ from refresh_data import (
     start_background_refresh,
 )
 from performance import MIN_LIVE_SESSIONS
-from rrg_tails import smooth_path
 from sector_screen import review_table_path
 
 # -----------------------------------------------------------------------------
@@ -340,15 +335,13 @@ def load_risk_summary(file_mtime: float) -> pd.DataFrame:
     return pd.read_csv(risk_path)
 
 
-RRG_COLUMNS = ["rs_momentum_vs_nifty500", "rrg_quadrant_vs_nifty500", "rs_score_vs_sector_avg",
-               "rs_momentum_vs_sector", "rrg_quadrant_vs_sector", "di_gap", "thin_trend_flag",
-               "fundamentals_failed", "high_turnover_business_flag", "technically_attractive",
-               "hard_fundamentals_pass", "soft_fundamental_fails", "rs_last_10d",
-               "recent_10day_contribution_pct", "recent_spike_flag", "business_focus_note"]
+SCREEN_COLUMNS = ["di_gap", "thin_trend_flag", "fundamentals_failed", "high_turnover_business_flag", "technically_attractive",
+                  "hard_fundamentals_pass", "soft_fundamental_fails", "rs_last_10d",
+                  "recent_10day_contribution_pct", "recent_spike_flag", "business_focus_note"]
 
 
 @st.cache_data(show_spinner=False)
-def load_rrg_data(file_mtimes: tuple) -> pd.DataFrame:
+def load_screen_columns(file_mtimes: tuple) -> pd.DataFrame:
     """
     DI gap, screen flags and fundamental-screen failures for the locked stocks, read from the three
     per-sector review tables. file_mtimes is only a cache key (see _file_mtime).
@@ -356,9 +349,9 @@ def load_rrg_data(file_mtimes: tuple) -> pd.DataFrame:
     frames = [pd.read_csv(review_table_path(sector)) for sector in SECTOR_SCREENS
               if review_table_path(sector).exists()]
     if not frames:
-        return pd.DataFrame(columns=["symbol", *RRG_COLUMNS])
+        return pd.DataFrame(columns=["symbol", *SCREEN_COLUMNS])
     df = pd.concat(frames, ignore_index=True)
-    df = df[df["symbol"].isin(LOCKED_PORTFOLIO_SYMBOLS)][["symbol", *RRG_COLUMNS]].copy()
+    df = df[df["symbol"].isin(LOCKED_PORTFOLIO_SYMBOLS)][["symbol", *SCREEN_COLUMNS]].copy()
     return df.reset_index(drop=True)
 
 
@@ -422,6 +415,14 @@ def load_fundamentals_summary(file_mtimes: tuple, force_refresh: bool = False) -
 
 STOP_METHOD_LABELS = {"atr": f"{STOP_LOSS_ATR_MULTIPLE:g} x ATR", "support": "Below support",
                       "trailed": "Trailed (prev. stop)", "breached": "BREACHED"}
+
+
+# The professor's sheet groups EPC with Capital Goods; the pipeline screens them as one sector
+SECTOR_LABELS = {"Capital Goods": "Capital Goods & EPC"}
+
+
+def sector_label(sector) -> str:
+    return SECTOR_LABELS.get(sector, sector)
 
 
 def _fmt(value, spec: str, prefix: str = "", suffix: str = "") -> str:
@@ -527,14 +528,14 @@ _capm_path = OUTPUT_DIR / "capm_expected_returns.csv"
 if not risk_df.empty and _capm_path.exists():
     risk_df = risk_df.merge(pd.read_csv(_capm_path)[["symbol", "capm_expected_return_pct", "capm_3m_return_pct"]],
                             on="symbol", how="left")
-rrg_df = load_rrg_data(tuple(_file_mtime(review_table_path(sector)) for sector in SECTOR_SCREENS))
+screen_df = load_screen_columns(tuple(_file_mtime(review_table_path(sector)) for sector in SECTOR_SCREENS))
 
-# One row per locked stock: technicals + risk/sizing/stop-loss + RRG, in LOCKED_PORTFOLIO order
+# One row per locked stock: technicals + risk/sizing/stop-loss + screen flags, in LOCKED_PORTFOLIO order
 portfolio_df = summary_df.copy()
 if not risk_df.empty:
     portfolio_df = portfolio_df.merge(
         risk_df.drop(columns=["sector", "current_price"], errors="ignore"), on="symbol", how="left")
-portfolio_df = portfolio_df.merge(rrg_df, on="symbol", how="left")
+portfolio_df = portfolio_df.merge(screen_df, on="symbol", how="left")
 missing_symbols = sorted(set(LOCKED_PORTFOLIO_SYMBOLS) - set(portfolio_df["symbol"]))
 
 # Status of each of the 15: the money is in the holdings (top 8 until a stop-loss replacement), the rest
@@ -1062,7 +1063,7 @@ with tab_overview:
         st.markdown(
             f"""
             <div style="margin-top: 1.2rem; margin-bottom: 0.2rem;">
-                <span class="{sector_badge_classes.get(sec, 'badge-cement')}">{sec.upper()} ({len(sec_df)} STOCK{'S' if len(sec_df) != 1 else ''})</span>
+                <span class="{sector_badge_classes.get(sec, 'badge-cement')}">{sector_label(sec).upper()} ({len(sec_df)} STOCK{'S' if len(sec_df) != 1 else ''})</span>
             </div>
             """,
             unsafe_allow_html=True,
@@ -1087,7 +1088,7 @@ with tab_overview:
             "Queue": reserve_df["status"],
             "Stock": reserve_df["symbol"],
             "Name": reserve_df["display_name"],
-            "Sector": reserve_df["sector"],
+            "Sector": reserve_df["sector"].map(sector_label),
             "Price (₹)": reserve_df["current_price"].map(lambda x: f"{x:,.2f}" if pd.notna(x) else "—"),
             "6-month RS (skip 1m)": reserve_df["symbol"].map(
                 lambda s_: f"{rk.loc[s_, 'rs_6m_skip1m']:+.1f} pp" if s_ in rk.index else "—"),
@@ -1162,7 +1163,7 @@ with tab_fundamentals:
                 formatted_rows.append({
                     "Symbol": sym,
                     "Company Name": row.get("name", sym),
-                    "Sector": row.get("sector", "Other"),
+                    "Sector": sector_label(row.get("sector", "Other")),
                     "Market Cap (₹ Cr)": "Data Unavailable",
                     "ROCE (%)": "Data Unavailable",
                     "Debt / Equity": "Data Unavailable",
@@ -1176,7 +1177,7 @@ with tab_fundamentals:
                 formatted_rows.append({
                     "Symbol": sym,
                     "Company Name": row.get("name", sym),
-                    "Sector": row.get("sector", "Other"),
+                    "Sector": sector_label(row.get("sector", "Other")),
                     "Market Cap (₹ Cr)": f"₹{row['market_cap']:,.0f} Cr" if pd.notna(row.get("market_cap")) else "Data Unavailable",
                     "ROCE (%)": f"{row['roce']:.2f}%" if pd.notna(row.get("roce")) else "Data Unavailable",
                     "Debt / Equity": f"{row['debt_to_equity']:.2f}" if pd.notna(row.get("debt_to_equity")) else "Data Unavailable",
@@ -1203,7 +1204,7 @@ with tab_fundamentals:
     )
     for f_col, (sec, spec) in zip(st.columns(len(SECTOR_SCREENS)), SECTOR_SCREENS.items()):
         with f_col:
-            st.markdown(f"**{sec}**\n\n" + "\n".join(
+            st.markdown(f"**{sector_label(sec)}**\n\n" + "\n".join(
                 f"- {label} ({'HARD' if field in FUNDAMENTAL_HARD_FIELDS else 'soft'})"
                 for field, _, _, label in spec["criteria"])
                 + f"\n- Median daily turnover ≥ ₹{MIN_TURNOVER_CR:g} cr (HARD)\n- Latest quarter profit up YoY (HARD)")
@@ -1225,7 +1226,7 @@ with tab_technicals:
         "Symbol": portfolio_df["symbol"],
         "Status": portfolio_df["status"],
         "Name": portfolio_df["display_name"],
-        "Sector": portfolio_df["sector"],
+        "Sector": portfolio_df["sector"].map(sector_label),
         "Current Price (₹)": portfolio_df["current_price"].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) else "—"),
         "RSI (14)": portfolio_df["latest_rsi"].apply(lambda x: f"{x:.2f}" if pd.notna(x) else "—"),
         "ADX (14)": portfolio_df["latest_adx"].apply(lambda x: f"{x:.2f}" if pd.notna(x) else "—"),
@@ -1254,76 +1255,6 @@ with tab_technicals:
     else:
         styled_table = getattr(tech_table_df.style, "applymap")(color_trend, subset=["Trend Direction"])
     st.dataframe(styled_table, hide_index=True, width="stretch")
-
-    # RRG scatter plots (static PNGs written by rrg.py / sector_screen.py --review)
-    st.markdown("#### Relative Rotation Graph (weekly tails)")
-    st.caption(
-        f"x = {TECHNICAL_RS_LOOKBACK_DAYS}-session RS (pp); y = RS-Momentum = RS averaged over the last "
-        f"{RRG_MOMENTUM_SMOOTHING_DAYS} sessions minus the same average {RRG_MOMENTUM_DAYS} sessions earlier (pp). "
-        "Context for the theme and the holdings, not a selection rule (the ranking uses 6-month RS)."
-    )
-    tail_view = st.radio("Show", ["Our holdings", "Sector rotation (NSE sectors + our sub-themes)"], horizontal=True,
-                         key="rrg_tail_view", label_visibility="collapsed")
-    tails_df = _out("rrg_tails_holdings.csv" if tail_view == "Our holdings" else "rrg_tails_sectors.csv")
-    if tails_df.empty:
-        st.info("RRG tails not found. Press the refresh button (or run `python rrg_tails.py`).")
-    else:
-        names = list(dict.fromkeys(tails_df["name"]))
-        default = names if tail_view == "Our holdings" else [n for n in names if n.startswith("Our ")]
-        tc1, tc2 = st.columns([3, 1])
-        picked = tc1.multiselect("Tails for", names, default=default, key=f"tails_pick_{tail_view}")
-        n_dates = tails_df["date"].nunique()
-        weeks = tc2.slider("Tail length (weeks)", 1, max(n_dates - 1, 1), min(4, max(n_dates - 1, 1)),
-                           key="tails_weeks")
-        dates = sorted(tails_df["date"].unique())[-(weeks + 1):]
-        shown = tails_df[tails_df["date"].isin(dates)].dropna(subset=["rs", "momentum"])
-        x_span = max(shown["rs"].max() - shown["rs"].min(), 10.0)
-        y_span = max(shown["momentum"].max() - shown["momentum"].min(), 6.0)
-        fig_rrg = go.Figure()
-        for name in names:
-            t = shown[shown["name"] == name].sort_values("date")
-            if t.empty:
-                continue
-            head = t.iloc[-1]
-            colour = QUADRANT_COLOURS.get(head["quadrant"], "#6b6a63")
-            hover = "<b>" + name + "</b><br>%{customdata}<br>RS %{x:.1f} pp, momentum %{y:+.1f} pp<extra></extra>"
-            if name in picked and len(t) > 1:
-                cx, cy = smooth_path(t["rs"], t["momentum"], x_span, y_span)
-                fig_rrg.add_trace(go.Scatter(x=cx, y=cy, mode="lines", showlegend=False, hoverinfo="skip",
-                                             line=dict(color=colour, width=2.2)))
-                fig_rrg.add_trace(go.Scatter(
-                    x=list(t["rs"].iloc[:-1]) + [cx[-2], cx[-1]], y=list(t["momentum"].iloc[:-1]) + [cy[-2], cy[-1]],
-                    mode="markers", name=name, showlegend=False,
-                    customdata=list(pd.to_datetime(t["date"]).dt.strftime("%d-%b").iloc[:-1]) + ["", pd.Timestamp(head["date"]).strftime("%d-%b")],
-                    marker=dict(size=[7] * (len(t) - 1) + [0, 16], color=colour,
-                                symbol=["circle"] * (len(t) - 1) + ["circle", "arrow"], angleref="previous",
-                                line=dict(color="#FFFFFF", width=1)),
-                    hovertemplate=hover))
-            else:
-                fig_rrg.add_trace(go.Scatter(
-                    x=[head["rs"]], y=[head["momentum"]], mode="markers", name=name, showlegend=False,
-                    marker=dict(size=8, color=colour, opacity=0.6), customdata=[pd.Timestamp(head["date"]).strftime("%d-%b")],
-                    hovertemplate=hover))
-            fig_rrg.add_annotation(x=head["rs"], y=head["momentum"], text=name, showarrow=False, xshift=8, yshift=9,
-                                   xanchor="left", font=dict(size=11, color="#1f1f1e" if name in picked else "#6b6a63"))
-        for label, x, y, xa, ya in [("LEADING", 1, 1, "right", "top"), ("WEAKENING", 1, 0, "right", "bottom"),
-                                    ("LAGGING", 0, 0, "left", "bottom"), ("IMPROVING", 0, 1, "left", "top")]:
-            fig_rrg.add_annotation(x=x, y=y, xref="paper", yref="paper", text=f"<b>{label}</b>", showarrow=False,
-                                   xanchor=xa, yanchor=ya, font=dict(size=14, color=QUADRANT_COLOURS[label]))
-        fig_rrg.add_hline(y=0, line_color="#6b6a63", line_width=1)
-        fig_rrg.add_vline(x=0, line_color="#6b6a63", line_width=1)
-        fig_rrg.update_layout(height=620, template="plotly_white", margin=dict(l=10, r=10, t=30, b=10),
-                              xaxis_title=f"RS vs Nifty 500 ({TECHNICAL_RS_LOOKBACK_DAYS}-session return spread, pp)",
-                              yaxis_title="RS-Momentum (pp)")
-        st.plotly_chart(fig_rrg, width="stretch")
-        st.caption(
-            f"Each dot is one week's close ({pd.Timestamp(dates[0]):%d-%b} to {pd.Timestamp(dates[-1]):%d-%b-%Y}); the arrow is "
-            "the latest week and shows the direction of rotation; colour = the current quadrant. The curve is drawn "
-            "through the weekly points (only the line between them is interpolated; every dot is the actual value). Healthy rotation runs "
-            "clockwise: IMPROVING → LEADING → WEAKENING → LAGGING. Same RS and momentum as the tables above (percentage "
-            "points centred on 0, not StockCharts' proprietary JdK scale centred on 100; the quadrants mean the same). "
-            "Our sub-themes are equal-weighted baskets of our universe; 'Our portfolio' uses the current weights."
-        )
 
     st.write("")
     st.markdown("---")
@@ -1445,7 +1376,7 @@ with tab_risk:
         alloc_rows = []
         if not risk_df.empty:
             for sector, value in risk_df.groupby("sector")["invested_inr"].sum().items():
-                alloc_rows.append((f"{sector} stocks", value, SECTOR_CHART_COLORS.get(sector, "#64748B")))
+                alloc_rows.append((f"{sector_label(sector)} stocks", value, SECTOR_CHART_COLORS.get(sector, "#64748B")))
         stocks_total = sum(v for _, v, _ in alloc_rows)
         alloc_rows.append(("Nifty puts (tail hedge)", put_cost, "#475569"))
         alloc_rows.append(("Cash (liquid ETF, overnight rate)", PRINCIPAL_INR - stocks_total - put_cost, "#94A3B8"))

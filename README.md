@@ -93,7 +93,7 @@ That leaves **157 stocks: Cement 15, Capital Goods & EPC 120 (100 + 20 EPC), Pow
 5. **Tradable** (`config.MIN_TURNOVER_CR`): median daily turnover of at least Rs 5 crore over the last 63 sessions, so the largest position (~Rs 15 lakh) is under 3% of a day's trading. Market cap alone does not guarantee this (SHANTIGEAR: Rs 5,100 cr of market cap, Rs 0.9 cr a day).
 6. **Profit up in the latest quarter**: a real profit (`Net Profit latest quarter` > 0) that grew year on year (`YOY Quarterly profit growth` > 0). Both are needed, because Screener reports a narrower loss as positive growth (BEML: a Rs 27 cr loss shown as +58%): every holding reports September-quarter results inside the 3-month window, and momentum without profit growth is what a bad result breaks.
 7. **Ranking signal tested against published refinements** (`research/signal_extensions_study.py`, pre-registered, monthly 2021-2026): residual momentum (Blitz, Huij & Martens 2011) trailed our 6-month RS ranking in both periods (-2.5 pp and -2.0 pp per quarter), and a frog-in-the-pan filter for smooth trends (Da, Gurun & Warachka 2014) was significantly worse (t = -4.6: here, momentum built from news-driven jumps persisted better). The ranking stays as it is. An earnings-surprise test (`research/earnings_study.py`) used the price reaction to each results announcement since 2020 (NSE board-meeting dates in `data/results_history/`), the documented substitute for surprise vs analyst estimates (Chan, Jegadeesh & Lakonishok 1996; Brandt et al. 2008). It predicts in the right direction (rank IC +0.05 in both periods), but ranking by it, confirming momentum with it, or dropping stocks marked down on results all trailed the plain momentum ranking.
-8. **No RRG conviction filter.** Until 27-Sep-2026 stocks whose momentum was fading in both RRG views (Low conviction) were skipped. A pre-registered backtest (`research/conviction_study.py`, monthly 2021-2026) found that the filter changed the top 8 on 95% of dates and trailed the plain ranking in both periods (-2.7 pp per quarter in 2021-23, -1.1 pp in 2024-26; not significant, t = -0.8); a simpler "still beating the Nifty over 3 months" filter did not help either. So picks are simply the top 15 of the ranking (`config.PORTFOLIO_SIZE`, the brief's maximum), in rank order, and the RRG and conviction tier are shown as context. The filter was built on 63-session RS, the weakest signal in `research/momentum_study.py`.
+8. **No RRG conviction filter.** Until 27-Sep-2026 stocks whose momentum was fading in both RRG views (Low conviction) were skipped. A pre-registered backtest (`research/conviction_study.py`, monthly 2021-2026) found that the filter changed the top 8 on 95% of dates and trailed the plain ranking in both periods (-2.7 pp per quarter in 2021-23, -1.1 pp in 2024-26; not significant, t = -0.8); a simpler "still beating the Nifty over 3 months" filter did not help either. So picks are simply the top 15 of the ranking (`config.PORTFOLIO_SIZE`, the brief's maximum), in rank order; the RRG was later removed from the dashboard too, since it drives nothing. The filter was built on 63-session RS, the weakest signal in `research/momentum_study.py`.
 
 | Rank | Stock | Sector | Profit, latest qtr YoY | Turnover Rs cr/day | P/E | Status | Note |
 | :---: | :--- | :--- | ---: | ---: | ---: | :--- | :--- |
@@ -131,7 +131,7 @@ That leaves **157 stocks: Cement 15, Capital Goods & EPC 120 (100 + 20 EPC), Pow
 
 **Weights and allocation.** Equal risk contribution (`weights.py`): each stock carries the same share of portfolio variance $w_i (\Sigma w)_i / w^\top \Sigma w = 1/N$, with every weight bounded 5-15% (`config.WEIGHT_MIN_PCT`, `WEIGHT_MAX_PCT`) and $\Sigma$ from one year of daily returns. It needs no return forecast (none is reliable, `research/momentum_study.py`) and gives volatile names less capital. The weights apply to the 97% equity sleeve (`config.EQUITY_ALLOCATION_PCT`) of the Rs 1 crore principal; the other 3% is the hedge reserve (day-0 Nifty puts and one profit-trigger roll-up, see `risk_model.py`), held in a liquid ETF at the overnight rate until used. `output/portfolio_risk_summary.csv` gives the whole shares at the latest close, the amount invested and each stock's risk contribution. Recompute at the actual purchase prices.
 
-**Conviction tier** (dashboard badge, `rrg.conviction_tier`; context only since 27-Sep-2026, not a selection rule): **High** = LEADING vs both the Nifty 500 and the sector average; **Moderate** = LEADING in one view only, or IMPROVING in either; **Low conviction** = WEAKENING or LAGGING in both views.
+**Conviction tier** (`rrg.conviction_tier`; the filter `research/conviction_study.py` rejected; not used or shown since 27-Sep-2026): **High** = LEADING vs both the Nifty 500 and the sector average; **Moderate** = LEADING in one view only, or IMPROVING in either; **Low conviction** = WEAKENING or LAGGING in both views.
 
 `config.LOCKED_PORTFOLIO` is the single definition used by the pipeline's risk summary, the live tracker, the dashboard, and `sector_screen.py` (`--locked-check`, and the exclusion list for `--tenth-sweep`).
 
@@ -222,7 +222,7 @@ The bottom line, shown first on the dashboard: what the Rs 1 crore is worth toda
 
 ## TradingView Pine Script (`pine/capex_screen.pine`)
 
-The technical rules of the pipeline for a TradingView daily chart or the Pine Screener: RS vs the Nifty 500 (`NSE:CNX500`, 63 sessions), smoothed RS-Momentum and the RRG quadrant, 6-month RS skipping the latest month, ADX(14) with +DI/-DI and the DI gap, RSI(14), nearest 20-session support/resistance, the ATR stop-loss with its support rule, and PASS/FAIL for the technical screen (RS > +2 pp and Bullish) and the selection trend rule (DI gap >= 2). Values are also exposed to the Data Window / Pine Screener for filtering. Reimplemented bar-for-bar in Python, it matches the pipeline on all 11 holdings (25-Sep-2026); TradingView's own price data can differ slightly. The fundamental rules are not in price data and stay in the pipeline. To use: TradingView > Pine Editor > paste > Add to chart.
+The technical rules of the pipeline for a TradingView daily chart or the Pine Screener: RS vs the Nifty 500 (`NSE:CNX500`, 63 sessions), 6-month RS skipping the latest month, ADX(14) with +DI/-DI and the DI gap, RSI(14), nearest 20-session support/resistance, the ATR stop-loss with its support rule, and PASS/FAIL for the technical screen (RS > +2 pp and Bullish) and the selection trend rule (DI gap >= 2). Values are also exposed to the Data Window / Pine Screener for filtering. Reimplemented bar-for-bar in Python, it matches the pipeline on all 11 holdings (25-Sep-2026); TradingView's own price data can differ slightly. The fundamental rules are not in price data and stay in the pipeline. To use: TradingView > Pine Editor > paste > Add to chart.
 
 ## Project Structure
 
@@ -240,7 +240,6 @@ IAPFDOF/
 │   ├── portfolio_risk_summary.csv      # Locked portfolio volatility, CAPM-ready return, equal-risk weight, stop-loss
 │   ├── *_full_screen.csv               # Technical-first sector screens (cement, capital_goods, power)
 │   ├── *_full_review_table.csv         # Unfiltered per-sector review tables with RRG / DI-gap columns (+ *_review_notes.md)
-│   ├── rrg_*.png                       # Relative Rotation Graphs (combined vs Nifty 500; per sector vs sector average)
 │   ├── tenth_candidate_sweep.csv       # Run-up / results-date sweep of non-picked stocks
 │   └── locked_portfolio_runup_catalyst_check.csv # Same checks on the locked picks
 ├── tests/
@@ -264,7 +263,7 @@ IAPFDOF/
 ├── corporate_actions.py          # Split / bonus / demerger price adjustment from NSE corporate-action records
 ├── research/momentum_study.py    # Pre-registered 2020-2026 study: which signals predict the next 3 months
 ├── sector_screen.py              # Technical-first, then fundamental, screen of official sector indices
-├── rrg.py                        # Relative Rotation Graph quadrants and plots
+├── rrg.py                        # RRG quadrants and conviction tier (research context only)
 ├── main.py                       # CLI entry point orchestrating the end-to-end pipeline
 ├── app.py                        # Streamlit 5-tab institutional portfolio dashboard
 ├── requirements.txt              # Project dependencies
@@ -322,7 +321,7 @@ How the web app differs from running it locally: it has no **Refresh all data** 
 ### Dashboard Architecture (5 Tabs)
 1. **Portfolio Overview:** the ₹1 crore's value and P&L vs the Nifty 500 and a liquid fund; alerts (stop-loss hit with the reserve replacement and a **Record these trades** button, holdings within 3% of their stop, profit lock with **Record the put roll**, results in the next 7 days); the **Trade ledger** editor (correct fill prices, add trades; saving recomputes the P&L and pushes `data/trades.csv` to GitHub); a copy-ready **WhatsApp update**; then the invested stocks grouped by sector, one row each with every field the brief requires: volatility, expected return (CAPM, annual and 3-month), weight (equal risk contribution), stop-loss with its method, ADX, RS vs Nifty 500, RSI and support/resistance; followed by the reserve list (queue order, and whether each would be bought today) and the screen exceptions.
 2. **Fundamentals:** the figures the safety screen uses for the locked picks (Market Cap, ROCE, Debt/Equity, Operating Cash Flow, OPM, Interest Coverage, Pledged %, latest-quarter profit growth) plus each sector's safety-screen thresholds, read from `config.SECTOR_SCREENS`, scraped directly from Screener.in company pages by `fundamentals.py` and cached under `data/fundamentals_cache/`.
-3. **Technicals:** technical table for the locked stocks (RSI, ADX, trend, DI gap, RS, support/resistance), the interactive RRG with weekly tails (holdings, or NSE sectors vs our sub-themes; context, not a rule), and a 1-year price chart with the support and resistance levels.
+3. **Technicals:** technical table for the locked stocks (RSI, ADX, trend, DI gap, RS, support/resistance), and a 1-year price chart with the support and resistance levels.
 4. **Risk & Hedging:** allocation pie (stocks by sector, Nifty puts, cash), the equal-risk-contribution check (each stock's share of portfolio risk), single-index beta with explained/unexplained risk per stock and for the portfolio, the multifactor model (market + crude + rates), CAPM, the own-return (autocorrelation) test, 3-month risk-reward, and the hedge plan with its scenario chart.
 5. **Performance:** Sharpe, Treynor, Jensen's alpha, XIRR and the compounding effect for the last quarter and year (a backtest of today's portfolio until the 28-Sep snapshot), growth of Rs 1 crore vs the Nifty 500 TRI, the Capital Market Line and the GMVP comparison.
 
@@ -427,19 +426,15 @@ Outputs `output/cement_full_screen.csv`, `output/capital_goods_full_screen.csv` 
 
 `clean_candidate` = all fundamental criteria pass, technically attractive (RS > +2 pp and Bullish), and no recent spike.
 
-### RRG weekly tails (`rrg_tails.py`)
-StockCharts-style tails: the same RS and RS-Momentum (so the latest point equals the review tables) at the last session of each of the past 8 weeks, joined into a path that shows the direction of rotation. Two views: our holdings, and sector rotation (NSE sector indices from the daily index files, our three sub-themes as equal-weighted baskets of the universe, and the portfolio at its current weights). Axes are percentage points centred on 0, not the proprietary JdK RS-Ratio centred on 100; the quadrants mean the same. Outputs `output/rrg_tails_{holdings,sectors}.{csv,png}`; interactive on the Technicals tab (pick names, tail length).
+### RRG columns & full evaluation standard (context; not a selection rule, not on the dashboard)
 
-### Relative Rotation Graph & full evaluation standard
-
-`python sector_screen.py --review --as-of 2026-09-24` rebuilds all three review tables with the same standard applied to every constituent, and redraws the RRG plots (`python rrg.py --as-of 2026-09-24` redraws them from the committed tables).
+`python sector_screen.py --review --as-of 2026-09-24` rebuilds all three review tables with the same standard applied to every constituent. The RRG quadrant and conviction columns are kept for `research/conviction_study.py`, the backtest that rejected them as a filter; they play no part in selection and are not shown on the dashboard.
 
 - **RRG axes** (both in percentage points, clearly not the proprietary JdK RS-Ratio index): x = 63-session RS; y = RS-Momentum = the 63-session RS averaged over the last 5 sessions minus the same 5-session average 10 sessions earlier (`indicators.compute_rs_momentum`). The averaging keeps one session's move from flipping a stock's quadrant: unsmoothed, a stock's conviction tier changed on about 17% of days; smoothed, about 9%. Unlike the run-up share, it is defined for negative RS, which the IMPROVING and LAGGING quadrants need.
 - **Quadrants** at (0, 0): LEADING (RS > 0, momentum > 0), WEAKENING (RS > 0, momentum <= 0), LAGGING (RS <= 0, momentum <= 0), IMPROVING (RS <= 0, momentum > 0), computed against the Nifty 500 and against the equal-weighted sector average (sector rotation first, then stock selection).
 - **`di_gap`** = +DI - -DI; **`thin_trend_flag`** when |gap| < 2.0 in either direction.
 - **`high_turnover_business_flag`**: fails only the OPM criterion, passes all others, ROCE > 20%: flagged for a manual business-model check, never auto-included.
 - **`full_standard_candidate`**: all fundamental criteria pass, LEADING vs both benchmarks, and di_gap >= 2.0. The run-up spike flag is reported beside it.
-- **Plots** (`output/`): `rrg_all_vs_nifty500.png` (all 91 universe stocks) and `rrg_<sector>_vs_sector.png` per sector; locked picks are ringed and bold.
 
 ## Output Format & Column Definitions
 
