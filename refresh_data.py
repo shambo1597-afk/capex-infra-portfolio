@@ -120,8 +120,11 @@ def run_refresh(as_of: Optional[date] = None, on_output: Callable[[str], None] =
             manifest.data["steps"].append({"name": name, "returncode": proc.returncode,
                                            "seconds": round(time.time() - t0)})
             if proc.returncode != 0 and name == TRI_STEP:
+                # The most informative line: the last error/warning, else the last line
+                problem = next((l for l in reversed(tail) if "ERROR" in l or "WARNING" in l or "Error" in l),
+                               tail[-1] if tail else "")
                 manifest.data.setdefault("warnings", []).append(
-                    f"{name} failed; the dashboard keeps the existing TRI file. Last output: {tail[-1] if tail else ''}")
+                    f"{name} failed; the dashboard keeps the existing TRI file. Last message: {problem}")
                 manifest.update()
                 continue
             if proc.returncode != 0:

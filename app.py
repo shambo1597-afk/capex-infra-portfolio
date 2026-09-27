@@ -680,15 +680,24 @@ def render_data_freshness() -> None:
         with st.expander("Show error details"):
             st.code("\n".join(manifest.get("error_tail") or read_log_tail(20)), language=None)
     elif state == "ok":
-        took = sum(step["seconds"] for step in manifest.get("steps", []))
+        steps_run = manifest.get("steps", [])
+        took = sum(step["seconds"] for step in steps_run)
+        n_ok = sum(1 for step in steps_run if step.get("returncode", 0) == 0)
+        counted = (f"all {len(steps_run)} steps OK" if n_ok == len(steps_run)
+                   else f"{n_ok} of {len(steps_run)} steps OK (the other is optional, see below)")
         message = (f"Last refresh completed {pd.Timestamp(manifest['finished']):%d-%b-%Y %H:%M} IST: "
-                   f"all {len(manifest.get('steps', []))} steps OK in {_fmt_duration(took)}.")
+                   f"{counted} in {_fmt_duration(took)}.")
         if st.session_state.get("refresh_completed_here") == manifest.get("finished"):
             st.success("Refresh complete. " + message + " The tables below now show the new data.")
         else:
             st.caption(message)
         for warning in manifest.get("warnings", []):
-            st.warning(f"Last refresh: {warning}")
+            if "TRI" in warning and tri_last and price_date and tri_last >= price_date:
+                # Nothing is missing: the TRI file already covers the latest price session
+                st.caption(f"niftyindices.com could not be reached for the Nifty 500 TRI, but the TRI file already "
+                           f"covers the latest price session ({price_date:%d-%b-%Y}), so no data is missing.")
+            else:
+                st.warning(f"Last refresh: {warning}")
     if state != "running" and behind > 0:
         st.warning(f"Prices are {behind} trading day{'s' if behind > 1 else ''} old (latest expected session: "
                    f"{expected:%d-%b-%Y}; exchange holidays are not modelled). {REFRESH_HINT}")
