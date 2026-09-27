@@ -277,6 +277,11 @@ LOCKED_PORTFOLIO_SYMBOLS = [
     "QPOWER", "FINCABLES", "GRINDWELL", "ACE", "CARBORUNIV", "GOODLUCK", "VOLTAMP",          # reserve
 ]
 
+# The list is the selection rule's output on the prices through LOCK_AS_OF (the last session before the
+# 28-Sep-2026 snapshot); that ranking is frozen in LOCKED_RANKING_CSV. Later refreshes re-rank for
+# monitoring, but the list follows the frozen ranking, so it does not drift with every new session.
+LOCK_AS_OF = "2026-09-25"
+LOCKED_RANKING_CSV = DATA_DIR / "locked" / f"selection_ranking_{LOCK_AS_OF}.csv"
 PORTFOLIO_SIZE = 15                          # the brief's maximum; all 15 are tracked
 INVESTED_COUNT = 8                           # the brief's minimum holds the money
 INITIAL_HOLDINGS = LOCKED_PORTFOLIO_SYMBOLS[:INVESTED_COUNT]

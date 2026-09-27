@@ -128,7 +128,7 @@ def test_allocation_of_the_principal():
 
 
 def test_selection_ranking_matches_review_tables(review):
-    ranking = pd.read_csv(OUTPUT_DIR / "selection_ranking.csv")
+    ranking = pd.read_csv(OUTPUT_DIR / "selection_ranking.csv")  # the live (monitoring) ranking
     eligible = review[review["selection_eligible"] == True]  # noqa: E712
     assert sorted(ranking["symbol"]) == sorted(eligible["symbol"])
     assert ranking["rs_6m_skip1m"].is_monotonic_decreasing
@@ -136,9 +136,11 @@ def test_selection_ranking_matches_review_tables(review):
 
 
 def test_holdings_are_exactly_the_selection_rule_picks():
-    """The final portfolio is what the selection rule picks from the ranking: no judgement-call exceptions."""
-    from config import PORTFOLIO_SIZE
-    ranking = pd.read_csv(OUTPUT_DIR / "selection_ranking.csv")
+    """The locked list is what the selection rule picked from the frozen ranking (prices through
+    LOCK_AS_OF): no judgement-call exceptions. Later refreshes re-rank for monitoring only."""
+    from config import LOCK_AS_OF, LOCKED_RANKING_CSV, PORTFOLIO_SIZE
+    ranking = pd.read_csv(LOCKED_RANKING_CSV)
+    assert LOCK_AS_OF in LOCKED_RANKING_CSV.name
     assert len(LOCKED_PORTFOLIO_SYMBOLS) == PORTFOLIO_SIZE
     assert set(ranking[ranking["rule_pick"]]["symbol"]) == set(LOCKED_PORTFOLIO_SYMBOLS)
     # Listed in rank order, so the money goes into the best-ranked INVESTED_COUNT and the reserve queue

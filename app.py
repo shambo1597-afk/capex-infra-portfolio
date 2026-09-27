@@ -25,6 +25,7 @@ from config import (
     LOCKED_PORTFOLIO_SYMBOLS,
     SELECTION_CONVICTION_TIERS,
     INVESTED_COUNT,
+    LOCK_AS_OF,
     FUNDAMENTAL_HARD_FIELDS,
     MIN_TURNOVER_CR,
     TURNOVER_LOOKBACK_SESSIONS,
@@ -1020,7 +1021,8 @@ with tab_overview:
             <div class="metric-card">
                 <div class="metric-title">Locked list</div>
                 <div class="metric-value">{len(LOCKED_PORTFOLIO)} tracked &bull; {len(HELD)} invested</div>
-                <div class="metric-sub">{len(RESERVE_QUEUE)} in reserve: a stopped-out stock is replaced by the next one</div>
+                <div class="metric-sub">{len(RESERVE_QUEUE)} in reserve: a stopped-out stock is replaced by the next one.
+                Frozen on the ranking of prices through {pd.Timestamp(LOCK_AS_OF):%d-%b-%Y}.</div>
             </div>
             """,
             unsafe_allow_html=True,
