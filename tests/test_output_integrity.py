@@ -154,5 +154,5 @@ def test_every_ranked_stock_is_tradable_with_profit_growth():
     from config import MIN_TURNOVER_CR, THEME_EXCLUSIONS
     ranking = pd.read_csv(OUTPUT_DIR / "selection_ranking.csv")
     assert (ranking["median_turnover_cr"] >= MIN_TURNOVER_CR).all()
-    assert (ranking["qtr_profit_yoy"] > 0).all()
+    assert (ranking["qtr_profit_yoy"] > 0).all() and (ranking["qtr_net_profit"] > 0).all()  # a real profit, grown
     assert not set(ranking["symbol"]) & set(THEME_EXCLUSIONS)

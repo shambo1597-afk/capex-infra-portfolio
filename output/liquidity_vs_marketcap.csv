@@ -1,0 +1,285 @@
+symbol,sector,market_cap_cr,median_turnover_cr,above_cap_floor,passes_turnover_rule
+ADANIPOWER,Power,390997.19,313.76,True,True
+ULTRACEMCO,Cement,328714.62,258.51,True,True
+NTPC,Power,316693.12,241.92,True,True
+POWERGRID,Power,250651.27,195.67,True,True
+GRASIM,Cement,217158.97,292.39,True,True
+ADANIGREEN,Power,213572.86,126.54,True,True
+ADANIENSOL,Power,163692.46,271.11,True,True
+ABB,Capital Goods,149448.38,121.92,True,True
+BHEL,Capital Goods,145881.04,254.16,True,True
+CGPOWER,Capital Goods,139586.49,194.48,True,True
+POWERINDIA,Capital Goods,138330.33,272.56,True,True
+SIEMENS,Capital Goods,138067.92,102.77,True,True
+CUMMINSIND,Capital Goods,137075.4,194.53,True,True
+POLYCAB,Capital Goods,126713.13,240.98,True,True
+ENRIN,Capital Goods,117982.72,98.1,True,True
+TATAPOWER,Power,117428.73,140.41,True,True
+GVT&D,Capital Goods,109589.4,326.49,True,True
+AMBUJACEM,Cement,95367.28,52.94,True,True
+JSWENERGY,Power,92875.07,82.87,True,True
+SHREECEM,Cement,81253.84,39.88,True,True
+NTPCGREEN,Power,78760.9,14.85,True,True
+NHPC,Power,76342.26,68.03,True,True
+WELCORP,Capital Goods,74716.06,454.7,True,True
+APARINDS,Capital Goods,74432.27,202.7,True,True
+WAAREEENER,Capital Goods,71769.01,118.55,True,True
+TORNTPOWER,Power,63219.74,30.57,True,True
+APLAPOLLO,Capital Goods,61493.01,127.42,True,True
+SUZLON,Capital Goods,55634.99,191.13,True,True
+SUPREMEIND,Capital Goods,45094.54,54.51,True,True
+KEI,Capital Goods,44678.94,177.47,True,True
+THERMAX,Capital Goods,41075.56,49.94,True,True
+PREMIERENE,Capital Goods,40692.21,83.99,True,True
+JKCEMENT,Cement,38634.13,15.46,True,True
+ASTRAL,Capital Goods,37584.16,79.85,True,True
+AIAENG,Capital Goods,36575.99,14.66,True,True
+NLCINDIA,Power,36406.14,31.55,True,True
+DALBHARAT,Cement,31889.96,15.48,True,True
+ACMESOLAR,Power,31307.46,65.72,True,True
+KIRLOSENG,Capital Goods,31100.5,81.53,True,True
+HONAUT,Capital Goods,29936.66,8.32,True,True
+SCHNEIDER,Capital Goods,28919.15,34.75,True,True
+RRKABEL,Capital Goods,28596.46,92.46,True,True
+CARBORUNIV,Capital Goods,24356.11,23.57,True,True
+SJVN,Power,24270.42,10.96,True,True
+JYOTICNC,Capital Goods,24222.83,90.14,True,True
+TIMKEN,Capital Goods,24115.88,10.35,True,True
+TDPOWERSYS,Capital Goods,23576.64,142.29,True,True
+ACC,Cement,23218.02,12.87,True,True
+FINCABLES,Capital Goods,22342.91,117.0,True,True
+HBLENGINE,Capital Goods,22341.91,67.49,True,True
+EMMVEE,Capital Goods,22286.59,50.61,True,True
+GRINDWELL,Capital Goods,21841.73,4.46,True,False
+MTARTECH,Capital Goods,21224.12,57.34,True,True
+DIACABS,Capital Goods,21201.62,29.63,True,True
+RAMCOCEM,Cement,20499.55,21.43,True,True
+INOXINDIA,Capital Goods,19575.87,46.08,True,True
+RATNAMANI,Capital Goods,19473.66,12.17,True,True
+ELGIEQUIP,Capital Goods,19109.61,24.5,True,True
+CESC,Power,18539.43,23.26,True,True
+LMW,Capital Goods,18303.18,8.49,True,True
+JINDALSAW,Capital Goods,18257.96,55.27,True,True
+TRITURBINE,Capital Goods,17617.93,21.4,True,True
+AZAD,Capital Goods,17617.9,108.95,True,True
+BEML,Capital Goods,16961.8,64.91,True,True
+CLEANMAX,Power,16379.72,28.37,True,True
+GRAPHITE,Capital Goods,16034.48,79.76,True,True
+USHAMART,Capital Goods,15810.0,28.38,True,True
+JSWCEMENT,Cement,15742.77,15.09,True,True
+TEGA,Capital Goods,15713.71,40.31,True,True
+NAVA,Power,15623.27,12.73,True,True
+LLOYDSENGG,Capital Goods,15287.04,44.98,True,True
+JNPR,Power,15138.2,21.5,True,True
+ACE,Capital Goods,14606.74,32.77,True,True
+SKFINDUS,Capital Goods,14426.0,11.53,True,True
+KSB,Capital Goods,14255.55,9.69,True,True
+KIRLOSBROS,Capital Goods,14070.47,5.22,True,True
+INGERRAND,Capital Goods,13364.63,9.46,True,True
+UTLSOLAR,Capital Goods,12954.32,13.86,True,True
+INOXWIND,Capital Goods,12918.58,80.55,True,True
+VEDPOWER,Power,12884.73,41.62,True,True
+ATLANTAELE,Capital Goods,12502.62,20.3,True,True
+NUVOCO,Cement,11980.8,8.47,True,True
+QPOWER,Capital Goods,11754.47,44.29,True,True
+KARAMTARA,Capital Goods,11543.78,249.55,True,True
+TITAGARH,Capital Goods,11078.26,36.4,True,True
+JPPOWER,Power,10876.44,53.18,True,True
+VOLTAMP,Capital Goods,10834.42,24.14,True,True
+ELECON,Capital Goods,10283.13,12.3,True,True
+INDIACEM,Cement,10012.78,2.97,True,False
+JWL,Capital Goods,9689.77,15.02,True,True
+MAHSEAMLES,Capital Goods,9589.11,17.65,True,True
+FINPIPE,Capital Goods,9565.27,5.48,True,True
+GENUSPOWER,Capital Goods,9300.7,68.14,True,True
+KENNAMET,Capital Goods,9246.69,17.96,True,True
+KRN,Capital Goods,9045.05,32.45,True,True
+KIRLPNU,Capital Goods,8990.26,9.79,True,True
+WAAREERTL,Capital Goods,8693.74,7.9,True,True
+ESABINDIA,Capital Goods,8507.72,2.52,True,False
+RPOWER,Power,8507.28,32.26,True,True
+TARIL,Capital Goods,8334.1,27.47,True,True
+SETL,Capital Goods,8030.54,33.65,True,True
+GMRP&UI,Power,8019.49,11.47,True,True
+RHIM,Capital Goods,7980.25,7.67,True,True
+VESUVIUS,Capital Goods,7897.2,2.6,True,False
+RPEL,Capital Goods,7804.44,17.21,True,True
+MANINDS,Capital Goods,7653.6,71.34,True,True
+SKFINDIA,Capital Goods,7612.46,5.57,True,True
+STARCEMENT,Cement,7542.41,4.56,True,False
+POWERICA,Capital Goods,7377.34,7.02,True,True
+KSHINTL,Capital Goods,7016.1,24.83,True,True
+AEROFLEX,Capital Goods,6956.63,56.87,True,True
+AJAXENGG,Capital Goods,6953.35,3.65,True,False
+KANOHAR,Capital Goods,6830.26,775.11,True,True
+TIIL,Capital Goods,6809.55,12.83,True,True
+GMMPFAUDLR,Capital Goods,6766.96,34.39,True,True
+KPIGREEN,Power,6715.91,30.68,True,True
+SBCL,Capital Goods,6650.4,32.18,True,True
+OMNI,Capital Goods,6603.15,26.61,True,True
+BIRLACORPN,Cement,6548.16,2.96,True,False
+JKLAKSHMI,Cement,6335.71,5.96,True,True
+TRANSRAILL,Capital Goods,6299.96,15.34,True,True
+LCL,Capital Goods,6283.01,24.43,True,True
+SKIPPER,Capital Goods,6224.54,52.41,True,True
+BALUFORGE,Capital Goods,6152.14,76.06,True,True
+PRSMJOHNSN,Cement,5854.58,3.58,True,False
+VIKRAMSOLR,Capital Goods,5808.9,29.34,True,True
+PRAJIND,Capital Goods,5806.66,15.73,True,True
+SHAKTIPUMP,Capital Goods,5761.45,17.87,True,True
+GREAVESCOT,Capital Goods,5469.23,15.15,True,True
+SAATVIKGL,Capital Goods,5433.1,3.85,True,False
+RAMRAT,Capital Goods,5320.9,12.36,True,True
+GOODLUCK,Capital Goods,5241.55,30.95,True,True
+UNIVCABLES,Capital Goods,5183.49,19.43,True,True
+SHANTIGEAR,Capital Goods,5113.5,9.79,True,True
+TEXRAIL,Capital Goods,5113.07,19.8,True,True
+BANSALWIRE,Capital Goods,5031.71,1.86,True,False
+DEEDEV,Capital Goods,5012.45,15.96,True,True
+SURYAROSNI,Capital Goods,4950.13,8.72,False,True
+HEGAM,Capital Goods,4715.41,29.13,False,True
+SUBROS,Capital Goods,4702.85,2.16,False,False
+SHILCTECH,Capital Goods,4694.6,6.85,False,True
+SAMBHV,Capital Goods,4688.81,23.39,False,True
+PTC,Power,4590.79,19.9,False,True
+GVPIL,Capital Goods,4502.22,13.8,False,True
+VENUSPIPES,Capital Goods,4481.31,23.45,False,True
+ELECTCAST,Capital Goods,4471.95,10.46,False,True
+TEMPSENS,Capital Goods,4451.94,148.13,False,True
+PITTIENG,Capital Goods,4376.85,14.06,False,True
+SWARAJENG,Capital Goods,4307.98,1.99,False,False
+HIRECT,Capital Goods,4300.77,6.32,False,True
+HARSHA,Capital Goods,4206.69,6.39,False,True
+WPIL,Capital Goods,4203.75,1.63,False,False
+VSSL,Capital Goods,3979.25,4.42,False,False
+COCKERILL,Capital Goods,3928.52,3.82,False,False
+LASERPOWER,Capital Goods,3819.42,22.96,False,True
+STEELCAS,Capital Goods,3810.18,2.95,False,False
+KIRLOSIND,Capital Goods,3780.82,1.59,False,False
+RTNPOWER,Power,3759.07,13.43,False,True
+JASH,Capital Goods,3752.76,5.48,False,True
+WELSPLSOL,Capital Goods,3644.36,3.39,False,False
+JTLIND,Capital Goods,3482.69,25.35,False,True
+INDOTECH,Capital Goods,3374.72,5.22,False,True
+ANUP,Capital Goods,3359.48,3.59,False,False
+LUMINO,Capital Goods,3205.73,217.74,False,True
+WEBELSOLAR,Capital Goods,3179.38,14.17,False,True
+OSWALPUMPS,Capital Goods,3134.56,10.81,False,True
+WINDMACHIN,Capital Goods,3098.61,1.41,False,False
+HLEGLAS,Capital Goods,3063.65,9.41,False,True
+HEIDELBERG,Cement,3058.6,2.19,False,False
+KABRAEXTRU,Capital Goods,2960.1,16.49,False,True
+RELTD,Capital Goods,2954.01,2.22,False,False
+KLBRENG-B,Capital Goods,2921.82,13.46,False,True
+PRINCEPIPE,Capital Goods,2894.49,3.95,False,False
+GIPCL,Power,2884.53,8.37,False,True
+ADOR,Capital Goods,2852.15,5.64,False,True
+MANGLMCEM,Cement,2828.37,7.74,False,True
+RATNAVEER,Capital Goods,2802.72,206.44,False,True
+RISHABH,Capital Goods,2754.45,17.54,False,True
+ORIENTCEM,Cement,2509.9,3.76,False,False
+PENIND,Capital Goods,2505.33,7.33,False,True
+EPACKPEB,Capital Goods,2469.28,10.85,False,True
+UEL,Power,2450.92,0.38,False,False
+BBL,Capital Goods,2444.75,4.21,False,False
+MUKANDLTD,Capital Goods,2413.8,0.93,False,False
+THEJO,Capital Goods,2370.3,1.25,False,False
+JNKINDIA,Capital Goods,2352.3,4.36,False,False
+APOLLOPIPE,Capital Goods,2252.85,16.17,False,True
+EXICOM,Capital Goods,2239.05,16.95,False,True
+MVELECTRO,Capital Goods,2220.27,138.54,False,True
+DYCL,Capital Goods,2214.32,25.14,False,True
+QUADFUTURE,Capital Goods,2190.0,28.33,False,True
+MARSONS,Capital Goods,2114.59,37.86,False,True
+KCP,Cement,2105.15,2.33,False,False
+ADVAIT,Capital Goods,2087.14,7.67,False,True
+TIL,Capital Goods,2073.11,2.09,False,False
+MACPOWER,Capital Goods,2063.36,9.62,False,True
+JISLJALEQS,Capital Goods,2054.5,4.64,False,False
+MAHASTEEL,Capital Goods,2024.88,0.82,False,False
+BAJEL,Capital Goods,2003.18,2.29,False,False
+SAGCEM,Cement,1995.12,0.58,False,False
+INA,Power,1992.88,4.62,False,False
+PARACABLES,Capital Goods,1957.22,9.13,False,True
+HONDAPOWER,Capital Goods,1942.01,0.57,False,False
+BLEL,Capital Goods,1932.17,48.59,False,True
+MSPL,Capital Goods,1911.81,2.3,False,False
+RELINFRA,Power,1847.01,1.1,False,False
+HPL,Capital Goods,1788.52,2.42,False,False
+WENDT,Capital Goods,1729.2,5.99,False,True
+DISAQ,Capital Goods,1712.04,0.35,False,False
+JAICORPLTD,Capital Goods,1657.29,2.49,False,False
+DIFFNKG,Capital Goods,1611.01,4.58,False,False
+SERVOTECH,Capital Goods,1598.08,2.44,False,False
+RSL,Capital Goods,1533.13,6.08,False,True
+YUKEN,Capital Goods,1531.73,1.93,False,False
+KPEL,Power,1508.03,7.38,False,True
+RIR,Capital Goods,1496.04,7.11,False,True
+HITECH,Capital Goods,1494.87,3.79,False,False
+INVPRECQ,Capital Goods,1480.6,0.4,False,False
+GALAPREC,Capital Goods,1472.07,3.1,False,False
+MODISONLTD,Capital Goods,1440.94,5.08,False,True
+STEELXIND,Capital Goods,1440.06,3.92,False,False
+WALCHANNAG,Capital Goods,1432.72,9.96,False,True
+IFGLEXPOR,Capital Goods,1423.19,0.49,False,False
+AEROENTER,Capital Goods,1421.8,9.6,False,True
+MANAKCOAT,Capital Goods,1385.28,3.87,False,False
+EIMCOELECO,Capital Goods,1328.02,6.07,False,True
+EKC,Capital Goods,1237.43,1.38,False,False
+RHETAN,Capital Goods,1208.86,20.33,False,True
+ROTO,Capital Goods,1183.44,1.66,False,False
+BHARATWIRE,Capital Goods,1134.71,1.99,False,False
+KAMDHENU,Capital Goods,1126.4,3.11,False,False
+ELECTHERM,Capital Goods,1112.89,1.07,False,False
+GANDHITUBE,Capital Goods,1090.59,0.52,False,False
+TEMBO,Capital Goods,1080.81,6.97,False,True
+JYOTISTRUC,Capital Goods,1077.87,4.44,False,False
+MICEL,Capital Goods,1075.36,0.37,False,False
+HARIOMPIPE,Capital Goods,1066.98,2.94,False,False
+GREENPOWER,Power,1051.04,1.76,False,False
+ICEMAKE,Capital Goods,1047.46,1.37,False,False
+NELCAST,Capital Goods,1030.01,0.91,False,False
+TIRUPATIFL,Capital Goods,1017.95,1.39,False,False
+MAMATA,Capital Goods,1013.6,1.77,False,False
+RMDRIP,Capital Goods,1011.48,0.81,False,False
+SHREDIGCEM,Cement,1003.6,0.63,False,False
+PREMIERPOL,Capital Goods,999.24,2.47,False,False
+SGIL,Capital Goods,998.64,0.62,False,False
+WAAREEINDO,Capital Goods,960.42,2.16,False,False
+SALZERELEC,Capital Goods,957.08,1.94,False,False
+RAJOOENG,Capital Goods,948.41,0.93,False,False
+SWELECTES,Capital Goods,889.82,1.08,False,False
+KECL,Capital Goods,881.7,1.38,False,False
+KANORICHEM,Capital Goods,867.66,0.75,False,False
+PROSTARM,Capital Goods,831.13,2.1,False,False
+SALASAR,Capital Goods,821.54,1.67,False,False
+BEEKAY,Capital Goods,820.38,0.09,False,False
+SCODATUBES,Capital Goods,818.42,2.26,False,False
+NEUEON,Capital Goods,813.68,0.05,False,False
+ORIRAIL,Capital Goods,812.22,1.08,False,False
+NCLIND,Cement,810.84,0.55,False,False
+VISAKAIND,Cement,786.11,1.92,False,False
+DECCANCE,Cement,775.39,1.33,False,False
+SOLEX,Capital Goods,761.79,2.99,False,False
+MEIL,Capital Goods,748.22,1.03,False,False
+LOKESHMACH,Capital Goods,741.53,1.02,False,False
+PERMAGN,Capital Goods,733.11,0.26,False,False
+RAMASTEEL,Capital Goods,732.95,0.59,False,False
+BAJAJST,Capital Goods,722.28,0.25,False,False
+AXTEL,Capital Goods,720.67,0.13,False,False
+JSIPL,Capital Goods,708.77,26.39,False,True
+BAJAJINDEF,Capital Goods,697.89,0.31,False,False
+DPSCLTD,Power,678.73,0.05,False,False
+INDOFARM,Capital Goods,663.88,1.24,False,False
+HTEL,Capital Goods,635.8,12.72,False,True
+PPL,Capital Goods,629.17,0.63,False,False
+SAURASHCEM,Cement,620.09,0.45,False,False
+SPELS,Capital Goods,606.29,0.45,False,False
+MALLCOM,Capital Goods,590.83,0.25,False,False
+ORIENTCER,Capital Goods,571.88,0.41,False,False
+BIGBLOC,Cement,566.44,0.16,False,False
+MAZDA,Capital Goods,560.8,0.37,False,False
+PANCHMAHQ,Capital Goods,553.51,0.0,False,False
+DHABRIYA,Capital Goods,524.11,0.41,False,False
+INTLCONV,Capital Goods,517.71,0.33,False,False
+URJA,Capital Goods,515.03,0.48,False,False

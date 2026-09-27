@@ -64,14 +64,14 @@ class TestUniverseConfiguration:
 
     def test_locked_portfolio(self):
         expected_locked = ["WELCORP", "RPEL", "SBCL", "ACMESOLAR", "FINCABLES", "ACE", "CARBORUNIV", "GOODLUCK",
-                           "BEML", "TEXRAIL", "USHAMART", "GMMPFAUDLR", "ENRIN", "GRAPHITE", "MAHSEAMLES"]
+                           "TEXRAIL", "USHAMART", "GMMPFAUDLR", "ENRIN", "GRAPHITE", "MAHSEAMLES", "NUVOCO"]
         assert LOCKED_PORTFOLIO_SYMBOLS == expected_locked
         assert list(LOCKED_PORTFOLIO) == expected_locked
         for sym, info in LOCKED_PORTFOLIO.items():
             assert sym in PORTFOLIO_SYMBOLS
             assert info["sector"] == sector_of(sym) and info["name"] == SYMBOL_NAME[sym]
         sectors = [info["sector"] for info in LOCKED_PORTFOLIO.values()]
-        assert (sectors.count("Cement"), sectors.count("Capital Goods"), sectors.count("Power")) == (0, 14, 1)
+        assert (sectors.count("Cement"), sectors.count("Capital Goods"), sectors.count("Power")) == (1, 13, 1)
         from config import INITIAL_HOLDINGS, RESERVE_SYMBOLS
         assert INITIAL_HOLDINGS == expected_locked[:8] and RESERVE_SYMBOLS == expected_locked[8:]
 

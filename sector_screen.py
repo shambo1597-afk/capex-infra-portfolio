@@ -290,6 +290,7 @@ def build_review_table(
                                                .tail(TURNOVER_LOOKBACK_SESSIONS).median()) / 100, 2)
                                    if not sym_prices.empty and "TURNOVER_LACS" in sym_prices else float("nan")),
             "qtr_profit_yoy": record.get("qtr_profit_yoy"),
+            "qtr_net_profit": record.get("qtr_net_profit"),
             "qtr_sales_yoy": record.get("qtr_sales_yoy"),
             "pe": record.get("pe"),
         })
@@ -381,7 +382,10 @@ def add_evaluation_columns(table: pd.DataFrame, criteria: List[Tuple[str, str, f
     # plus tradable (median daily turnover >= MIN_TURNOVER_CR) and profit up in the latest quarter (a value
     # that cannot be read counts as a failure)
     liquid = (pd.to_numeric(table["median_turnover_cr"]) >= MIN_TURNOVER_CR) if "median_turnover_cr" in table else True
+    # Profit up means an actual profit that grew: Screener reports a narrower loss as positive growth
     earning = (pd.to_numeric(table["qtr_profit_yoy"]) > 0) if "qtr_profit_yoy" in table else True
+    if "qtr_net_profit" in table:
+        earning = earning & (pd.to_numeric(table["qtr_net_profit"]) > 0)
     table["selection_eligible"] = (table["hard_fundamentals_pass"] & (table["di_gap"] >= DI_GAP_THIN_THRESHOLD)
                                    & (sessions >= MIN_HISTORY_SESSIONS)
                                    & (table["rs_6m_skip1m"].notna() if "rs_6m_skip1m" in table else True)
@@ -413,7 +417,7 @@ def build_selection_ranking(tables: Dict[str, pd.DataFrame]) -> pd.DataFrame:
     table["rule_pick"] = table["symbol"].isin(select_portfolio(table))
     cols = ["selection_rank", "symbol", "company_name", "sector", "locked", "rule_pick", "rs_6m_skip1m", "rs_score_vs_nifty500",
             "di_gap", "latest_adx", "rrg_quadrant_vs_nifty500", "rrg_quadrant_vs_sector", "conviction",
-            "soft_fundamental_fails", "median_turnover_cr", "qtr_profit_yoy", "qtr_sales_yoy", "pe",
+            "soft_fundamental_fails", "median_turnover_cr", "qtr_net_profit", "qtr_profit_yoy", "qtr_sales_yoy", "pe",
             "business_focus_note"]
     return table[[c for c in cols if c in table]].reset_index(drop=True)
 

@@ -46,6 +46,11 @@ SCREENER_FILES = {
     "Capital Goods": SCREENER_DIR / "capital_goods.csv",
     "Power": SCREENER_DIR / "power.csv",
 }
+# Rs 5,000 cr is a QUALITY floor, not the liquidity test (research/liquidity_study.py, 27-Sep-2026):
+# tradability is MIN_TURNOVER_CR below. Lowering it to Rs 1,000-2,000 cr adds no stock between Rs 1,000
+# and 2,000 cr that trades Rs 5 cr a day, and among the Rs 2,000-5,000 cr names that would enter the top
+# 15 the leaders were loss-making (KABRAEXTRU, QUADFUTURE) or speculatively traded (RATNAVEER: 4% of its
+# market value changes hands daily), displacing three established, profitable holdings.
 UNIVERSE_MIN_MARKET_CAP_CR = 5000
 CAPITAL_GOODS_EXCLUDED_GROUPS = {"Aerospace & Defense"}
 CAPITAL_GOODS_EXCLUDED_INDUSTRIES = {
@@ -73,6 +78,7 @@ THEME_EXCLUSIONS = {
     "MAZDOCK": "(3) defence shipbuilding",
     "COCHINSHIP": "(3) defence and commercial shipbuilding",
     "SWANDEF": "(3) defence shipbuilding",
+    "KSL": "(4) special-bar-quality steel from its own electric-arc furnace, mostly for automotive forgings",
     "PTCIL": "(3) titanium and superalloy castings, growth led by aerospace and defence (Screener: Castings & Forgings)",
     "DYNAMATECH": "(3) aerospace structures, plus automotive castings; only the hydraulics fit the theme",
     "SHYAMMETL": "(4) primary steel and metals",
@@ -174,6 +180,7 @@ BUSINESS_FOCUS_NOTES = {
         "drying) for chemical and pharmaceutical plants; ~50% domestic share. Demand follows the "
         "chemical/pharma capex cycle rather than public infrastructure."
     ),
+    "NUVOCO": "FIT: Nuvoco Vistas (Nirma group), cement and ready-mix concrete; the only Cement stock in the 15.",
     "ENRIN": "FIT: Siemens Energy India, power generation and transmission equipment; Nifty Capital Goods member.",
     "GRAPHITE": (
         "KEPT (borderline): graphite electrodes for electric-arc steel furnaces (~40% exported), plus "
@@ -236,7 +243,8 @@ def sector_of(symbol: str) -> str:
 # ("cash cannot sit idle"). No sector minimums: Power has one stock (ACMESOLAR) and Cement none
 # (its best confirmed uptrend, NUVOCO, ranks #32); the group will ask the professor whether a Cement
 # leg is required. Soft exceptions (shown on the dashboard): BEML (ROCE/OPM). On 27-Sep the liquidity
-# and quarterly-profit rules (MIN_TURNOVER_CR, qtr_profit_yoy > 0) removed GREAVESCOT (profit -23%),
+# and quarterly-profit rules (MIN_TURNOVER_CR; latest-quarter net profit > 0 and up year on year) removed
+# GREAVESCOT (profit -23%), and later BEML (a Rs 27 cr loss that Screener shows as +58% "growth"),
 # BANSALWIRE, SHANTIGEAR and AJAXENGG, and PTCIL / DYNAMATECH were found to be aerospace/defence
 # businesses (THEME_EXCLUSIONS). UTLSOLAR (211 sessions of prices) fails the one-year history rule and was
 # replaced by the rule's pick SBCL (group decision 26-Sep-2026).
@@ -244,7 +252,7 @@ def sector_of(symbol: str) -> str:
 
 LOCKED_PORTFOLIO_SYMBOLS = [
     "WELCORP", "RPEL", "SBCL", "ACMESOLAR", "FINCABLES", "ACE", "CARBORUNIV", "GOODLUCK",    # invested
-    "BEML", "TEXRAIL", "USHAMART", "GMMPFAUDLR", "ENRIN", "GRAPHITE", "MAHSEAMLES",          # reserve
+    "TEXRAIL", "USHAMART", "GMMPFAUDLR", "ENRIN", "GRAPHITE", "MAHSEAMLES", "NUVOCO",        # reserve
 ]
 
 PORTFOLIO_SIZE = 15                          # the brief's maximum; all 15 are tracked
