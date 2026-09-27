@@ -18,6 +18,26 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+# Make sure `config` (and every other pipeline module) is THIS project's file. A hosting runtime can
+# load its own module named `config` before the app starts (Python then reuses that cached module and
+# the names below are missing), so drop a foreign `config` and put the app's folder first on the path.
+import sys as _sys
+
+_APP_DIR = str(Path(__file__).resolve().parent)
+if _APP_DIR not in _sys.path[:1]:
+    _sys.path.insert(0, _APP_DIR)
+_cached = _sys.modules.get("config")
+if _cached is not None and str(Path(getattr(_cached, "__file__", "") or "").resolve().parent) != _APP_DIR:
+    del _sys.modules["config"]
+
+try:
+    import config as _config_check  # noqa: F401  (fail here with a readable message, not a redacted one)
+    if not hasattr(_config_check, "LOCKED_PORTFOLIO_SYMBOLS"):
+        raise ImportError(f"'config' resolved to {getattr(_config_check, '__file__', '?')}, not this project's config.py")
+except Exception as _exc:  # noqa: BLE001 - shown to the viewer instead of Streamlit's redacted traceback
+    st.error(f"Startup problem while loading the project's config: {type(_exc).__name__}: {_exc}")
+    st.stop()
+
 from config import (
     DEFAULT_TRI_CSV_PATH,
     HISTORICAL_OHLCV_CSV,
