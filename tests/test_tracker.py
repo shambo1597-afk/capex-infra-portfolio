@@ -14,6 +14,19 @@ def _setup(dates, closes, rates, tri):
     return closes_df, factors
 
 
+def test_a_bridged_benchmark_day_is_valued_and_flagged():
+    """Snapshot day without the Nifty 500 TRI (niftyindices.com down): the bridged level still gives a number,
+    and the day is flagged provisional."""
+    dates = ["2026-09-28", "2026-09-29"]
+    closes, factors = _setup(dates, {"AAA": [100.0, 110.0]}, [1000.0, 1000.2], [500.0, 505.0])
+    factors["nifty500_tri_provisional"] = [True, False]
+    ledger = pd.DataFrame([{"date": "2026-09-28", "instrument": "AAA", "action": "BUY", "quantity": 1000,
+                            "price": 100.0, "note": ""}])
+    daily = tracker.value_portfolio(ledger, closes, factors, {}, pd.Timestamp("2026-09-29")).set_index("date")
+    assert daily["benchmark_provisional"].tolist() == [True, False]
+    assert daily.loc["2026-09-29", "nifty500_inr"] == pytest.approx(PRINCIPAL_INR * 1.01)
+
+
 def test_parse_option():
     assert tracker.parse_option("NIFTY 2026-12-29 22000 PE") == {"expiry": "2026-12-29", "strike": 22000.0, "type": "PE"}
     assert tracker.parse_option("WELCORP") is None

@@ -100,14 +100,40 @@ def build_factor_series(start: date, end: date, benchmark_tri: Optional[pd.DataF
     tri = tri.copy()
     tri["Date"] = pd.to_datetime(tri["Date"], format="mixed")
     df["nifty500_tri"] = tri.set_index("Date")["Total Returns Index"].reindex(df.index)
+    # niftyindices.com (the TRI source) is sometimes blocked; NSE's own daily index file always has the
+    # Nifty 500 price index, so a missing TRI session is bridged with the price index's return and flagged.
+    # The next successful TRI download replaces it (every output is recomputed from the levels each run).
+    price = fetcher.fetch_index_closes(start, end, index_name=BENCHMARK_INDEX_NAME).set_index("Date")["Close"]
+    df["nifty500_tri"], df["nifty500_tri_provisional"] = extend_tri_with_price(df["nifty500_tri"],
+                                                                                price.reindex(df.index))
+    if df["nifty500_tri_provisional"].any():
+        logger.warning("Nifty 500 TRI missing for %d session(s) from %s: bridged with the price index (provisional).",
+                       int(df["nifty500_tri_provisional"].sum()),
+                       df.index[df["nifty500_tri_provisional"]][0].date())
     df["brent_usd"] = _brent_aligned(df.index, start, end)
 
     FACTORS_CSV.parent.mkdir(parents=True, exist_ok=True)
-    out = df[FACTOR_COLUMNS].reset_index()
+    out = df[FACTOR_COLUMNS + ["nifty500_tri_provisional"]].reset_index()
     out["date"] = out["date"].dt.strftime("%Y-%m-%d")
     out.to_csv(FACTORS_CSV, index=False, float_format="%.4f")
     logger.info("Saved %d sessions of factor levels to %s", len(out), FACTORS_CSV)
     return df[FACTOR_COLUMNS]
+
+
+def extend_tri_with_price(tri: pd.Series, price: pd.Series) -> tuple:
+    """
+    Fill missing TRI sessions (after the first known value) by chaining the price index's daily return
+    onto the previous TRI level. Returns (filled TRI, provisional flag). The price index leaves out
+    dividends (about 1.2% a year, ~0.005% a day), so a bridged level is marginally low.
+    """
+    filled = tri.astype(float).copy()
+    flag = pd.Series(False, index=tri.index)
+    for i in range(1, len(filled)):
+        if pd.isna(filled.iloc[i]) and pd.notna(filled.iloc[i - 1]) and pd.notna(price.iloc[i]) \
+                and pd.notna(price.iloc[i - 1]) and price.iloc[i - 1] > 0:
+            filled.iloc[i] = filled.iloc[i - 1] * price.iloc[i] / price.iloc[i - 1]
+            flag.iloc[i] = True
+    return filled, flag
 
 
 def _brent_aligned(sessions: pd.DatetimeIndex, start: date, end: date) -> pd.Series:
@@ -229,7 +255,7 @@ def ols(y: pd.Series, X: pd.DataFrame) -> Dict[str, object]:
 
 def excess_returns(factors: pd.DataFrame) -> pd.DataFrame:
     """Daily factor returns: market (Nifty 500 TRI) and Nifty 50 in excess of the 1D rate, crude and G-sec returns."""
-    r = factors.pct_change(fill_method=None)
+    r = factors[FACTOR_COLUMNS].pct_change(fill_method=None)
     out = pd.DataFrame(index=factors.index)
     out["rf"] = r["rate_1d_index"]
     out["mkt_excess"] = r["nifty500_tri"] - out["rf"]

@@ -737,6 +737,8 @@ with tab_overview:
     tracker_summary = _out("tracker_summary.csv")
     def _inr(x: float) -> str:
         """Indian digit grouping: 1,08,74,323."""
+        if x is None or pd.isna(x):
+            return "—"
         neg, x = x < 0, abs(round(x))
         s = str(int(x))
         head, tail = s[:-3], s[-3:]
@@ -789,6 +791,10 @@ with tab_overview:
         l2.metric("Same ₹1 crore in a liquid fund", _inr(float(t["liquid_fund_value_inr"])),
                   f"we are {_inr(float(t['vs_liquid_fund_inr']))} ahead" if float(t["vs_liquid_fund_inr"]) >= 0
                   else f"we are {_inr(-float(t['vs_liquid_fund_inr']))} behind")
+        if str(t.get("benchmark_provisional")) == "True":
+            l1.caption("Provisional: niftyindices.com has not given the latest Nifty 500 TRI yet, so the missing "
+                       "day(s) use the Nifty 500 price index (dividends left out, ~0.005% a day). It corrects itself "
+                       "at the next refresh that reaches the TRI.")
         l3.metric("Still at risk if every stop is hit", _inr(float(t["at_risk_to_stops_inr"])),
                   help="Sum over the stocks of (close - stop-loss) x shares; a gap below a stop can lose more.")
         xirr_val = t.get("xirr_pct")

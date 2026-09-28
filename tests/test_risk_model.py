@@ -166,3 +166,25 @@ def test_live_metrics_wait_for_enough_sessions_then_use_the_tracker(tmp_path, mo
     assert out["window"].startswith("Live") and out["sessions"] == 25
     assert out["portfolio_return_pct"] == pytest.approx((p[-1] / 1e7 - 1) * 100, abs=0.01)
     assert out["beta_vs_nifty500"] == pytest.approx(1.1, abs=0.02)
+
+
+def test_missing_tri_sessions_are_bridged_with_the_price_index_and_flagged():
+    from risk_model import extend_tri_with_price
+    idx = pd.to_datetime(["2026-09-24", "2026-09-25", "2026-09-28", "2026-09-29"])
+    tri = pd.Series([1000.0, 1010.0, np.nan, np.nan], index=idx)
+    price = pd.Series([500.0, 505.0, 510.05, 499.849], index=idx)
+    filled, flag = extend_tri_with_price(tri, price)
+    assert filled.iloc[2] == pytest.approx(1010.0 * 1.01) and filled.iloc[3] == pytest.approx(1010.0 * 1.01 * 0.98)
+    assert flag.tolist() == [False, False, True, True]
+    # Nothing to chain from before the first TRI value: left missing, never invented
+    early, _ = extend_tri_with_price(pd.Series([np.nan, 1.0], index=idx[:2]), price.iloc[:2])
+    assert np.isnan(early.iloc[0])
+
+
+def test_excess_returns_ignore_the_provisional_flag_column():
+    from risk_model import FACTOR_COLUMNS, excess_returns
+    idx = pd.bdate_range("2026-09-21", periods=4)
+    f = pd.DataFrame({c: [100.0, 101.0, 102.0, 101.5] for c in FACTOR_COLUMNS}, index=idx)
+    f["nifty500_tri_provisional"] = [False, False, True, True]
+    out = excess_returns(f)
+    assert len(out) == 3 and np.isfinite(out.to_numpy(dtype=float)).all()

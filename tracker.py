@@ -320,6 +320,8 @@ def value_portfolio(ledger: pd.DataFrame, closes: pd.DataFrame, factors: pd.Data
     sessions = closes.index[(closes.index >= start) & (closes.index <= end)]
     rate = factors["rate_1d_index"].reindex(sessions).ffill()
     tri = factors["nifty500_tri"].reindex(sessions).ffill()
+    provisional = (factors["nifty500_tri_provisional"].reindex(sessions).fillna(False).astype(bool)
+                   if "nifty500_tri_provisional" in factors else pd.Series(False, index=sessions))
     closes = closes.reindex(sessions).ffill()
     positions: Dict[str, float] = {}
     last_mark: Dict[str, float] = {}
@@ -352,6 +354,7 @@ def value_portfolio(ledger: pd.DataFrame, closes: pd.DataFrame, factors: pd.Data
             "pnl_pct": round((total / PRINCIPAL_INR - 1) * 100, 3),
             "nifty500_inr": round(PRINCIPAL_INR * tri.loc[day] / tri.iloc[0], 2),
             "liquid_fund_inr": round(PRINCIPAL_INR * rate.loc[day] / rate.iloc[0], 2),
+            "benchmark_provisional": bool(provisional.loc[day]),
         })
     return pd.DataFrame(rows)
 
@@ -397,6 +400,7 @@ def summarise(daily: pd.DataFrame, positions: pd.DataFrame) -> pd.DataFrame:
         ("snapshot_date", first["date"]), ("as_of", last["date"]), ("calendar_days", days),
         ("principal_inr", PRINCIPAL_INR), ("value_inr", last["total_inr"]), ("pnl_inr", last["pnl_inr"]),
         ("pnl_pct", last["pnl_pct"]),
+        ("benchmark_provisional", bool(daily.get("benchmark_provisional", pd.Series([False])).any())),
         ("nifty500_value_inr", last["nifty500_inr"]), ("liquid_fund_value_inr", last["liquid_fund_inr"]),
         ("vs_nifty500_inr", round(last["total_inr"] - last["nifty500_inr"], 2)),
         ("vs_liquid_fund_inr", round(last["total_inr"] - last["liquid_fund_inr"], 2)),
@@ -671,6 +675,8 @@ def publish_ledger(message: str, branch: str = "main") -> str:
 
 
 def _inr(x: float) -> str:
+    if x is None or pd.isna(x):
+        return "n/a"
     neg, x = x < 0, abs(round(x))
     s = str(int(x))
     head, tail = s[:-3], s[-3:]
