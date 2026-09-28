@@ -1,0 +1,8 @@
+field,value
+as_of,2026-09-28
+pnl_pct,0.0
+trigger_pct,10.0
+rolls_done,0
+max_rolls,1
+status,waiting
+gap_to_trigger_pp,10.0

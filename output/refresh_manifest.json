@@ -1,8 +1,8 @@
 {
   "as_of": "2026-09-28",
-  "started": "2026-09-28T19:23:47+05:30",
+  "started": "2026-09-28T20:33:13+05:30",
   "status": "ok",
-  "pid": 383,
+  "pid": 766,
   "total_steps": 9,
   "step_names": [
     "Nifty 500 TRI (niftyindices.com)",
@@ -16,26 +16,26 @@
     "Performance and CML"
   ],
   "expected_seconds": {
-    "Nifty 500 TRI (niftyindices.com)": 199,
-    "Prices, technicals and risk summary": 28,
-    "Technical-first sector screens": 36,
-    "Review tables and selection ranking": 72,
+    "Nifty 500 TRI (niftyindices.com)": 40,
+    "Prices, technicals and risk summary": 85,
+    "Technical-first sector screens": 8,
+    "Review tables and selection ranking": 31,
     "Locked-portfolio run-up check": 11,
-    "Candidate sweep": 34,
-    "Regression and hedge plan": 7,
-    "Live P&L of the Rs 1 crore": 1,
-    "Performance and CML": 171
+    "Candidate sweep": 99,
+    "Regression and hedge plan": 60,
+    "Live P&L of the Rs 1 crore": 24,
+    "Performance and CML": 155
   },
   "steps": [
     {
       "name": "Nifty 500 TRI (niftyindices.com)",
       "returncode": 0,
-      "seconds": 40
+      "seconds": 1
     },
     {
       "name": "Prices, technicals and risk summary",
       "returncode": 0,
-      "seconds": 85
+      "seconds": 10
     },
     {
       "name": "Technical-first sector screens",
@@ -45,37 +45,37 @@
     {
       "name": "Review tables and selection ranking",
       "returncode": 0,
-      "seconds": 31
+      "seconds": 29
     },
     {
       "name": "Locked-portfolio run-up check",
       "returncode": 0,
-      "seconds": 11
+      "seconds": 5
     },
     {
       "name": "Candidate sweep",
       "returncode": 0,
-      "seconds": 99
+      "seconds": 7
     },
     {
       "name": "Regression and hedge plan",
       "returncode": 0,
-      "seconds": 60
+      "seconds": 28
     },
     {
       "name": "Live P&L of the Rs 1 crore",
       "returncode": 0,
-      "seconds": 24
+      "seconds": 1
     },
     {
       "name": "Performance and CML",
       "returncode": 0,
-      "seconds": 155
+      "seconds": 150
     }
   ],
-  "heartbeat": "2026-09-28T19:32:19+05:30",
+  "heartbeat": "2026-09-28T20:37:12+05:30",
   "current_step": 9,
   "current_step_name": "Performance and CML",
-  "current_step_started": "2026-09-28T19:29:45+05:30",
-  "finished": "2026-09-28T19:32:19+05:30"
+  "current_step_started": "2026-09-28T20:34:42+05:30",
+  "finished": "2026-09-28T20:37:12+05:30"
 }

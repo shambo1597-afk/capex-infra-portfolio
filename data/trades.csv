@@ -1,0 +1,10 @@
+date,instrument,action,quantity,price,note
+2026-09-28,WELCORP,BUY,488,2739.7,snapshot: 13.79% of the equity sleeve at the close
+2026-09-28,RPEL,BUY,642,1703.9,snapshot: 11.29% of the equity sleeve at the close
+2026-09-28,SBCL,BUY,1105,1110.2,snapshot: 12.65% of the equity sleeve at the close
+2026-09-28,AEROFLEX,BUY,1743,513.4,snapshot: 9.23% of the equity sleeve at the close
+2026-09-28,TDPOWERSYS,BUY,1516,722.0,snapshot: 11.29% of the equity sleeve at the close
+2026-09-28,RAMRAT,BUY,2456,568.2,snapshot: 14.39% of the equity sleeve at the close
+2026-09-28,APARINDS,BUY,69,17263.0,snapshot: 12.36% of the equity sleeve at the close
+2026-09-28,ACMESOLAR,BUY,3322,437.9,snapshot: 15.00% of the equity sleeve at the close
+2026-09-28,NIFTY 2026-12-29 22000 PE,BUY,520,208.2,"tail hedge (risk_model.py), NSE settlement price"
