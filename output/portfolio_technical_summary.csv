@@ -1,158 +1,158 @@
 symbol,sector,current_price,latest_rsi,latest_adx,trend_direction,rs_score_vs_nifty500,nearest_support,nearest_resistance
-ACC,Cement,1236.4,38.51,16.01,Bearish (Downtrend),-5.55,1230.6,1314.0
-AMBUJACEM,Cement,383.8,36.05,26.5,Bearish (Downtrend),-7.81,380.1,413.5
-BIRLACORPN,Cement,850.3,48.09,32.59,Bearish (Downtrend),-12.18,832.1,897.95
-DALBHARAT,Cement,1700.2,39.23,19.69,Bearish (Downtrend),1.71,1685.1,1765.3
-GRASIM,Cement,3191.0,45.66,20.76,Bearish (Downtrend),5.32,3183.0,3192.3
-INDIACEM,Cement,323.1,26.52,28.31,Bearish (Downtrend),-12.72,319.2,379.5
-JKCEMENT,Cement,5000.0,44.96,29.38,Bullish (Uptrend),-4.28,4999.0,5244.5
-JKLAKSHMI,Cement,510.35,40.82,18.42,Bullish (Uptrend),-13.63,505.9,544.4
-JSWCEMENT,Cement,115.47,29.39,36.52,Bearish (Downtrend),-11.31,115.23,123.9
-NUVOCO,Cement,335.45,52.47,14.91,Bullish (Uptrend),12.01,334.0,335.65
-PRSMJOHNSN,Cement,116.31,60.04,41.72,Bullish (Uptrend),0.67,116.0,116.7
-SHREECEM,Cement,22520.0,39.85,33.29,Bearish (Downtrend),-8.72,22370.0,24485.0
-STARCEMENT,Cement,186.61,41.12,25.16,Bearish (Downtrend),-8.79,186.0,196.34
-RAMCOCEM,Cement,867.55,42.96,13.15,Bearish (Downtrend),-4.96,866.0,899.5
-ULTRACEMCO,Cement,11155.0,48.12,21.33,Bearish (Downtrend),0.13,11074.0,11674.0
-ABB,Capital Goods,7052.5,37.96,22.21,Bearish (Downtrend),0.66,7005.0,7083.0
-ACE,Capital Goods,1226.6,64.25,32.83,Bullish (Uptrend),26.23,1073.8,1241.5
-AEROFLEX,Capital Goods,525.7,53.63,26.95,Bullish (Uptrend),13.81,456.85,542.0
-AIAENG,Capital Goods,3919.4,34.85,23.95,Bearish (Downtrend),-19.12,3886.0,3920.0
-AJAXENGG,Capital Goods,607.75,64.64,16.03,Bullish (Uptrend),13.98,605.05,607.95
-APARINDS,Capital Goods,17776.0,53.73,28.73,Bullish (Uptrend),12.92,16199.0,18132.0
-APLAPOLLO,Capital Goods,2214.7,57.13,28.58,Bullish (Uptrend),25.62,2107.6,2235.2
-ASTRAL,Capital Goods,1399.0,39.65,21.86,Bearish (Downtrend),3.99,1397.0,1425.0
-ATLANTAELE,Capital Goods,1625.9,41.55,20.37,Bearish (Downtrend),-7.37,1625.0,1778.9
-AZAD,Capital Goods,2728.0,50.71,18.19,Bullish (Uptrend),39.22,2677.8,2735.0
-BHEL,Capital Goods,418.95,47.68,19.37,Bearish (Downtrend),2.98,408.15,420.95
-BALUFORGE,Capital Goods,506.8,44.23,25.46,Bearish (Downtrend),12.83,502.7,506.9
-BANSALWIRE,Capital Goods,321.4,55.3,15.78,Bullish (Uptrend),-1.99,312.2,326.0
-BEML,Capital Goods,2036.5,53.04,25.75,Bullish (Uptrend),20.87,2033.0,2037.1
-CARBORUNIV,Capital Goods,1278.5,69.39,29.12,Bullish (Uptrend),8.99,1068.5,1306.9
-CGPOWER,Capital Goods,886.0,48.85,13.5,Bearish (Downtrend),-5.62,883.05,886.8
-CUMMINSIND,Capital Goods,4945.0,39.57,24.88,Bearish (Downtrend),-9.04,4908.6,4957.0
-DEEDEV,Capital Goods,666.2,51.65,14.19,Bullish (Uptrend),1.62,633.0,669.25
-DIACABS,Capital Goods,354.5,50.36,29.39,Bullish (Uptrend),71.72,325.8,366.2
-ELECON,Capital Goods,458.25,61.46,17.91,Bullish (Uptrend),-10.62,456.0,458.9
-ELGIEQUIP,Capital Goods,603.0,45.94,12.74,Bearish (Downtrend),0.85,596.0,607.0
-EMMVEE,Capital Goods,321.9,45.97,18.28,Bearish (Downtrend),-1.42,320.05,329.95
-ESABINDIA,Capital Goods,5527.0,32.11,27.72,Bearish (Downtrend),-2.24,5524.5,5550.0
-FINCABLES,Capital Goods,1460.9,65.06,44.3,Bullish (Uptrend),25.61,1186.5,1498.0
-FINPIPE,Capital Goods,154.16,43.12,26.56,Bearish (Downtrend),-9.94,152.68,162.59
-UTLSOLAR,Capital Goods,422.1,47.9,18.93,Bullish (Uptrend),38.88,410.2,424.8
-GVT&D,Capital Goods,4280.0,45.96,10.7,Bearish (Downtrend),-11.92,4251.8,4344.0
-GENUSPOWER,Capital Goods,305.7,39.58,19.26,Bearish (Downtrend),-2.28,304.46,305.91
-GMMPFAUDLR,Capital Goods,1505.2,78.94,68.1,Bullish (Uptrend),91.59,1155.8,1533.6
-GOODLUCK,Capital Goods,525.65,60.49,25.32,Bullish (Uptrend),8.66,485.03,528.8
-GRAPHITE,Capital Goods,820.7,61.34,39.9,Bullish (Uptrend),35.27,702.5,874.35
-GREAVESCOT,Capital Goods,234.78,76.95,20.38,Bullish (Uptrend),13.76,216.8,235.64
-GRINDWELL,Capital Goods,1972.7,50.81,26.85,Bullish (Uptrend),-6.39,1971.0,2002.7
-HBLENGINE,Capital Goods,806.0,71.79,30.56,Bullish (Uptrend),3.39,798.85,810.3
-POWERINDIA,Capital Goods,31035.0,43.66,17.41,Bearish (Downtrend),-9.54,31020.0,31875.0
-HONAUT,Capital Goods,33865.0,39.64,19.76,Bearish (Downtrend),-11.49,33800.0,34645.0
-INGERRAND,Capital Goods,4233.6,37.36,26.12,Bearish (Downtrend),-3.53,4230.4,4275.0
-INOXINDIA,Capital Goods,2156.8,54.45,18.07,Bearish (Downtrend),17.13,1930.8,2224.0
-INOXWIND,Capital Goods,74.75,48.57,14.49,Bearish (Downtrend),-13.51,73.81,77.85
-JINDALSAW,Capital Goods,285.5,46.2,24.95,Bearish (Downtrend),11.51,275.7,298.4
-JWL,Capital Goods,226.73,32.06,17.78,Bearish (Downtrend),-14.02,225.65,251.92
-JYOTICNC,Capital Goods,1065.1,59.87,33.02,Bullish (Uptrend),37.33,928.6,1134.6
-KANOHAR,Capital Goods,862.55,,,N/A (Insufficient History),14.46,685.1,904.6
-KARAMTARA,Capital Goods,358.7,,,N/A (Insufficient History),2.13,320.0,382.15
-KEI,Capital Goods,4673.5,39.99,29.14,Bearish (Downtrend),-12.56,4666.0,4694.0
-KENNAMET,Capital Goods,4207.2,49.28,40.9,Bullish (Uptrend),42.62,4100.2,4260.0
-KIRLOSBROS,Capital Goods,1771.9,41.48,23.95,Bearish (Downtrend),-8.05,1771.0,1772.2
-KIRLPNU,Capital Goods,691.95,36.66,21.68,Bearish (Downtrend),-25.66,676.55,755.0
-KIRLOSENG,Capital Goods,2137.2,48.72,13.77,Bullish (Uptrend),-10.73,2132.4,2278.5
-KRN,Capital Goods,1381.8,41.02,27.71,Bearish (Downtrend),12.22,1371.8,1398.4
-KSB,Capital Goods,819.1,52.76,11.39,Bullish (Uptrend),-11.66,816.9,823.05
-KSHINTL,Capital Goods,1035.5,50.62,22.25,Bullish (Uptrend),22.34,931.25,1045.5
-LLOYDSENGG,Capital Goods,98.56,71.02,27.93,Bullish (Uptrend),14.87,86.25,99.65
-LMW,Capital Goods,17133.0,39.83,25.65,Bearish (Downtrend),8.99,17100.0,17699.0
-LCL,Capital Goods,594.7,62.65,20.97,Bullish (Uptrend),23.45,531.4,598.0
-MAHSEAMLES,Capital Goods,715.65,62.89,47.76,Bullish (Uptrend),17.26,642.95,717.8
-MANINDS,Capital Goods,1020.35,75.05,56.08,Bullish (Uptrend),79.36,737.45,1039.7
-MTARTECH,Capital Goods,6900.0,46.71,12.72,Bearish (Downtrend),-7.22,6707.5,6969.0
-OMNI,Capital Goods,533.95,44.28,24.81,Bullish (Uptrend),8.64,531.35,538.75
-POLYCAB,Capital Goods,8408.5,43.01,24.55,Bearish (Downtrend),-12.29,8355.5,8455.0
-POWERICA,Capital Goods,582.95,59.37,11.69,Bullish (Uptrend),-5.34,538.0,583.45
-PRAJIND,Capital Goods,315.9,40.2,22.55,Bearish (Downtrend),-7.08,315.15,323.45
-PREMIERENE,Capital Goods,896.4,33.73,41.84,Bearish (Downtrend),-11.19,894.05,904.85
-QPOWER,Capital Goods,1517.8,58.61,23.15,Bullish (Uptrend),27.43,1291.7,1570.0
-RRKABEL,Capital Goods,2528.3,48.72,32.43,Bearish (Downtrend),2.76,2516.5,2549.0
-RPEL,Capital Goods,1699.5,53.64,29.49,Bullish (Uptrend),48.35,1507.2,1700.0
-RAMRAT,Capital Goods,570.0,61.42,25.23,Bullish (Uptrend),42.59,500.1,580.5
-RATNAMANI,Capital Goods,2778.3,56.69,28.46,Bullish (Uptrend),9.82,2533.4,2783.4
-RHIM,Capital Goods,386.45,57.51,16.32,Bullish (Uptrend),5.34,383.3,387.55
-SAATVIKGL,Capital Goods,427.45,52.1,17.33,Bullish (Uptrend),-5.83,427.25,427.5
-SCHNEIDER,Capital Goods,1209.5,47.01,12.61,Bullish (Uptrend),-15.07,1185.0,1210.0
-SHAKTIPUMP,Capital Goods,466.9,41.51,15.79,Bearish (Downtrend),-19.1,465.0,515.5
-SHANTIGEAR,Capital Goods,666.55,63.39,47.01,Bullish (Uptrend),53.06,510.2,704.0
-SBCL,Capital Goods,1154.5,62.19,34.27,Bullish (Uptrend),56.29,986.5,1155.9
-SIEMENS,Capital Goods,3877.0,48.13,15.94,Bearish (Downtrend),10.23,3875.3,3885.0
-ENRIN,Capital Goods,3313.0,55.9,14.94,Bullish (Uptrend),-5.83,3265.0,3328.6
-SKFINDIA,Capital Goods,1539.8,49.44,23.1,Bullish (Uptrend),-5.28,1538.0,1559.0
-SKFINDUS,Capital Goods,2918.0,52.29,26.77,Bullish (Uptrend),3.39,2781.6,2929.5
-SKIPPER,Capital Goods,551.15,48.72,12.15,Bearish (Downtrend),6.0,524.05,558.7
-SETL,Capital Goods,402.55,56.85,39.4,Bullish (Uptrend),74.17,351.1,410.7
-SUPREMEIND,Capital Goods,3550.0,53.7,15.85,Bullish (Uptrend),12.87,3547.2,3568.0
-SUZLON,Capital Goods,40.8,24.42,39.21,Bearish (Downtrend),-26.96,40.55,43.54
-TARIL,Capital Goods,277.65,38.02,15.05,Bearish (Downtrend),-14.85,276.6,292.3
-TDPOWERSYS,Capital Goods,751.55,53.0,28.54,Bullish (Uptrend),23.63,717.2,765.0
-TIIL,Capital Goods,3003.4,43.61,26.24,Bullish (Uptrend),16.47,2988.4,3020.0
-TEGA,Capital Goods,2091.6,72.93,32.18,Bullish (Uptrend),24.41,1868.4,2149.0
-TEXRAIL,Capital Goods,125.67,66.74,29.63,Bullish (Uptrend),18.58,125.2,126.7
-THERMAX,Capital Goods,3447.2,28.14,53.17,Bearish (Downtrend),-31.01,3445.1,3586.0
-TIMKEN,Capital Goods,3206.1,50.69,14.09,Bullish (Uptrend),-6.43,3205.0,3291.4
-TITAGARH,Capital Goods,822.6,44.89,12.98,Bearish (Downtrend),-4.62,821.0,848.0
-TRANSRAILL,Capital Goods,469.25,59.05,40.54,Bullish (Uptrend),-7.7,469.05,478.8
-TRITURBINE,Capital Goods,554.2,43.6,15.97,Bearish (Downtrend),-17.65,552.5,554.3
-UNIVCABLES,Capital Goods,1494.0,47.77,17.5,Bearish (Downtrend),23.82,1477.0,1693.4
-USHAMART,Capital Goods,518.8,56.11,16.72,Bullish (Uptrend),8.84,486.1,519.85
-VESUVIUS,Capital Goods,389.1,32.01,20.65,Bearish (Downtrend),-14.61,387.6,438.0
-VIKRAMSOLR,Capital Goods,160.31,38.1,9.4,Bearish (Downtrend),-12.4,160.3,175.6
-VOLTAMP,Capital Goods,10709.0,49.93,23.25,Bullish (Uptrend),7.96,10259.0,10760.0
-WAAREEENER,Capital Goods,2495.0,40.06,29.12,Bearish (Downtrend),-11.83,2491.3,2653.0
-WAAREERTL,Capital Goods,832.9,43.05,26.25,Bullish (Uptrend),-16.08,832.05,882.35
-WELCORP,Capital Goods,2832.4,66.32,42.51,Bullish (Uptrend),89.2,2240.2,2836.0
-AFCONS,Capital Goods,252.5,35.57,15.95,Bearish (Downtrend),-18.33,249.0,288.6
-CEIGALL,Capital Goods,384.1,63.5,42.4,Bullish (Uptrend),-1.27,354.1,385.55
-CEMPRO,Capital Goods,1257.2,46.77,14.97,Bullish (Uptrend),2.08,1245.9,1257.4
-DBL,Capital Goods,412.45,50.55,24.79,Bullish (Uptrend),-9.36,411.25,425.0
-ENGINERSIN,Capital Goods,315.65,72.95,38.88,Bullish (Uptrend),30.84,246.76,318.9
-GRINFRA,Capital Goods,812.4,35.37,15.77,Bearish (Downtrend),-10.35,808.0,896.75
-HCC,Capital Goods,21.26,42.17,15.36,Bearish (Downtrend),-15.52,21.19,21.29
-IRB,Capital Goods,17.68,29.26,20.43,Bearish (Downtrend),-16.54,17.51,20.04
-IRCON,Capital Goods,105.95,23.93,35.53,Bearish (Downtrend),-17.53,104.76,123.89
-ISGEC,Capital Goods,890.55,66.44,24.75,Bullish (Uptrend),-1.86,890.05,896.0
-KPIL,Capital Goods,1391.2,48.61,31.1,Bullish (Uptrend),5.07,1371.8,1392.5
-KEC,Capital Goods,396.95,39.68,44.66,Bearish (Downtrend),-21.26,389.15,429.6
-LT,Capital Goods,3876.2,43.79,14.39,Bearish (Downtrend),-5.21,3867.8,3885.9
-NBCC,Capital Goods,82.86,40.27,34.29,Bearish (Downtrend),-18.87,82.59,88.68
-NCC,Capital Goods,132.82,35.14,19.21,Bearish (Downtrend),-9.69,131.16,147.48
-POWERMECH,Capital Goods,2407.3,47.13,16.5,Bearish (Downtrend),-9.77,2400.0,2414.4
-RVNL,Capital Goods,207.0,44.16,18.75,Bearish (Downtrend),-11.12,203.83,217.1
-RITES,Capital Goods,199.31,28.53,19.61,Bearish (Downtrend),-1.58,199.09,205.9
-TECHNOE,Capital Goods,1006.2,52.99,15.91,Bullish (Uptrend),-5.73,1005.95,1041.5
-WELENT,Capital Goods,754.5,54.34,43.87,Bullish (Uptrend),33.14,661.6,768.0
-ACMESOLAR,Power,442.9,63.04,33.11,Bullish (Uptrend),18.51,382.9,464.45
-ADANIENSOL,Power,1338.5,35.26,27.88,Bearish (Downtrend),-8.23,1337.0,1383.4
-ADANIGREEN,Power,1296.6,48.07,14.09,Bearish (Downtrend),-11.98,1291.4,1305.0
-ADANIPOWER,Power,202.75,44.89,13.29,Bearish (Downtrend),-8.98,201.87,207.5
-CESC,Power,139.86,29.76,19.02,Bearish (Downtrend),-13.24,139.6,153.42
-CLEANMAX,Power,1393.4,56.38,19.27,Bullish (Uptrend),8.87,1240.0,1398.6
-GMRP&UI,Power,102.68,65.77,15.0,Bullish (Uptrend),5.38,101.6,102.88
-JPPOWER,Power,15.87,42.3,17.84,Bullish (Uptrend),-9.17,15.7,16.18
-JSWENERGY,Power,506.55,37.67,14.26,Bearish (Downtrend),-11.87,505.25,507.65
-JNPR,Power,266.05,52.36,15.28,Bullish (Uptrend),7.19,246.57,275.52
-KPIGREEN,Power,339.75,60.02,50.06,Bullish (Uptrend),-12.38,339.45,340.0
-NAVA,Power,551.45,45.86,16.4,Bullish (Uptrend),-6.24,550.1,565.0
-NHPC,Power,76.0,47.3,11.85,Bullish (Uptrend),-5.1,75.94,77.31
-NLCINDIA,Power,262.55,39.9,21.76,Bearish (Downtrend),-18.17,262.2,263.0
-NTPC,Power,326.6,40.62,27.98,Bearish (Downtrend),-6.56,324.7,329.95
-NTPCGREEN,Power,93.47,60.25,24.09,Bullish (Uptrend),0.67,92.5,93.85
-POWERGRID,Power,269.5,51.72,13.86,Bullish (Uptrend),-4.13,268.75,271.5
-RPOWER,Power,20.57,30.48,12.81,Bearish (Downtrend),-13.06,20.51,22.9
-SJVN,Power,61.76,28.22,25.44,Bearish (Downtrend),-12.25,61.21,67.51
-TATAPOWER,Power,367.5,49.53,22.8,Bullish (Uptrend),-3.19,365.15,372.35
-TORNTPOWER,Power,1254.6,43.15,19.66,Bearish (Downtrend),-9.8,1243.8,1287.5
-VEDPOWER,Power,32.95,45.39,25.74,Bearish (Downtrend),-18.49,31.56,37.71
+ACC,Cement,1213.5,33.2,16.0,Bearish (Downtrend),-5.25,1210.8,1304.0
+AMBUJACEM,Cement,374.35,30.43,27.79,Bearish (Downtrend),-7.94,374.0,411.4
+BIRLACORPN,Cement,839.1,44.1,31.0,Bearish (Downtrend),-11.28,832.1,895.0
+DALBHARAT,Cement,1651.6,33.44,20.17,Bearish (Downtrend),0.44,1651.0,1765.3
+GRASIM,Cement,3150.0,41.66,20.97,Bearish (Downtrend),4.93,3135.8,3180.0
+INDIACEM,Cement,312.4,22.67,29.51,Bearish (Downtrend),-13.83,310.8,379.5
+JKCEMENT,Cement,4993.5,44.64,27.49,Bearish (Downtrend),-4.96,4990.5,5229.0
+JKLAKSHMI,Cement,494.8,33.24,18.26,Bearish (Downtrend),-15.01,491.25,542.1
+JSWCEMENT,Cement,112.49,24.19,37.14,Bearish (Downtrend),-13.3,112.4,123.9
+NUVOCO,Cement,325.85,46.24,13.99,Bullish (Uptrend),10.84,325.1,326.65
+PRSMJOHNSN,Cement,115.15,55.84,42.37,Bullish (Uptrend),1.28,115.02,115.65
+SHREECEM,Cement,22170.0,36.36,32.67,Bearish (Downtrend),-8.88,21905.0,24140.0
+STARCEMENT,Cement,182.42,35.91,25.69,Bearish (Downtrend),-8.86,180.12,196.34
+RAMCOCEM,Cement,848.65,36.61,13.82,Bearish (Downtrend),-5.42,847.3,899.5
+ULTRACEMCO,Cement,11025.0,44.2,20.77,Bearish (Downtrend),1.29,11020.0,11560.0
+ABB,Capital Goods,6972.5,35.08,22.54,Bearish (Downtrend),2.49,6926.5,6993.0
+ACE,Capital Goods,1212.9,60.43,32.12,Bullish (Uptrend),21.77,1073.8,1213.2
+AEROFLEX,Capital Goods,513.4,49.73,25.43,Bullish (Uptrend),12.18,456.85,518.85
+AIAENG,Capital Goods,3841.4,31.38,24.43,Bearish (Downtrend),-21.08,3811.6,3851.0
+AJAXENGG,Capital Goods,589.9,55.42,17.89,Bullish (Uptrend),12.21,588.0,593.4
+APARINDS,Capital Goods,17263.0,48.75,26.74,Bullish (Uptrend),13.31,16199.0,18132.0
+APLAPOLLO,Capital Goods,2197.0,54.86,27.45,Bullish (Uptrend),26.15,2107.6,2207.1
+ASTRAL,Capital Goods,1370.5,34.94,22.45,Bearish (Downtrend),5.93,1368.4,1398.0
+ATLANTAELE,Capital Goods,1613.3,40.58,21.45,Bearish (Downtrend),-7.74,1586.0,1617.2
+AZAD,Capital Goods,2723.2,50.37,17.33,Bullish (Uptrend),35.82,2677.8,2735.0
+BHEL,Capital Goods,411.9,44.21,18.64,Bearish (Downtrend),2.79,408.15,417.9
+BALUFORGE,Capital Goods,495.1,41.3,24.79,Bearish (Downtrend),9.43,494.0,499.45
+BANSALWIRE,Capital Goods,317.6,51.32,15.28,Bearish (Downtrend),-3.36,312.2,318.0
+BEML,Capital Goods,1995.1,48.52,24.3,Bearish (Downtrend),16.65,1972.5,1998.0
+CARBORUNIV,Capital Goods,1247.8,63.76,30.87,Bullish (Uptrend),9.23,1068.5,1268.0
+CGPOWER,Capital Goods,865.0,43.59,13.33,Bearish (Downtrend),-5.83,864.2,872.35
+CUMMINSIND,Capital Goods,4855.0,35.35,25.67,Bearish (Downtrend),-10.89,4844.0,4900.0
+DEEDEV,Capital Goods,655.5,49.43,13.39,Bearish (Downtrend),5.2,633.0,669.25
+DIACABS,Capital Goods,339.25,44.54,27.31,Bullish (Uptrend),65.38,325.8,342.0
+ELECON,Capital Goods,480.75,67.97,20.35,Bullish (Uptrend),-6.62,475.5,483.0
+ELGIEQUIP,Capital Goods,598.85,44.19,12.44,Bearish (Downtrend),3.45,596.0,607.0
+EMMVEE,Capital Goods,315.55,42.52,17.15,Bearish (Downtrend),-4.68,315.0,329.95
+ESABINDIA,Capital Goods,5518.5,31.77,27.93,Bearish (Downtrend),-0.18,5506.6,5550.0
+FINCABLES,Capital Goods,1408.1,57.61,43.73,Bullish (Uptrend),23.73,1186.5,1429.0
+FINPIPE,Capital Goods,151.61,37.8,26.71,Bearish (Downtrend),-9.98,150.51,162.59
+UTLSOLAR,Capital Goods,409.05,43.79,17.91,Bearish (Downtrend),29.92,400.5,412.6
+GVT&D,Capital Goods,4203.0,42.89,10.6,Bearish (Downtrend),-11.67,4156.0,4344.0
+GENUSPOWER,Capital Goods,294.05,32.88,19.02,Bearish (Downtrend),1.53,292.68,294.54
+GMMPFAUDLR,Capital Goods,1480.1,74.5,68.3,Bullish (Uptrend),90.78,1155.8,1533.6
+GOODLUCK,Capital Goods,522.0,58.54,24.91,Bullish (Uptrend),8.63,485.03,525.0
+GRAPHITE,Capital Goods,799.0,55.61,39.15,Bullish (Uptrend),33.58,702.5,802.4
+GREAVESCOT,Capital Goods,230.4,71.77,22.89,Bullish (Uptrend),8.06,216.8,232.9
+GRINDWELL,Capital Goods,1918.2,44.07,25.27,Bullish (Uptrend),-8.12,1910.0,2002.7
+HBLENGINE,Capital Goods,785.65,64.25,31.88,Bullish (Uptrend),0.05,785.1,786.4
+POWERINDIA,Capital Goods,30260.0,39.55,17.74,Bearish (Downtrend),-10.02,30000.0,30400.0
+HONAUT,Capital Goods,33855.0,39.58,19.14,Bearish (Downtrend),-11.48,33800.0,34645.0
+INGERRAND,Capital Goods,4226.8,37.04,25.91,Bearish (Downtrend),-2.77,4225.0,4275.0
+INOXINDIA,Capital Goods,2051.1,47.84,17.03,Bearish (Downtrend),8.05,1930.8,2063.0
+INOXWIND,Capital Goods,72.0,41.75,14.32,Bearish (Downtrend),-16.79,71.41,77.85
+JINDALSAW,Capital Goods,276.15,41.15,25.27,Bearish (Downtrend),8.93,275.7,278.95
+JWL,Capital Goods,222.23,28.16,19.14,Bearish (Downtrend),-13.7,221.85,251.92
+JYOTICNC,Capital Goods,1046.1,56.55,32.06,Bullish (Uptrend),38.28,928.6,1046.45
+KANOHAR,Capital Goods,811.15,,,N/A (Insufficient History),9.27,685.1,904.6
+KARAMTARA,Capital Goods,357.8,,,N/A (Insufficient History),3.51,320.0,382.15
+KEI,Capital Goods,4516.0,35.15,29.11,Bearish (Downtrend),-13.47,4450.0,4523.0
+KENNAMET,Capital Goods,4134.1,47.04,38.33,Bullish (Uptrend),38.41,4100.2,4155.1
+KIRLOSBROS,Capital Goods,1732.3,36.84,24.95,Bearish (Downtrend),-12.32,1719.9,1757.0
+KIRLPNU,Capital Goods,678.65,33.05,22.38,Bearish (Downtrend),-27.18,676.55,685.5
+KIRLOSENG,Capital Goods,2141.2,49.06,13.13,Bearish (Downtrend),-6.1,2132.4,2278.5
+KRN,Capital Goods,1387.4,41.79,26.28,Bearish (Downtrend),14.08,1371.8,1398.4
+KSB,Capital Goods,801.25,47.85,10.81,Bearish (Downtrend),-13.11,800.2,801.7
+KSHINTL,Capital Goods,984.55,42.25,21.54,Bearish (Downtrend),17.33,931.25,1045.5
+LLOYDSENGG,Capital Goods,95.97,65.1,28.92,Bullish (Uptrend),14.23,86.25,96.5
+LMW,Capital Goods,16966.0,37.97,25.14,Bearish (Downtrend),11.25,16800.0,17699.0
+LCL,Capital Goods,570.2,54.71,21.66,Bullish (Uptrend),20.09,531.4,577.7
+MAHSEAMLES,Capital Goods,714.35,62.32,47.07,Bullish (Uptrend),22.82,644.0,717.8
+MANINDS,Capital Goods,953.35,64.74,56.27,Bullish (Uptrend),67.22,737.45,1005.0
+MTARTECH,Capital Goods,7072.5,50.36,11.81,Bearish (Downtrend),-3.87,6707.5,7100.0
+OMNI,Capital Goods,525.85,42.26,23.39,Bullish (Uptrend),1.36,520.0,538.75
+POLYCAB,Capital Goods,8191.0,36.55,25.05,Bearish (Downtrend),-14.45,8175.0,8224.5
+POWERICA,Capital Goods,562.95,53.37,11.16,Bullish (Uptrend),-5.4,538.0,579.9
+PRAJIND,Capital Goods,311.95,37.46,22.64,Bearish (Downtrend),-7.78,310.35,315.4
+PREMIERENE,Capital Goods,906.0,36.86,42.06,Bearish (Downtrend),-10.48,894.05,910.45
+QPOWER,Capital Goods,1592.7,63.86,22.96,Bullish (Uptrend),33.51,1291.7,1593.6
+RRKABEL,Capital Goods,2459.8,43.36,31.11,Bearish (Downtrend),6.02,2453.0,2518.9
+RPEL,Capital Goods,1703.9,53.93,28.29,Bullish (Uptrend),44.84,1507.2,1749.0
+RAMRAT,Capital Goods,568.2,60.77,25.7,Bullish (Uptrend),42.96,500.1,580.5
+RATNAMANI,Capital Goods,2748.4,54.23,28.05,Bullish (Uptrend),12.82,2533.4,2769.8
+RHIM,Capital Goods,386.6,57.62,17.23,Bullish (Uptrend),8.45,383.3,387.55
+SAATVIKGL,Capital Goods,422.4,49.75,16.8,Bullish (Uptrend),-5.83,421.05,424.0
+SCHNEIDER,Capital Goods,1188.2,44.04,11.83,Bearish (Downtrend),-9.33,1185.0,1210.0
+SHAKTIPUMP,Capital Goods,465.15,40.72,15.23,Bearish (Downtrend),-16.97,465.0,515.5
+SHANTIGEAR,Capital Goods,633.3,54.22,44.44,Bullish (Uptrend),46.0,511.0,637.45
+SBCL,Capital Goods,1110.2,55.15,32.81,Bullish (Uptrend),49.31,986.5,1155.9
+SIEMENS,Capital Goods,3785.5,41.45,15.71,Bearish (Downtrend),8.48,3770.0,3787.0
+ENRIN,Capital Goods,3189.0,46.75,14.02,Bullish (Uptrend),-10.1,3181.0,3190.0
+SKFINDIA,Capital Goods,1511.8,43.28,22.6,Bullish (Uptrend),-6.29,1508.0,1559.0
+SKFINDUS,Capital Goods,2881.7,49.63,25.9,Bullish (Uptrend),2.97,2781.6,2907.1
+SKIPPER,Capital Goods,535.65,44.15,11.88,Bearish (Downtrend),3.88,524.05,558.7
+SETL,Capital Goods,422.65,62.23,38.78,Bullish (Uptrend),67.92,356.45,424.7
+SUPREMEIND,Capital Goods,3499.8,50.64,15.39,Bullish (Uptrend),14.15,3491.1,3538.1
+SUZLON,Capital Goods,39.66,21.17,40.25,Bearish (Downtrend),-29.35,39.52,43.54
+TARIL,Capital Goods,270.45,33.51,15.57,Bearish (Downtrend),-19.71,270.0,292.3
+TDPOWERSYS,Capital Goods,722.0,48.06,27.26,Bullish (Uptrend),19.93,717.2,765.0
+TIIL,Capital Goods,2929.4,38.56,24.92,Bearish (Downtrend),17.53,2912.1,3020.0
+TEGA,Capital Goods,2011.5,64.47,32.97,Bullish (Uptrend),21.87,1868.4,2149.0
+TEXRAIL,Capital Goods,123.14,61.7,30.6,Bullish (Uptrend),17.7,122.64,123.37
+THERMAX,Capital Goods,3386.0,25.54,54.08,Bearish (Downtrend),-31.05,3376.0,3586.0
+TIMKEN,Capital Goods,3180.5,48.81,13.41,Bearish (Downtrend),-5.44,3180.0,3291.4
+TITAGARH,Capital Goods,818.65,43.8,12.65,Bearish (Downtrend),-3.73,814.15,822.0
+TRANSRAILL,Capital Goods,449.65,51.35,38.94,Bullish (Uptrend),-8.86,435.65,478.8
+TRITURBINE,Capital Goods,551.65,42.69,16.31,Bearish (Downtrend),-16.7,543.5,554.0
+UNIVCABLES,Capital Goods,1427.1,40.99,17.65,Bearish (Downtrend),17.16,1387.0,1435.0
+USHAMART,Capital Goods,508.0,50.55,16.09,Bullish (Uptrend),5.55,486.1,518.0
+VESUVIUS,Capital Goods,385.4,30.29,21.62,Bearish (Downtrend),-12.52,383.0,438.0
+VIKRAMSOLR,Capital Goods,160.08,37.79,9.84,Bearish (Downtrend),-7.58,160.0,175.6
+VOLTAMP,Capital Goods,10513.0,46.31,21.61,Bullish (Uptrend),4.61,10259.0,10585.0
+WAAREEENER,Capital Goods,2455.0,36.49,29.65,Bearish (Downtrend),-13.37,2437.0,2653.0
+WAAREERTL,Capital Goods,826.05,40.7,25.85,Bullish (Uptrend),-15.56,821.5,877.3
+WELCORP,Capital Goods,2739.7,61.01,40.75,Bullish (Uptrend),83.34,2240.2,2784.8
+AFCONS,Capital Goods,251.65,35.07,15.79,Bearish (Downtrend),-16.09,249.0,288.6
+CEIGALL,Capital Goods,378.55,58.82,41.82,Bullish (Uptrend),-0.07,354.1,379.95
+CEMPRO,Capital Goods,1224.5,42.31,14.35,Bearish (Downtrend),-2.39,1216.5,1257.4
+DBL,Capital Goods,406.9,46.58,24.01,Bullish (Uptrend),-5.96,406.5,425.0
+ENGINERSIN,Capital Goods,313.9,71.6,40.44,Bullish (Uptrend),33.78,252.91,318.9
+GRINFRA,Capital Goods,799.3,31.96,16.41,Bearish (Downtrend),-9.46,795.6,893.75
+HCC,Capital Goods,20.55,37.52,15.63,Bearish (Downtrend),-16.56,20.5,20.6
+IRB,Capital Goods,17.14,24.65,21.62,Bearish (Downtrend),-16.66,17.07,20.04
+IRCON,Capital Goods,103.25,20.73,36.98,Bearish (Downtrend),-17.91,102.82,122.35
+ISGEC,Capital Goods,886.45,65.33,25.74,Bullish (Uptrend),-0.75,885.8,888.6
+KPIL,Capital Goods,1375.6,45.45,29.01,Bearish (Downtrend),3.72,1371.8,1383.2
+KEC,Capital Goods,390.55,36.82,44.67,Bearish (Downtrend),-21.79,389.15,429.6
+LT,Capital Goods,3766.4,35.5,15.65,Bearish (Downtrend),-5.78,3762.3,3767.0
+NBCC,Capital Goods,80.21,33.56,34.58,Bearish (Downtrend),-20.24,80.13,87.35
+NCC,Capital Goods,130.29,31.97,19.86,Bearish (Downtrend),-8.77,130.0,147.48
+POWERMECH,Capital Goods,2364.3,43.25,16.07,Bearish (Downtrend),-11.11,2361.7,2370.7
+RVNL,Capital Goods,202.75,39.99,18.58,Bearish (Downtrend),-10.71,202.04,216.45
+RITES,Capital Goods,196.11,25.35,21.45,Bearish (Downtrend),-0.79,195.94,205.9
+TECHNOE,Capital Goods,981.85,47.27,15.98,Bullish (Uptrend),-3.53,980.3,1041.5
+WELENT,Capital Goods,749.5,53.27,42.06,Bullish (Uptrend),27.94,665.05,768.0
+ACMESOLAR,Power,437.9,60.09,33.47,Bullish (Uptrend),18.39,382.9,440.7
+ADANIENSOL,Power,1287.9,30.51,28.91,Bearish (Downtrend),-10.32,1283.0,1291.5
+ADANIGREEN,Power,1235.0,39.07,14.85,Bearish (Downtrend),-13.92,1228.3,1240.0
+ADANIPOWER,Power,196.14,38.24,14.44,Bearish (Downtrend),-9.03,196.1,200.0
+CESC,Power,136.18,24.91,20.19,Bearish (Downtrend),-16.01,135.9,153.42
+CLEANMAX,Power,1373.1,53.97,18.62,Bullish (Uptrend),3.86,1240.0,1398.6
+GMRP&UI,Power,101.9,63.54,15.23,Bullish (Uptrend),6.18,101.6,102.88
+JPPOWER,Power,15.52,37.95,17.06,Bullish (Uptrend),-8.85,15.31,15.83
+JSWENERGY,Power,495.0,33.15,15.26,Bearish (Downtrend),-11.8,493.05,495.9
+JNPR,Power,269.95,54.83,15.44,Bullish (Uptrend),10.25,251.7,275.52
+KPIGREEN,Power,357.35,65.58,49.46,Bullish (Uptrend),-6.9,356.85,368.25
+NAVA,Power,547.0,43.5,16.22,Bullish (Uptrend),-6.48,546.0,565.0
+NHPC,Power,74.5,39.39,11.71,Bearish (Downtrend),-5.08,74.4,77.31
+NLCINDIA,Power,256.7,34.76,22.38,Bearish (Downtrend),-16.96,256.3,257.2
+NTPC,Power,321.1,33.77,29.36,Bearish (Downtrend),-6.65,321.0,329.95
+NTPCGREEN,Power,92.21,54.92,23.32,Bullish (Uptrend),-0.12,92.1,93.85
+POWERGRID,Power,261.85,42.35,12.95,Bearish (Downtrend),-5.22,261.7,271.5
+RPOWER,Power,19.96,25.42,14.01,Bearish (Downtrend),-16.33,19.8,22.9
+SJVN,Power,61.06,25.72,26.71,Bearish (Downtrend),-13.21,60.55,67.51
+TATAPOWER,Power,361.9,44.43,22.17,Bullish (Uptrend),-2.8,360.1,372.35
+TORNTPOWER,Power,1237.2,39.21,18.91,Bearish (Downtrend),-9.24,1233.0,1244.9
+VEDPOWER,Power,32.15,41.16,25.02,Bearish (Downtrend),-16.86,31.56,36.64
