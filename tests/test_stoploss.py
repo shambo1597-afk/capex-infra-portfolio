@@ -60,28 +60,32 @@ class TestAtr:
 
 
 class TestAtrStop:
-    """Base stop = price - 3 ATR; a support up to 1 ATR beyond it pulls the stop to support - 0.25 ATR."""
+    """Mechanics at a 3-ATR multiple (explicit): a support up to 1 ATR beyond the base stop pulls it to
+    support - 0.25 ATR. The live default is config.STOP_LOSS_ATR_MULTIPLE (5 ATR)."""
+
+    def test_live_default_is_five_atr(self):
+        assert compute_atr_stop(100.0, 2.0) == (pytest.approx(90.0), "atr")
 
     def test_base_stop_is_three_atr_below_price(self):
-        assert compute_atr_stop(100.0, 2.0) == (pytest.approx(94.0), "atr")
+        assert compute_atr_stop(100.0, 2.0, atr_multiple=3.0) == (pytest.approx(94.0), "atr")
 
     def test_support_just_beyond_base_stop_moves_stop_below_support(self):
         # Base 94; support 93 is within 1 ATR (92-94) -> stop 93 - 0.5 = 92.5
-        assert compute_atr_stop(100.0, 2.0, support_price=93.0) == (pytest.approx(92.5), "support")
+        assert compute_atr_stop(100.0, 2.0, atr_multiple=3.0, support_price=93.0) == (pytest.approx(92.5), "support")
         # Band edge (support exactly 1 ATR beyond) still counts
-        assert compute_atr_stop(100.0, 2.0, support_price=92.0) == (pytest.approx(91.5), "support")
+        assert compute_atr_stop(100.0, 2.0, atr_multiple=3.0, support_price=92.0) == (pytest.approx(91.5), "support")
 
     def test_support_close_to_price_never_tightens_the_stop(self):
         # The old rule would have put the stop at 99.9 (0.1% below price)
-        assert compute_atr_stop(100.0, 2.0, support_price=99.9) == (pytest.approx(94.0), "atr")
+        assert compute_atr_stop(100.0, 2.0, atr_multiple=3.0, support_price=99.9) == (pytest.approx(94.0), "atr")
 
     def test_support_far_below_is_ignored(self):
-        assert compute_atr_stop(100.0, 2.0, support_price=80.0) == (pytest.approx(94.0), "atr")
+        assert compute_atr_stop(100.0, 2.0, atr_multiple=3.0, support_price=80.0) == (pytest.approx(94.0), "atr")
 
     def test_unavailable_without_price_or_atr(self):
-        assert compute_atr_stop(100.0, None) == (None, "unavailable")
-        assert compute_atr_stop(None, 2.0) == (None, "unavailable")
-        assert compute_atr_stop(10.0, 5.0) == (None, "unavailable")  # 3 ATR exceeds the price
+        assert compute_atr_stop(100.0, None, atr_multiple=3.0) == (None, "unavailable")
+        assert compute_atr_stop(None, 2.0, atr_multiple=3.0) == (None, "unavailable")
+        assert compute_atr_stop(10.0, 5.0, atr_multiple=3.0) == (None, "unavailable")  # 3 ATR exceeds the price
 
 
 class TestTrailingStop:
@@ -155,8 +159,8 @@ class TestPortfolioRiskSummary:
         aaa, bbb = risk.iloc[0], risk.iloc[1]
         assert aaa["weight_pct"] == bbb["weight_pct"] == 50.0  # too little history: equal-weight fallback
         assert (aaa["atr_14"], aaa["atr_pct"]) == (2.0, 2.0)
-        # AAA: support 1% below price is ignored; stop = 100 - 3 x 2
-        assert (aaa["stop_loss_method"], aaa["stop_loss_price"], aaa["stop_loss_pct_below_current"]) == ("atr", 94.0, 6.0)
+        # AAA: support 1% below price is ignored; stop = 100 - 5 x 2
+        assert (aaa["stop_loss_method"], aaa["stop_loss_price"], aaa["stop_loss_pct_below_current"]) == ("atr", 90.0, 10.0)
         # BBB: support 93 would give 92.5, but the previous review's 95 is higher and is kept
         assert (bbb["stop_loss_method"], bbb["stop_loss_price"]) == ("trailed", 95.0)
 

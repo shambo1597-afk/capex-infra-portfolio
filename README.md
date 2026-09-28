@@ -198,8 +198,8 @@ Using a 20-day rolling window:
 - **Weight:** equal risk contribution within 5-15% (`weights.py`), final.
 - **ATR:** $\text{TR}_t = \max(H_t - L_t,\ |H_t - \text{PrevClose}_t|,\ |L_t - \text{PrevClose}_t|)$, Wilder-smoothed over 14 sessions.
 - **Stop-loss (3-month mandate):** sized for about one month and trailed at monthly reviews, rather than sized for the whole quarter. A 63-session volatility stop would sit roughly 19-41% below price for these stocks, a bigger loss than a 3-month tactical trade is expected to earn.
-  1. *Base stop:* $P - 3 \times \text{ATR}_{14}$. Three ATRs is close to a one-month, one-standard-deviation move (JKCEMENT: 3 ATR = 8.5% vs $\sigma_{annual}\sqrt{21/252}$ = 9.4%), so the stop sits just outside ordinary noise.
-  2. *Support adjustment:* if a support level (Section 5) lies below the base stop but within 1 ATR of it, the stop moves to support $- 0.25 \times$ ATR, just under that level. A support level closer to the price is ignored: it never makes the stop tighter than 3 ATR. (The earlier rule, "the tighter of support and a volatility cap", produced stops 0.1-0.7% below price.)
+  1. *Base stop:* $P - 5 \times \text{ATR}_{14}$ (3 ATR until 28-Sep-2026). `research/stop_rule_study.py` replayed the rule 2021-2026 on a point-in-time universe with next-day exits, replacements and 0.25% costs: a 3-ATR trailing stop sat inside these stocks' ordinary noise, fired on ~8 stocks a quarter and cost ~3.3 pp per quarter against holding (t = -3.4) without improving the worst quarter; 5 ATR trailing cost ~1.4 pp and had the best worst quarter (-11.6 pp vs -18.0 pp holding).
+  2. *Support adjustment:* if a support level (Section 5) lies below the base stop but within 1 ATR of it, the stop moves to support $- 0.25 \times$ ATR, just under that level. A support level closer to the price is ignored: it never makes the stop tighter than the base stop. (The earlier rule, "the tighter of support and a volatility cap", produced stops 0.1-0.7% below price.)
   3. *Trailing:* automatic once invested: when the trade ledger `data/trades.csv` exists, every refresh uses the previous risk summary's stops as the floor (`python main.py --trail-stops <CSV>` does the same by hand). A stop is only ever raised: a higher previous stop is kept (`trailed`), and a previous stop at or above the current price is reported as `breached`.
 
   All multiples are stated, adjustable assumptions in `config.py` (`STOP_LOSS_ATR_*`, `STOP_LOSS_SUPPORT_*`).
@@ -464,7 +464,7 @@ It also saves `output/portfolio_risk_summary.csv`, one row per locked portfolio 
 | `weight_pct` | Float (%) | Equal-risk-contribution weight within 5-15% of the equity sleeve (`weights.py`). |
 | `risk_contribution_pct` | Float (%) | Share of portfolio variance carried by the stock (10% each when no bound binds). |
 | `atr_14`, `atr_pct` | Float (INR / %) | 14-session Wilder ATR, in rupees and as % of price. |
-| `stop_loss_price` | Float (INR) | Price - 3 ATR, or just below a support level up to 1 ATR beyond that; trailed across reviews. |
+| `stop_loss_price` | Float (INR) | Price - 5 ATR, or just below a support level up to 1 ATR beyond that; trailed across reviews. |
 | `stop_loss_pct_below_current` | Float (%) | Distance of the stop below the current price. |
 | `stop_loss_method` | String | `atr`, `support`, `trailed` (previous review's higher stop kept), `breached` (previous stop at or above price: exit), or `unavailable`. |
 

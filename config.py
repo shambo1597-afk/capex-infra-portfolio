@@ -596,10 +596,13 @@ RISK_LOOKBACK_TRADING_DAYS = 252
 # tactical trade is expected to earn.
 # ATR period (Wilder smoothing of the true range, in sessions)
 STOP_LOSS_ATR_PERIOD = 14
-# Base stop = price - 3 x ATR(14). 3 ATR roughly equals a one-month, one-standard-deviation
-# move (e.g. JKCEMENT: 3 ATR = 8.5% vs sigma_annual x sqrt(21/252) = 9.4%), so the stop sits
-# just outside ordinary noise. Raise it for a looser stop, lower it for a tighter one.
-STOP_LOSS_ATR_MULTIPLE = 3.0
+# Base stop = price - 5 x ATR(14), trailed up only. Was 3 x ATR until 28-Sep-2026 (before the snapshot):
+# research/stop_rule_study.py replayed the rule on a point-in-time universe, 2021-2026, with next-day exits,
+# the replacement rule and 0.25% costs. A 3-ATR trailing stop fired on ~8 stocks a quarter (on these
+# volatile mid-caps it sits inside ordinary noise) and cost ~3.3 pp per quarter vs holding (t -3.4) without
+# improving the worst quarter; 5 ATR trailing cost ~1.4 pp and had the best worst quarter (-11.6 pp vs -18.0
+# holding). The brief requires a stop, so it is kept, at the width that still caps a collapse.
+STOP_LOSS_ATR_MULTIPLE = 5.0
 # Support adjustment: a clear support level lying up to this many ATRs beyond the base stop
 # pulls the stop down to just below that support (so the stop is not parked just above it)...
 STOP_LOSS_SUPPORT_BAND_ATR = 1.0

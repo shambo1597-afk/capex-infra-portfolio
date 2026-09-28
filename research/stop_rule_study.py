@@ -58,7 +58,6 @@ def atr_panel(close, high, low, n=14):
 
 def run_quarter(i0, picks, reserve, close, atr, di, mode, mult=STOP_LOSS_ATR_MULTIPLE, trail=True):
     """Portfolio value path (start 1.0) over HORIZON sessions from row i0 for mode H / S / R."""
-    idx = close.index
     slots = [{"sym": s, "w": 1.0 / TOP_N, "px": close.iat[i0, close.columns.get_loc(s)],
               "stop": close.iat[i0, close.columns.get_loc(s)] - mult * atr.iat[i0, atr.columns.get_loc(s)],
               "open": True, "pending": False} for s in picks]

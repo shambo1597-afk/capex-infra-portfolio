@@ -7,7 +7,7 @@ risk statistics that feed the portfolio risk summary:
    PREV_CLOSE so every return is a genuine one-session move.
 2. Daily and annualized volatility (sample standard deviation of daily returns).
 3. Historical expected return (simple average daily return, annualized).
-4. ATR stop-loss for the 3-month mandate: 3 x ATR(14) below price, moved to just below a
+4. ATR stop-loss for the 3-month mandate: 5 x ATR(14) below price (config.STOP_LOSS_ATR_MULTIPLE), moved to just below a
    support level that lies slightly beyond it, and trailed up (never down) at each review.
 
 Pure calculations only (no I/O); analysis.generate_portfolio_risk_summary() assembles
@@ -153,7 +153,7 @@ def compute_atr_stop(
     """
     Stop-loss for the 3-month mandate, sized for about one month and trailed at reviews.
 
-    1. Base stop = current_price - atr_multiple x ATR (3 ATR ~ a one-month, one-sigma move).
+    1. Base stop = current_price - atr_multiple x ATR (5 ATR by default; research/stop_rule_study.py).
     2. If a support level lies below the base stop but within support_band_atr ATRs of it,
        the stop moves to support - support_buffer_atr x ATR, just under that level, so an
        ordinary retest of support does not trigger it.

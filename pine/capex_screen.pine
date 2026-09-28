@@ -6,7 +6,7 @@
 //   Trend                ADX(14) with +DI / -DI (Wilder); DI gap = +DI - (-DI); Bullish when +DI > -DI
 //   RSI(14)              Wilder
 //   Support/Resistance   nearest 20-session swing low below / swing high above the close, over ~1 year
-//   Stop-loss            close - 3 x ATR(14); moved to support - 0.25 ATR when a support lies within
+//   Stop-loss            close - 5 x ATR(14); moved to support - 0.25 ATR when a support lies within
 //                        1 ATR below that                                          stoploss.compute_atr_stop
 //   Technical screen     RS > +2 pp AND Bullish                                     sector_screen.technical_screen_result
 //   Selection (tech)     Bullish AND DI gap >= 2; ranked by 6-month RS skipping the latest month
@@ -25,7 +25,7 @@ skipLen    = input.int(21, "Selection RS skip (sessions)")
 diGapMin   = input.float(2.0, "Minimum DI gap")
 srWindow   = input.int(20, "Swing window for support/resistance")
 srHistory  = input.int(250, "Support/resistance history (sessions)", maxval = 400)
-atrMult    = input.float(3.0, "Stop: ATR multiple")
+atrMult    = input.float(5.0, "Stop: ATR multiple")
 bandAtr    = input.float(1.0, "Stop: support band (ATR)")
 bufferAtr  = input.float(0.25, "Stop: buffer under support (ATR)")
 
