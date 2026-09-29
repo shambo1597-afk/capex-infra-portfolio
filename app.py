@@ -46,6 +46,7 @@ from config import (
     INVESTED_COUNT,
     LOCK_AS_OF,
     FUNDAMENTAL_HARD_FIELDS,
+    MIN_HISTORY_SESSIONS,
     MIN_TURNOVER_CR,
     TURNOVER_LOOKBACK_SESSIONS,
     NEAR_STOP_PCT,
@@ -1080,30 +1081,51 @@ with tab_overview:
     # a stopped-out holding
     reserve_df = portfolio_df[portfolio_df["status"] != "Invested"].copy()
     if not reserve_df.empty:
-        ranking_path = OUTPUT_DIR / "selection_ranking.csv"
-        ranking = pd.read_csv(ranking_path) if ranking_path.exists() else pd.DataFrame(columns=["symbol"])
-        rk = ranking.set_index("symbol")
-        passes = reserve_df["symbol"].map(lambda s_: s_ in rk.index)
+        # Figures from the review tables, which cover every universe stock (the ranking lists only those that
+        # pass every rule today, so a reserve stock failing one would show blanks)
+        frames = [pd.read_csv(review_table_path(sec)) for sec in SECTOR_SCREENS if review_table_path(sec).exists()]
+        rt = pd.concat(frames).drop_duplicates("symbol").set_index("symbol") if frames else pd.DataFrame()
+
+        def _val(sym, col, fmt):
+            v = rt[col].get(sym) if col in rt else None
+            return fmt.format(v) if v is not None and pd.notna(v) else "—"
+
+        def _verdict(sym):
+            if sym not in rt.index:
+                return "No data"
+            r = rt.loc[sym]
+            fails = []
+            if r.get("hard_fundamentals_pass") == False:  # noqa: E712
+                fails.append("hard fundamentals")
+            if not r.get("price_sessions", 0) >= MIN_HISTORY_SESSIONS:
+                fails.append("under a year of prices")
+            if not r.get("di_gap", float("nan")) >= DI_GAP_THIN_THRESHOLD:
+                fails.append(f"trend (DI gap {r.get('di_gap', float('nan')):+.2f} < {DI_GAP_THIN_THRESHOLD:g})")
+            if not r.get("median_turnover_cr", float("nan")) >= MIN_TURNOVER_CR:
+                fails.append("turnover")
+            if not (r.get("qtr_net_profit", float("nan")) > 0 and r.get("qtr_profit_yoy", float("nan")) > 0):
+                fails.append("latest-quarter profit")
+            return "Yes" if not fails else "No: " + ", ".join(fails)
+
         st.markdown(f"### Reserve list ({len(RESERVE_QUEUE)} stocks, tracked, no money yet)")
         st.caption(f"The money is in the top {INVESTED_COUNT} of the {len(LOCKED_PORTFOLIO_SYMBOLS)}. When a holding "
                    "closes at or below its stop-loss, its sale proceeds buy the first reserve stock that still passes "
                    "the selection rule that day (hard fundamentals, bullish trend with DI gap ≥ 2, one year of prices, "
                    "turnover ≥ ₹5 cr a day, a real profit that grew in the latest quarter); if none does, they top up the other holdings that are still in an uptrend "
-                   "(DI gap ≥ 2), none above the 15% cap, and only if none is, they wait in the liquid ETF until a stock qualifies. A stock that has been sold never comes back.")
+                   "(DI gap ≥ 2), none above the 15% cap, and only if none is, they wait in the liquid ETF until a stock qualifies. "
+                   "A stock that has been sold never comes back. 'Would be bought today?' names the rule a stock fails; the "
+                   "list stays frozen, so a failing stock is only skipped for that day's replacement.")
         show_res = pd.DataFrame({
             "Queue": reserve_df["status"],
             "Stock": reserve_df["symbol"],
             "Name": reserve_df["display_name"],
             "Sector": reserve_df["sector"].map(sector_label),
             "Price (₹)": reserve_df["current_price"].map(lambda x: f"{x:,.2f}" if pd.notna(x) else "—"),
-            "6-month RS (skip 1m)": reserve_df["symbol"].map(
-                lambda s_: f"{rk.loc[s_, 'rs_6m_skip1m']:+.1f} pp" if s_ in rk.index else "—"),
+            "6-month RS (skip 1m)": reserve_df["symbol"].map(lambda s_: _val(s_, "rs_6m_skip1m", "{:+.1f} pp")),
             "Trend (DI gap)": reserve_df["di_gap"].map(lambda x: f"{x:+.2f}" if pd.notna(x) else "—"),
-            "Profit, latest qtr YoY": reserve_df["symbol"].map(
-                lambda s_: f"{rk.loc[s_, 'qtr_profit_yoy']:+.0f}%" if s_ in rk.index and "qtr_profit_yoy" in rk else "—"),
-            "Turnover (₹ cr/day)": reserve_df["symbol"].map(
-                lambda s_: f"{rk.loc[s_, 'median_turnover_cr']:,.1f}" if s_ in rk.index and "median_turnover_cr" in rk else "—"),
-            "Would be bought today?": passes.map({True: "Yes", False: "No: fails the rule today"}),
+            "Profit, latest qtr YoY": reserve_df["symbol"].map(lambda s_: _val(s_, "qtr_profit_yoy", "{:+.0f}%")),
+            "Turnover (₹ cr/day)": reserve_df["symbol"].map(lambda s_: _val(s_, "median_turnover_cr", "{:,.1f}")),
+            "Would be bought today?": reserve_df["symbol"].map(_verdict),
         })
         st.dataframe(show_res, hide_index=True, width="stretch", height=_fit_height(show_res))
 
