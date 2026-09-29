@@ -188,3 +188,17 @@ def test_excess_returns_ignore_the_provisional_flag_column():
     f["nifty500_tri_provisional"] = [False, False, True, True]
     out = excess_returns(f)
     assert len(out) == 3 and np.isfinite(out.to_numpy(dtype=float)).all()
+
+
+def test_capex_exposure_ranks_the_benchmark_the_portfolio_follows():
+    from capex_exposure import factor_model, single_index_table
+    rng = np.random.default_rng(0)
+    idx = pd.bdate_range("2025-10-01", periods=200)
+    mkt = pd.Series(rng.normal(0, 0.01, 200), index=idx)
+    capex = mkt + pd.Series(rng.normal(0, 0.006, 200), index=idx)
+    noise = pd.Series(rng.normal(0, 0.01, 200), index=idx)
+    port = 0.9 * mkt + 1.2 * (capex - mkt) + pd.Series(rng.normal(0, 0.002, 200), index=idx)
+    table = single_index_table(port, {"capex": capex, "market": mkt, "noise": noise})
+    assert table.iloc[0]["benchmark"] == "capex" and table.iloc[-1]["benchmark"] == "noise"
+    model = factor_model(port, mkt, capex, None, None).set_index("term")
+    assert model.loc["capex", "coef"] == pytest.approx(1.2, abs=0.1) and model.loc["capex", "t"] > 5

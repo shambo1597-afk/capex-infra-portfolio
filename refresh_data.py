@@ -14,9 +14,10 @@ Steps (each a separate process):
   4. sector_screen.py --locked-check  run-up / results-date check of the locked stocks
   5. sector_screen.py --tenth-sweep   candidate sweep over the rest of the universe
   6. risk_model.py                    factor series, regressions, Nifty F&O prices and the hedge plan
-  7. tracker.py                       live value and P&L of the Rs 1 crore from the 28-Sep snapshot
-  8. performance.py                   Sharpe, Treynor, XIRR (backtest, and live from the tracker), CML
-Steps 1-8 are required: the refresh stops at the first failure among them.
+  7. capex_exposure.py                does the portfolio behave like the capex cycle? (benchmarks, factor model)
+  8. tracker.py                       live value and P&L of the Rs 1 crore from the 28-Sep snapshot
+  9. performance.py                   Sharpe, Treynor, XIRR (backtest, and live from the tracker), CML
+Steps 1-9 are required: the refresh stops at the first failure among them.
 
 Every step uses the same end date, so all files describe the same price window. Progress and the
 outcome are written to output/refresh_manifest.json (current step, a heartbeat every few seconds,
@@ -63,6 +64,7 @@ def refresh_steps(as_of: date) -> List[Tuple[str, List[str]]]:
         ("Locked-portfolio run-up check", [py, "sector_screen.py", "--locked-check", "--as-of", end]),
         ("Candidate sweep", [py, "sector_screen.py", "--tenth-sweep", "--as-of", end]),
         ("Regression and hedge plan", [py, "risk_model.py", "--as-of", end]),
+        ("Capex-cycle exposure", [py, "capex_exposure.py", "--as-of", end]),
         ("Live P&L of the Rs 1 crore", [py, "tracker.py", "--as-of", end]),
         ("Performance and CML", [py, "performance.py", "--as-of", end]),
     ]

@@ -281,8 +281,8 @@ def sector_of(symbol: str) -> str:
 # been sold never comes back; if no reserve stock qualifies, the proceeds top up the remaining holdings
 # still in an uptrend (DI gap >= 2) up to the 15% cap, and if none is, wait in the liquid ETF until a stock qualifies
 # ("cash cannot sit idle"; revised 27-Sep so money is never added to falling stocks). No sector minimums: Power has one stock (ACMESOLAR) and Cement none
-# (its best confirmed uptrend, NUVOCO, ranks #24); the group will ask the professor whether a Cement
-# leg is required. Soft exceptions (shown on the dashboard): BEML (ROCE/OPM). On 27-Sep the liquidity
+# (its best confirmed uptrend, NUVOCO, ranks #24). The professor confirmed (29-Sep-2026) that no sector is
+# required; what counts is capturing the capex cycle (capex_exposure.py tests exactly that). Soft exceptions (shown on the dashboard): BEML (ROCE/OPM). On 27-Sep the liquidity
 # and quarterly-profit rules (MIN_TURNOVER_CR; latest-quarter net profit > 0 and up year on year) removed
 # GREAVESCOT (profit -23%), and later BEML (a Rs 27 cr loss that Screener shows as +58% "growth"),
 # BANSALWIRE, SHANTIGEAR and AJAXENGG, and PTCIL / DYNAMATECH were found to be aerospace/defence
@@ -307,7 +307,7 @@ PORTFOLIO_SIZE = 15                          # the brief's maximum; all 15 are t
 INVESTED_COUNT = 8                           # the brief's minimum holds the money
 INITIAL_HOLDINGS = LOCKED_PORTFOLIO_SYMBOLS[:INVESTED_COUNT]
 RESERVE_SYMBOLS = LOCKED_PORTFOLIO_SYMBOLS[INVESTED_COUNT:]  # replacement queue, in rank order
-SECTOR_MIN_HOLDINGS: Dict[str, int] = {}     # none: picked on merit (the group may add a Cement leg)
+SECTOR_MIN_HOLDINGS: Dict[str, int] = {}     # none: picked on merit (no sector required, professor 29-Sep-2026)
 # RRG tiers a pick must be in; None = no conviction filter (dropped 27-Sep-2026, see
 # research/conviction_study_results.md: the High/Moderate filter trailed the plain ranking in both periods)
 SELECTION_CONVICTION_TIERS: Optional[tuple] = None

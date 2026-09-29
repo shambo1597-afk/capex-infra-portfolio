@@ -1427,6 +1427,26 @@ with tab_risk:
                 "Share of portfolio risk": risk_df["risk_contribution_pct"].map(lambda x: f"{x:.1f}%" if pd.notna(x) else "—"),
             }), hide_index=True, width="stretch", height=_fit_height(risk_df))
 
+        # 1c. The theme test: does the portfolio behave like the capex cycle?
+        cx, fm = _out("capex_exposure.csv"), _out("capex_factor_model.csv")
+        if not cx.empty:
+            st.markdown("### Does the portfolio capture the capex cycle?")
+            best = cx.iloc[0]
+            f = dict(zip(fm["term"], zip(fm["coef"], fm["t"]))) if not fm.empty else {}
+            st.caption(
+                f"The portfolio's daily returns over the past year regressed on each benchmark in turn: it behaves most like "
+                f"**{best['benchmark']}** (R² {best['r_squared']:.2f}), more than like the Nifty 500 or any style index. "
+                + (f"With the market, size and momentum held constant, its capex-cycle loading is "
+                   f"{f['capex'][0]:.2f} (t = {f['capex'][1]:.1f}); size {f['size'][0]:+.2f} (t = {f['size'][1]:.1f}), "
+                   f"momentum {f['momentum'][0]:+.2f} (t = {f['momentum'][1]:.1f}). The capex and size factors are correlated "
+                   f"({f['corr(capex, size)'][0]:.2f}), so read their split with care. "
+                   if {"capex", "size", "momentum", "corr(capex, size)"} <= set(f) else "")
+                + "Our capex universe = all stocks of the Screener universe, equal weight. An index with fewer days has "
+                  "a shorter NSE history.")
+            st.dataframe(cx.rename(columns={"benchmark": "Benchmark", "days": "Days", "beta": "Beta",
+                                            "r_squared": "R²", "benchmark_return_pct": "Benchmark return over those days (%)"}),
+                         hide_index=True, width="stretch", height=_fit_height(cx))
+
         # 2. Single-index model
         st.markdown("### Beta: explained and unexplained risk (single-index model vs Nifty 500 TRI)")
         st.caption(
