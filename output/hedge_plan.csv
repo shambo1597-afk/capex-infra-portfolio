@@ -1,25 +1,25 @@
 metric,value,note
-Prices as of,2026-09-28,NSE F&O bhavcopy
-Portfolio value hedged (Rs),9688407,stocks at the latest close (97% sleeve)
-Nifty 50 spot,22780.25,
+Prices as of,2026-09-29,NSE F&O bhavcopy
+Portfolio value hedged (Rs),9953978,stocks at the latest close (97% sleeve)
+Nifty 50 spot,22716.2,
 Nifty lot size,65,NSE contract specification
-Regression sessions,246,"daily returns, portfolio vs Nifty 50"
-Minimum-variance hedge ratio h*,1.127,"cov(r_p, r_N50) / var(r_N50) = beta vs Nifty 50"
-Hedge effectiveness (R^2),0.316,share of portfolio variance a full futures hedge removes
-Downside beta (Nifty 50 down days),1.229,
-Tail beta (worst 10% of days),0.612,25 days with Nifty 50 <= -1.08%; s.e. 0.62
-Tail hedge ratio,1.229,"max(downside beta, h*): puts sized on the sell-off beta; the worst-10% beta is too noisy (few days)"
+Regression sessions,247,"daily returns, portfolio vs Nifty 50"
+Minimum-variance hedge ratio h*,1.124,"cov(r_p, r_N50) / var(r_N50) = beta vs Nifty 50"
+Hedge effectiveness (R^2),0.312,share of portfolio variance a full futures hedge removes
+Downside beta (Nifty 50 down days),1.25,
+Tail beta (worst 10% of days),0.613,25 days with Nifty 50 <= -1.07%; s.e. 0.62
+Tail hedge ratio,1.25,"max(downside beta, h*): puts sized on the sell-off beta; the worst-10% beta is too noisy (few days)"
 Futures: contract,NIFTY FUT 2026-11-23,longest listed expiry; a hedge to 2026-12-28 needs a roll
-Futures: price,23025.2,
-Futures: lots for a full hedge (exact),7.3,h* x value / (futures price x lot)
-Futures: lots for a full hedge (rounded),7,achieved hedge ratio 1.08
-Futures: notional (Rs),10476466,
-"Futures: margin needed (Rs, assumed)",1257176,ASSUMPTION 12% of notional; exceeds the hedge budget
+Futures: price,22979.3,
+Futures: lots for a full hedge (exact),7.49,h* x value / (futures price x lot)
+Futures: lots for a full hedge (rounded),7,achieved hedge ratio 1.05
+Futures: notional (Rs),10455582,
+"Futures: margin needed (Rs, assumed)",1254670,ASSUMPTION 12% of notional; exceeds the hedge budget
 Puts: contract,NIFTY 2026-12-29 22000 PE,expiry covers the evaluation window
-Puts: premium,208.2,settlement price
+Puts: premium,196.35,settlement price
 Puts: lots,8,tail hedge ratio x value / (spot x lot)
-Puts: cost (Rs),108264,1.08% of the principal
-Puts: strike below spot (%),3.43,
-Hedge budget (Rs),311593,principal minus the stocks
-Cash after puts (Rs),203329,parked at the overnight rate (liquid ETF) for redeployment and the profit-trigger roll
+Puts: cost (Rs),102102,1.02% of the principal
+Puts: strike below spot (%),3.15,
+Hedge budget (Rs),46022,principal minus the stocks
+Cash after puts (Rs),-56080,parked at the overnight rate (liquid ETF) for redeployment and the profit-trigger roll
 Profit trigger,+10%,"portfolio up 10%: roll the puts up to about 5% below the new Nifty level, funded from cash, to lock in part of the gain"
