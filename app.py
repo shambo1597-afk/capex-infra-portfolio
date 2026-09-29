@@ -1587,7 +1587,9 @@ with tab_risk:
                 "first_hurdle_resistance": "First hurdle (resistance ₹)", "first_hurdle_above_pct": "Hurdle above price %",
                 "upside_pct": "Upside %", "reward_risk": "Reward : risk", "capm_3m_pct": "CAPM 3-month %",
                 "capm_reward_risk": "CAPM reward : risk", "upside_inr": "Upside ₹", "downside_inr": "Downside ₹"})
-            st.dataframe(show_rr, hide_index=True, width="stretch", height=_fit_height(show_rr))
+            # Per-stock columns (typical move, resistance hurdle) do not apply to the portfolio rows: shown as a dash
+            st.dataframe(show_rr.style.format(precision=2, na_rep="—", thousands=","), hide_index=True, width="stretch",
+                         height=_fit_height(show_rr))
 
         # 4. Hedge plan
         st.markdown("### Hedge plan (Nifty 50 derivatives)")
@@ -1677,7 +1679,7 @@ with tab_performance:
             "xirr_portfolio_pct": "XIRR: portfolio (%)", "xirr_benchmark_pct": "XIRR: Nifty 500 (%)",
         }
         show.index = [labels.get(i, i) for i in show.index]
-        st.dataframe(show.astype(str), width="stretch", height=_fit_height(show))
+        st.dataframe(show.astype(object).where(show.notna(), "—").astype(str), width="stretch", height=_fit_height(show))
         st.caption(
             "r(p) = Σ wᵢ rᵢ each day (current weights), compounded: R = Π(1 + r_t) - 1. Annualised (compounded) = "
             "(1 + R)^(252/n) - 1; the simple figure R × 252/n understates it, and the gap is the compounding effect. "
