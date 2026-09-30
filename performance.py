@@ -88,6 +88,12 @@ def window_metrics(port: pd.Series, mkt: pd.Series, rf: pd.Series, label: str) -
     start_flow_date = (start - pd.tseries.offsets.BDay(1)).date()
     port_xirr = xirr([(start_flow_date, -1.0), (end.date(), growth_p)])
     mkt_xirr = xirr([(start_flow_date, -1.0), (end.date(), growth_m)])
+    # Reward and risk against the benchmark, measured the same way for both
+    downside = lambda x: x[x < 0].std() * np.sqrt(TRADING_DAYS_PER_YEAR)  # noqa: E731
+    drawdown = lambda x: float(((1 + x).cumprod() / (1 + x).cumprod().cummax() - 1).min())  # noqa: E731
+    up, dn = data["m"] > 0, data["m"] < 0
+    active = data["p"] - data["m"]
+    te = active.std() * np.sqrt(TRADING_DAYS_PER_YEAR)
     return {
         "window": label,
         "start": start.date().isoformat(),
@@ -111,6 +117,14 @@ def window_metrics(port: pd.Series, mkt: pd.Series, rf: pd.Series, label: str) -
         "jensen_alpha_pct": round((rp - (rfa + beta * (rm - rfa))) * 100, 2),
         "xirr_portfolio_pct": round(port_xirr * 100, 2),
         "xirr_benchmark_pct": round(mkt_xirr * 100, 2),
+        "sortino_portfolio": round((rp - rfa) / downside(data["p"]), 2),
+        "sortino_benchmark": round((rm - rfa) / downside(data["m"]), 2),
+        "max_drawdown_portfolio_pct": round(drawdown(data["p"]) * 100, 2),
+        "max_drawdown_benchmark_pct": round(drawdown(data["m"]) * 100, 2),
+        "up_capture": round(data.loc[up, "p"].mean() / data.loc[up, "m"].mean(), 2) if up.any() else np.nan,
+        "down_capture": round(data.loc[dn, "p"].mean() / data.loc[dn, "m"].mean(), 2) if dn.any() else np.nan,
+        "tracking_error_pct": round(te * 100, 2),
+        "information_ratio": round(active.mean() * TRADING_DAYS_PER_YEAR / te, 2) if te > 0 else np.nan,
     }
 
 

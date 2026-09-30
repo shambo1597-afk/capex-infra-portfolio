@@ -144,7 +144,11 @@ def test_risk_reward_ratio():
     assert out.loc["A", "reward_risk"] == pytest.approx(2.0)
     assert out.loc["A", "first_hurdle_above_pct"] == pytest.approx(2.0)
     assert out.loc["PORTFOLIO (all stocks at once)", "downside_inr"] == pytest.approx(1e5)
-    assert out.loc["PORTFOLIO (diversified)", "reward_risk"] == pytest.approx(1.0)
+    # The diversified row carries the portfolio's own typical move only (no mixed-basis reward : risk)
+    assert np.isnan(out.loc["PORTFOLIO (diversified)", "reward_risk"])
+    assert out.loc["PORTFOLIO (diversified)", "upside_1sd_3m_pct"] > 0
+    # Loss at stop in portfolio terms = value x distance to the stop / Rs 1 crore
+    assert out.loc["A", "loss_at_stop_pct_of_capital"] == pytest.approx(out.loc["A", "downside_inr"] / 1e7 * 100, abs=0.01)
 
 
 def test_live_metrics_wait_for_enough_sessions_then_use_the_tracker(tmp_path, monkeypatch):

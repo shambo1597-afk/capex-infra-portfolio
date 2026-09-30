@@ -1580,13 +1580,18 @@ with tab_risk:
                 "nearest resistance (a 20-session swing high) is shown as the first hurdle, not as a cap on a 3-month move. "
                 "CAPM reward : risk uses only the market's required return (no stock-picking view), so it is always low. "
                 "The case for the design: the downside is cut short by the stops (and a market crash by the puts), while "
-                "the upside is left open. A price can gap below a stop on results day."
+                "the upside is left open. A price can gap below a stop on results day. **Loss at stop, % of ₹1 crore** = weight × "
+                "distance to the stop: what each stop can cost the whole portfolio. The two are linked by design: equal-risk "
+                "weights give volatile stocks less money and ATR stops give them more room, so every stop costs roughly "
+                "the same share of the capital. The diversified row has no reward : risk, because its typical move and the "
+                "all-stops-at-once loss are on different bases; the comparison with the Nifty 500 is on the Performance tab."
             )
             show_rr = rr_df.drop(columns=["price", "stop_loss_price", "value_inr"], errors="ignore").rename(columns={
                 "symbol": "Stock", "downside_to_stop_pct": "Downside to stop %", "upside_1sd_3m_pct": "Typical 3-month move %",
                 "first_hurdle_resistance": "First hurdle (resistance ₹)", "first_hurdle_above_pct": "Hurdle above price %",
                 "upside_pct": "Upside %", "reward_risk": "Reward : risk", "capm_3m_pct": "CAPM 3-month %",
-                "capm_reward_risk": "CAPM reward : risk", "upside_inr": "Upside ₹", "downside_inr": "Downside ₹"})
+                "capm_reward_risk": "CAPM reward : risk", "upside_inr": "Upside ₹", "downside_inr": "Downside ₹",
+                "loss_at_stop_pct_of_capital": "Loss at stop, % of ₹1 crore"})
             # Per-stock columns (typical move, resistance hurdle) do not apply to the portfolio rows: shown as a dash
             st.dataframe(show_rr.style.format(precision=2, na_rep="—", thousands=","), hide_index=True, width="stretch",
                          height=_fit_height(show_rr))
@@ -1677,6 +1682,10 @@ with tab_performance:
             "sharpe_benchmark": "Sharpe: Nifty 500", "treynor_portfolio_pct": "Treynor: portfolio (%)",
             "treynor_benchmark_pct": "Treynor: Nifty 500 (%)", "jensen_alpha_pct": "Jensen's alpha (%)",
             "xirr_portfolio_pct": "XIRR: portfolio (%)", "xirr_benchmark_pct": "XIRR: Nifty 500 (%)",
+            "sortino_portfolio": "Sortino: portfolio", "sortino_benchmark": "Sortino: Nifty 500",
+            "max_drawdown_portfolio_pct": "Max drawdown: portfolio (%)", "max_drawdown_benchmark_pct": "Max drawdown: Nifty 500 (%)",
+            "up_capture": "Up-capture vs Nifty 500", "down_capture": "Down-capture vs Nifty 500",
+            "tracking_error_pct": "Tracking error (%)", "information_ratio": "Information ratio",
         }
         show.index = [labels.get(i, i) for i in show.index]
         st.dataframe(show.astype(object).where(show.notna(), "—").astype(str), width="stretch", height=_fit_height(show))
@@ -1686,7 +1695,10 @@ with tab_performance:
             "Sharpe = (R_p - R_f) / σ_p (reward per unit of total risk); Treynor = (R_p - R_f) / β (per unit of market "
             "risk); Jensen's alpha = R_p - [R_f + β (R_m - R_f)]. XIRR solves Σ CF / (1 + r)^(days/365) = 0 for the "
             "dated cash flows (invest at the start, value at the end); a loss gives a negative XIRR, annualised the same way. "
-            "Risk-free = Nifty 1D Rate index."
+            "Risk-free = Nifty 1D Rate index. Against the benchmark, measured the same way for both: Sortino = excess "
+            "return ÷ downside volatility; max drawdown = worst fall from a peak; up/down-capture = the portfolio's average "
+            "return on the Nifty 500's up / down days ÷ the Nifty 500's (above 1 up and below 1 down is the aim); "
+            "information ratio = annual excess return over the Nifty 500 ÷ tracking error."
         )
         if not growth_df.empty:
             g = growth_df.copy()

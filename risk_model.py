@@ -414,6 +414,8 @@ def risk_reward_table(risk: pd.DataFrame, technicals: pd.DataFrame, capm: pd.Dat
             "value_inr": value,
             "upside_inr": round(value * up / 100) if pd.notna(value) else np.nan,
             "downside_inr": round(value * down / 100) if pd.notna(value) else np.nan,
+            # The stop in portfolio terms: weight x distance to the stop = share of the Rs 1 crore it can lose
+            "loss_at_stop_pct_of_capital": round(value * down / PRINCIPAL_INR, 2) if pd.notna(value) else np.nan,
         })
     out = pd.DataFrame(rows)
     up_inr, down_inr = out["upside_inr"].sum(), out["downside_inr"].sum()
@@ -425,14 +427,15 @@ def risk_reward_table(risk: pd.DataFrame, technicals: pd.DataFrame, capm: pd.Dat
         "upside_pct": round(up_inr / value * 100, 2), "reward_risk": round(up_inr / down_inr, 2),
         "capm_3m_pct": port_capm, "capm_reward_risk": round(port_capm / down_pct, 2),
         "value_inr": value, "upside_inr": up_inr, "downside_inr": down_inr,
+        "loss_at_stop_pct_of_capital": round(down_inr / PRINCIPAL_INR * 100, 2),
     }]
     if portfolio_vol_pct is not None:
+        # The portfolio's own typical move (smaller than the sum: the stocks do not all move together). No
+        # reward : risk here: setting a diversified move against the all-stops-at-once loss mixes two bases
         p_up = portfolio_vol_pct * math.sqrt(horizon / TRADING_DAYS_PER_YEAR)
         extra.append({
-            "symbol": f"{PORTFOLIO_LABEL} (diversified)", "downside_to_stop_pct": round(down_pct, 2),
-            "upside_1sd_3m_pct": round(p_up, 2), "upside_pct": round(p_up, 2), "reward_risk": round(p_up / down_pct, 2),
-            "capm_3m_pct": port_capm, "capm_reward_risk": round(port_capm / down_pct, 2), "value_inr": value,
-            "upside_inr": round(value * p_up / 100), "downside_inr": down_inr,
+            "symbol": f"{PORTFOLIO_LABEL} (diversified)", "upside_1sd_3m_pct": round(p_up, 2), "upside_pct": round(p_up, 2),
+            "capm_3m_pct": port_capm, "value_inr": value, "upside_inr": round(value * p_up / 100),
         })
     return pd.concat([out, pd.DataFrame(extra)], ignore_index=True)
 
