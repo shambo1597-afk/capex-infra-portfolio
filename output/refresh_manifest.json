@@ -1,8 +1,8 @@
 {
-  "as_of": "2026-09-29",
-  "started": "2026-09-29T19:23:07+05:30",
+  "as_of": "2026-09-30",
+  "started": "2026-09-30T19:22:59+05:30",
   "status": "ok",
-  "pid": 381,
+  "pid": 377,
   "total_steps": 10,
   "step_names": [
     "Nifty 500 TRI (niftyindices.com)",
@@ -17,52 +17,52 @@
     "Performance and CML"
   ],
   "expected_seconds": {
-    "Nifty 500 TRI (niftyindices.com)": 23,
-    "Prices, technicals and risk summary": 35,
-    "Technical-first sector screens": 14,
-    "Review tables and selection ranking": 40,
-    "Locked-portfolio run-up check": 35,
-    "Candidate sweep": 20,
-    "Regression and hedge plan": 6,
-    "Capex-cycle exposure": 18,
+    "Nifty 500 TRI (niftyindices.com)": 177,
+    "Prices, technicals and risk summary": 92,
+    "Technical-first sector screens": 7,
+    "Review tables and selection ranking": 27,
+    "Locked-portfolio run-up check": 10,
+    "Candidate sweep": 73,
+    "Regression and hedge plan": 21,
+    "Capex-cycle exposure": 16,
     "Live P&L of the Rs 1 crore": 1,
-    "Performance and CML": 151
+    "Performance and CML": 136
   },
   "steps": [
     {
       "name": "Nifty 500 TRI (niftyindices.com)",
-      "returncode": 0,
-      "seconds": 177
+      "returncode": 1,
+      "seconds": 128
     },
     {
       "name": "Prices, technicals and risk summary",
       "returncode": 0,
-      "seconds": 92
+      "seconds": 98
     },
     {
       "name": "Technical-first sector screens",
       "returncode": 0,
-      "seconds": 7
+      "seconds": 8
     },
     {
       "name": "Review tables and selection ranking",
       "returncode": 0,
-      "seconds": 27
+      "seconds": 28
     },
     {
       "name": "Locked-portfolio run-up check",
       "returncode": 0,
-      "seconds": 10
+      "seconds": 13
     },
     {
       "name": "Candidate sweep",
       "returncode": 0,
-      "seconds": 73
+      "seconds": 78
     },
     {
       "name": "Regression and hedge plan",
       "returncode": 0,
-      "seconds": 21
+      "seconds": 8
     },
     {
       "name": "Capex-cycle exposure",
@@ -77,12 +77,15 @@
     {
       "name": "Performance and CML",
       "returncode": 0,
-      "seconds": 136
+      "seconds": 144
     }
   ],
-  "heartbeat": "2026-09-29T19:32:26+05:30",
+  "heartbeat": "2026-09-30T19:31:41+05:30",
   "current_step": 10,
   "current_step_name": "Performance and CML",
-  "current_step_started": "2026-09-29T19:30:10+05:30",
-  "finished": "2026-09-29T19:32:26+05:30"
+  "current_step_started": "2026-09-30T19:29:17+05:30",
+  "warnings": [
+    "Nifty 500 TRI (niftyindices.com) failed; the dashboard keeps the existing TRI file. Last message: RuntimeError: niftyindices.com rejected 4 browser sessions (Akamai bot protection); last: TimeoutError: Page.wait_for_function: Timeout 20000ms exceeded."
+  ],
+  "finished": "2026-09-30T19:31:41+05:30"
 }
