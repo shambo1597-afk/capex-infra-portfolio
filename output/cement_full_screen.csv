@@ -1,16 +1,16 @@
 symbol,company_name,index,price_sessions,current_price,passed_technical_screen,technical_fail_reason,rs_score,adx,plus_di,minus_di,trend_direction,rsi,fundamentals_as_of,fundamentals_status,pledged_as_of,market_cap,pass_market_cap,roce,pass_roce,opm,pass_opm,operating_cash_flow,pass_operating_cash_flow,debt_to_equity,pass_debt_to_equity,pledged_pct,pass_pledged_pct,passed_fundamental_screen,failed_criteria,passes_both_screens
-ACC,ACC,Screener: Cement & Cement Products,248,1204.1,False,RS <= +2 pp; trend Bearish,-5.73,17.57,16.71,29.34,Bearish (Downtrend),31.68,,,,,,,,,,,,,,,,,,False
-AMBUJACEM,Ambuja Cements,Screener: Cement & Cement Products,248,374.0,False,RS <= +2 pp; trend Bearish,-7.68,30.64,13.06,33.83,Bearish (Downtrend),35.26,,,,,,,,,,,,,,,,,,False
-BIRLACORPN,Birla Corpn.,Screener: Cement & Cement Products,248,840.05,False,RS <= +2 pp; trend Bearish,-9.27,28.58,15.49,19.42,Bearish (Downtrend),45.02,,,,,,,,,,,,,,,,,,False
-DALBHARAT,Dalmia BharatLtd,Screener: Cement & Cement Products,248,1683.7,False,RS <= +2 pp; trend Bearish,1.45,20.74,18.63,26.8,Bearish (Downtrend),41.13,,,,,,,,,,,,,,,,,,False
-GRASIM,Grasim Inds,Screener: Cement & Cement Products,248,3061.9,False,RS <= +2 pp; trend Bearish,1.74,23.55,11.45,29.15,Bearish (Downtrend),34.45,,,,,,,,,,,,,,,,,,False
-INDIACEM,India Cements,Screener: Cement & Cement Products,248,301.85,False,RS <= +2 pp; trend Bearish,-16.01,32.64,11.52,37.37,Bearish (Downtrend),19.6,,,,,,,,,,,,,,,,,,False
-JKCEMENT,J K Cements,Screener: Cement & Cement Products,248,5076.0,False,RS <= +2 pp; trend Bearish,-3.11,25.27,18.88,20.13,Bearish (Downtrend),50.35,,,,,,,,,,,,,,,,,,False
-JKLAKSHMI,JK Lakshmi Cem.,Screener: Cement & Cement Products,248,492.3,False,RS <= +2 pp; trend Bearish,-8.73,18.72,18.73,26.67,Bearish (Downtrend),33.24,,,,,,,,,,,,,,,,,,False
-JSWCEMENT,JSW Cement,Screener: Cement & Cement Products,248,113.38,False,RS <= +2 pp; trend Bearish,-11.65,38.13,12.75,29.22,Bearish (Downtrend),28.54,,,,,,,,,,,,,,,,,,False
-NUVOCO,Nuvoco Vistas,Screener: Cement & Cement Products,248,337.8,True,,12.09,12.76,24.98,21.27,Bullish (Uptrend),53.93,2026-09-26,OK,Screener 2026-09-26,11980.8,True,6.99,False,16.44,True,1485.17,True,0.53,True,0.0,True,False,ROCE > 8%,False
-PRSMJOHNSN,Prism Johnson,Screener: Cement & Cement Products,248,108.74,False,RS <= +2 pp,-1.07,37.08,22.92,21.17,Bullish (Uptrend),39.37,,,,,,,,,,,,,,,,,,False
-SHREECEM,Shree Cement,Screener: Cement & Cement Products,248,22345.0,False,RS <= +2 pp; trend Bearish,-9.65,32.91,15.27,30.76,Bearish (Downtrend),41.0,,,,,,,,,,,,,,,,,,False
-STARCEMENT,Star Cement,Screener: Cement & Cement Products,248,181.96,False,RS <= +2 pp; trend Bearish,-7.55,28.16,13.93,34.06,Bearish (Downtrend),38.75,,,,,,,,,,,,,,,,,,False
-RAMCOCEM,The Ramco Cement,Screener: Cement & Cement Products,248,845.55,False,RS <= +2 pp; trend Bearish,-5.22,15.68,17.8,25.58,Bearish (Downtrend),36.03,,,,,,,,,,,,,,,,,,False
-ULTRACEMCO,UltraTech Cem.,Screener: Cement & Cement Products,248,10956.0,False,RS <= +2 pp; trend Bearish,0.1,21.57,13.93,24.51,Bearish (Downtrend),43.63,,,,,,,,,,,,,,,,,,False
+ACC,ACC,Screener: Cement & Cement Products,248,1182.8,False,RS <= +2 pp; trend Bearish,-8.94,19.29,14.88,36.15,Bearish (Downtrend),27.59,,,,,,,,,,,,,,,,,,False
+AMBUJACEM,Ambuja Cements,Screener: Cement & Cement Products,248,362.25,False,RS <= +2 pp; trend Bearish,-12.11,32.4,11.21,38.93,Bearish (Downtrend),29.76,,,,,,,,,,,,,,,,,,False
+BIRLACORPN,Birla Corpn.,Screener: Cement & Cement Products,248,828.95,False,RS <= +2 pp; trend Bearish,-9.35,28.59,14.15,25.57,Bearish (Downtrend),41.39,,,,,,,,,,,,,,,,,,False
+DALBHARAT,Dalmia BharatLtd,Screener: Cement & Cement Products,248,1682.1,False,RS <= +2 pp; trend Bearish,1.49,20.54,17.28,24.86,Bearish (Downtrend),40.92,,,,,,,,,,,,,,,,,,False
+GRASIM,Grasim Inds,Screener: Cement & Cement Products,248,2962.0,False,RS <= +2 pp; trend Bearish,-0.69,25.97,9.94,36.76,Bearish (Downtrend),28.23,,,,,,,,,,,,,,,,,,False
+INDIACEM,India Cements,Screener: Cement & Cement Products,248,295.15,False,RS <= +2 pp; trend Bearish,-17.2,34.53,10.52,40.86,Bearish (Downtrend),17.85,,,,,,,,,,,,,,,,,,False
+JKCEMENT,J K Cements,Screener: Cement & Cement Products,248,4952.0,False,RS <= +2 pp; trend Bearish,-3.7,23.7,17.34,18.49,Bearish (Downtrend),45.35,,,,,,,,,,,,,,,,,,False
+JKLAKSHMI,JK Lakshmi Cem.,Screener: Cement & Cement Products,248,476.6,False,RS <= +2 pp; trend Bearish,-11.56,19.72,16.6,32.73,Bearish (Downtrend),27.36,,,,,,,,,,,,,,,,,,False
+JSWCEMENT,JSW Cement,Screener: Cement & Cement Products,248,111.6,False,RS <= +2 pp; trend Bearish,-12.09,38.92,11.26,33.05,Bearish (Downtrend),25.38,,,,,,,,,,,,,,,,,,False
+NUVOCO,Nuvoco Vistas,Screener: Cement & Cement Products,248,322.1,False,trend Bearish,6.12,12.64,21.79,27.25,Bearish (Downtrend),44.65,,,,,,,,,,,,,,,,,,False
+PRSMJOHNSN,Prism Johnson,Screener: Cement & Cement Products,248,103.61,False,RS <= +2 pp; trend Bearish,-4.48,35.78,19.96,29.2,Bearish (Downtrend),30.95,,,,,,,,,,,,,,,,,,False
+SHREECEM,Shree Cement,Screener: Cement & Cement Products,248,21900.0,False,RS <= +2 pp; trend Bearish,-11.98,33.67,13.33,33.84,Bearish (Downtrend),36.74,,,,,,,,,,,,,,,,,,False
+STARCEMENT,Star Cement,Screener: Cement & Cement Products,248,178.39,False,RS <= +2 pp; trend Bearish,-8.73,29.57,12.69,35.97,Bearish (Downtrend),35.05,,,,,,,,,,,,,,,,,,False
+RAMCOCEM,The Ramco Cement,Screener: Cement & Cement Products,248,830.85,False,RS <= +2 pp; trend Bearish,-6.12,16.85,16.15,31.38,Bearish (Downtrend),31.69,,,,,,,,,,,,,,,,,,False
+ULTRACEMCO,UltraTech Cem.,Screener: Cement & Cement Products,248,10710.0,False,RS <= +2 pp; trend Bearish,-2.45,22.85,12.23,28.18,Bearish (Downtrend),37.7,,,,,,,,,,,,,,,,,,False
