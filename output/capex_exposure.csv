@@ -1,7 +1,7 @@
 benchmark,days,beta,r_squared,benchmark_return_pct
 Our capex universe (equal weight),245,1.11,0.677,13.7
 Nifty Smallcap 500,168,1.17,0.596,15.9
-Nifty500 Multicap Infrastructure 50:30:20,245,1.21,0.492,-3.4
+Nifty500 Multicap Infrastructure 50:30:20,245,1.21,0.491,-3.4
 Nifty500 Momentum 50,245,1.01,0.487,0.6
 Nifty Capital Goods,74,1.12,0.475,-2.2
 Nifty India Manufacturing,245,1.18,0.466,1.4
