@@ -37,6 +37,7 @@ from config import (
     OUTPUT_DIR,
     PRINCIPAL_INR,
     RISK_SUMMARY_OUTPUT_CSV,
+    HEDGE_DRIFT_LOTS,
     HEDGE_MAX_ROLLS,
     HEDGE_PROFIT_TRIGGER_PCT,
     INITIAL_HOLDINGS,
@@ -55,6 +56,7 @@ TRACKER_SUMMARY_CSV = OUTPUT_DIR / "tracker_summary.csv"
 TRACKER_POSITIONS_CSV = OUTPUT_DIR / "tracker_positions.csv"
 PUT_MARKS_CSV = DERIVATIVES_DIR / "option_marks.csv"
 HEDGE_ROLL_CSV = OUTPUT_DIR / "hedge_roll.csv"
+HEDGE_DRIFT_CSV = OUTPUT_DIR / "hedge_drift.csv"
 REPLACEMENT_PLAN_CSV = OUTPUT_DIR / "replacement_plan.csv"
 SELECTION_RANKING_CSV = OUTPUT_DIR / "selection_ranking.csv"
 MIN_DAYS_FOR_XIRR = 30  # annualising a few days' return gives meaningless four-digit rates
@@ -498,6 +500,44 @@ def plan_put_roll(summary: Dict[str, object], ledger: pd.DataFrame, as_of: pd.Ti
     return pd.DataFrame(rows, columns=["field", "value"])
 
 
+def plan_hedge_drift(summary: Dict[str, object], ledger: pd.DataFrame, as_of: pd.Timestamp, hedge_ratio: float,
+                     spot: float, lot: int, put_price: Optional[float], roll_status: str = "waiting",
+                     band_lots: float = HEDGE_DRIFT_LOTS) -> pd.DataFrame:
+    """
+    Keep the hedge ratio: lots needed = hedge_ratio x stock value / (Nifty spot x lot). When they differ from the
+    lots held by `band_lots` or more, buy or sell lots of the put held (the highest strike) back to the rounded
+    figure. Returns rows (field, value); status is 'in band', 'REBALANCE' (with the trade), 'see profit lock'
+    (the roll re-sizes the hedge itself), 'no puts' or 'no prices'.
+    """
+    held = {i: q for i, q in ledger_positions(ledger).items() if parse_option(i) and q > 0}
+    rows = [("as_of", as_of.strftime("%Y-%m-%d"))]
+    if not held:
+        return pd.DataFrame(rows + [("status", "no puts")], columns=["field", "value"])
+    inst = max(held, key=lambda i: parse_option(i)["strike"])
+    held_lots = sum(held.values()) / lot
+    need = hedge_ratio * float(summary["stocks_inr"]) / (spot * lot)
+    rows += [("contract", inst), ("lots_held", round(held_lots, 2)), ("lots_needed", round(need, 2)),
+             ("hedge_ratio", round(hedge_ratio, 3)), ("stocks_inr", round(float(summary["stocks_inr"]))),
+             ("nifty_spot", round(spot, 2)), ("band_lots", band_lots)]
+    if roll_status in ("TRIGGERED", "no prices"):
+        return pd.DataFrame(rows + [("status", "see profit lock")], columns=["field", "value"])
+    if abs(need - held_lots) < band_lots:
+        return pd.DataFrame(rows + [("status", "in band")], columns=["field", "value"])
+    if put_price is None or not put_price > 0:
+        return pd.DataFrame(rows + [("status", "no prices")], columns=["field", "value"])
+    target = max(1, round(need))
+    change = int((target - held_lots) * lot)
+    if change < 0:  # only the contract held can be sold, and never more than is held
+        change = -min(-change, int(held[inst]))
+    side = "BUY" if change > 0 else "SELL"
+    value = abs(change) * put_price
+    rows += [("status", "REBALANCE"),
+             ("trade", f"{side} {abs(change)} {inst} @ {put_price:.2f} ({abs(change) // lot} lots, hedge ratio)"),
+             ("trade_value_inr", round(value)), ("cash_inr", round(float(summary["cash_inr"]))),
+             ("cash_sufficient", bool(side == "SELL" or float(summary["cash_inr"]) >= value))]
+    return pd.DataFrame(rows, columns=["field", "value"])
+
+
 # ---------------------------------------------------------------------------
 # Recording trades from the dashboard (instead of hand-editing data/trades.csv)
 # ---------------------------------------------------------------------------
@@ -585,14 +625,15 @@ def replacement_trades(plan: pd.DataFrame, day: str, fills: Optional[Dict[str, f
     return pd.DataFrame(rows, columns=LEDGER_COLUMNS)
 
 
-def roll_trades(roll: pd.DataFrame, day: str) -> pd.DataFrame:
-    """Ledger rows from the profit-lock plan's trade lines ("BUY 130 NIFTY 2026-12-29 24000 PE @ 45.10 (2 lots)")."""
+def roll_trades(roll: pd.DataFrame, day: str, note: str = "profit-lock put roll") -> pd.DataFrame:
+    """Ledger rows from a hedge plan's trade lines ("BUY 130 NIFTY 2026-12-29 24000 PE @ 45.10 (2 lots)"): the
+    profit-lock roll, or the hedge-ratio rebalance with its own note."""
     rows = []
     for text in roll.loc[roll["field"] == "trade", "value"]:
         m = _TRADE_TEXT.match(str(text))
         if m:
             rows.append({"date": day, "instrument": m.group(3), "action": m.group(1), "quantity": int(m.group(2)),
-                         "price": float(m.group(4)), "note": "profit-lock put roll"})
+                         "price": float(m.group(4)), "note": note})
     return pd.DataFrame(rows, columns=LEDGER_COLUMNS)
 
 
@@ -687,7 +728,8 @@ def _inr(x: float) -> str:
 
 
 def whatsapp_update(summary: Optional[Dict[str, object]], positions: pd.DataFrame, plan: pd.DataFrame,
-                    roll: Optional[Dict[str, object]] = None, risk: Optional[pd.DataFrame] = None) -> str:
+                    roll: Optional[Dict[str, object]] = None, risk: Optional[pd.DataFrame] = None,
+                    drift: Optional[Dict[str, object]] = None) -> str:
     """A short plain-text update for the group chat (WhatsApp *bold* markup)."""
     if not summary:
         lines = ["*Capex portfolio: not invested yet*",
@@ -725,6 +767,9 @@ def whatsapp_update(summary: Optional[Dict[str, object]], positions: pd.DataFram
             alerts.append(f"{r['symbol']} is {r['pct_above_stop']:.1f}% above its stop")
     if roll and roll.get("status") == "TRIGGERED":
         alerts.append("Profit lock triggered: roll the Nifty puts up")
+    if drift and drift.get("status") == "REBALANCE":
+        alerts.append(f"Hedge ratio drifted ({float(drift['lots_held']):g} lots held, {float(drift['lots_needed']):.2f} "
+                      f"needed): {str(drift['trade']).split(' (')[0]}")
     lines.append(("*Action:* " + "; ".join(alerts)) if alerts else "No action needed.")
     return "\n".join(lines)
 
@@ -737,7 +782,8 @@ def run(as_of: Optional[date] = None, fetch=None) -> Optional[Dict[str, pd.DataF
     end = closes.index[closes.index <= end].max()
     ledger = ensure_ledger(closes, end, fetch)
     if ledger is None:
-        for path in (TRACKER_DAILY_CSV, TRACKER_SUMMARY_CSV, TRACKER_POSITIONS_CSV, HEDGE_ROLL_CSV, REPLACEMENT_PLAN_CSV):
+        for path in (TRACKER_DAILY_CSV, TRACKER_SUMMARY_CSV, TRACKER_POSITIONS_CSV, HEDGE_ROLL_CSV, HEDGE_DRIFT_CSV,
+                     REPLACEMENT_PLAN_CSV):
             path.unlink(missing_ok=True)
         return None
     factors = load_factor_series()
@@ -771,13 +817,27 @@ def run(as_of: Optional[date] = None, fetch=None) -> Optional[Dict[str, pd.DataF
     roll = plan_put_roll(s, ledger, end, fo, ratio)
     roll.to_csv(HEDGE_ROLL_CSV, index=False)
 
+    # Hedge-ratio drift: the spot and lot size come from tonight's hedge plan (same F&O file), the put's price
+    # from its settlement mark
+    held_puts = sorted((i for i, q in ledger_positions(ledger).items() if parse_option(i) and q > 0),
+                       key=lambda i: parse_option(i)["strike"])
+    if held_puts and "Nifty 50 spot" in plan and str(plan.get("Prices as of")) == end.strftime("%Y-%m-%d"):
+        drift = plan_hedge_drift(s, ledger, end, ratio, float(plan["Nifty 50 spot"]), int(float(plan["Nifty lot size"])),
+                                 marks.get((end.strftime("%Y-%m-%d"), held_puts[-1])),
+                                 str(dict(zip(roll["field"], roll["value"])).get("status")))
+    else:
+        drift = pd.DataFrame([("as_of", end.strftime("%Y-%m-%d")), ("status", "no puts" if not held_puts else "no prices")],
+                             columns=["field", "value"])
+    drift.to_csv(HEDGE_DRIFT_CSV, index=False)
+
     # Stop-loss replacement: sell the stopped stock, buy the next reserve stock that still qualifies
     ranking = pd.read_csv(SELECTION_RANKING_CSV) if SELECTION_RANKING_CSV.exists() else pd.DataFrame(columns=["symbol"])
     risk = pd.read_csv(RISK_SUMMARY_OUTPUT_CSV) if Path(RISK_SUMMARY_OUTPUT_CSV).exists() else pd.DataFrame()
     weights = risk.set_index("symbol")["weight_pct"] if "weight_pct" in risk else None
     replacements = plan_replacements(positions, ledger, ranking, closes.loc[end], weights, trend_ok_symbols())
     replacements.to_csv(REPLACEMENT_PLAN_CSV, index=False)
-    return {"daily": daily, "positions": positions, "summary": summary, "roll": roll, "replacements": replacements}
+    return {"daily": daily, "positions": positions, "summary": summary, "roll": roll, "drift": drift,
+            "replacements": replacements}
 
 
 if __name__ == "__main__":
@@ -792,5 +852,6 @@ if __name__ == "__main__":
         print(out["summary"].to_string(index=False))
         print(out["positions"].to_string(index=False))
         print(out["roll"].to_string(index=False))
+        print(out["drift"].to_string(index=False))
         if not out["replacements"].empty:
             print(out["replacements"].to_string(index=False))

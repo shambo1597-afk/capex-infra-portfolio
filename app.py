@@ -838,6 +838,32 @@ with tab_overview:
                 st.caption("Profit lock: the puts have been rolled up (recorded in the ledger).")
             elif rv.get("status") == "no prices":
                 st.warning("Profit lock triggered, but NSE option prices for today are not available yet; refresh later.")
+        drift_df = _out("hedge_drift.csv")
+        if not drift_df.empty:
+            dv = dict(zip(drift_df["field"], drift_df["value"]))
+            if dv.get("status") == "REBALANCE":
+                st.warning(
+                    f"**Hedge ratio drifted:** {float(dv['lots_held']):g} lots of {dv['contract']} held, "
+                    f"{float(dv['lots_needed']):.2f} needed (hedge ratio {float(dv['hedge_ratio']):.2f} x stocks "
+                    f"{_inr(float(dv['stocks_inr']))} / Nifty {float(dv['nifty_spot']):,.0f} x lot). Bring it back:\n\n"
+                    f"- {dv['trade']}\n\nAbout {_inr(float(dv['trade_value_inr']))}"
+                    + ("" if str(dv.get("cash_sufficient")) == "True" else "; NOT enough cash: buy fewer lots")
+                    + ". Price: NSE settlement today.")
+                drift_rows = roll_trades(drift_df, pd.Timestamp.now(tz="Asia/Kolkata").strftime("%Y-%m-%d"),
+                                         note="hedge-ratio rebalance")
+                if not can_edit():
+                    st.caption("To record the trade, unlock editing in the Trade ledger section below.")
+                else:
+                    with st.form("record_drift"):
+                        st.markdown("**Done it? Record it** (edit the price or quantity to your actual fill):")
+                        edited_drift = st.data_editor(drift_rows, hide_index=True, width="stretch",
+                                                      disabled=["instrument", "action", "note"])
+                        if st.form_submit_button("Record the hedge rebalance", type="primary"):
+                            _commit_trades(pd.concat([pd.read_csv(TRADES_CSV), edited_drift], ignore_index=True),
+                                           "Hedge-ratio rebalance", refresh=False)
+            elif dv.get("status") == "in band":
+                st.caption(f"Hedge ratio: {float(dv['lots_held']):g} lots held, {float(dv['lots_needed']):.2f} needed "
+                           f"today; lots are bought or sold only when the gap reaches a full lot.")
         plan = pd.read_csv(REPLACEMENT_PLAN_CSV) if REPLACEMENT_PLAN_CSV.exists() else pd.DataFrame()
         if not plan.empty:  # stop hits (or parked money to redeploy) not yet recorded in the ledger
             lines = []
@@ -966,11 +992,12 @@ with tab_overview:
     # 0c. One-tap update for the group chat
     with st.expander("WhatsApp update for the group"):
         plan_now = pd.read_csv(REPLACEMENT_PLAN_CSV) if REPLACEMENT_PLAN_CSV.exists() else pd.DataFrame()
-        roll_now = _out("hedge_roll.csv")
+        roll_now, drift_now = _out("hedge_roll.csv"), _out("hedge_drift.csv")
         text = whatsapp_update(
             dict(zip(tracker_summary["metric"], tracker_summary["value"])) if not tracker_summary.empty else None,
             _out("tracker_positions.csv"), plan_now,
-            dict(zip(roll_now["field"], roll_now["value"])) if not roll_now.empty else None, risk_df)
+            dict(zip(roll_now["field"], roll_now["value"])) if not roll_now.empty else None, risk_df,
+            dict(zip(drift_now["field"], drift_now["value"])) if not drift_now.empty else None)
         st.code(text, language=None)
         st.caption("Use the copy icon at the top right of the box, then paste into WhatsApp.")
 
@@ -1583,10 +1610,19 @@ with tab_risk:
                 "the upside is left open. A price can gap below a stop on results day. **Loss at stop, % of ₹1 crore** = weight × "
                 "distance to the stop: what each stop can cost the whole portfolio. The two are linked by design: equal-risk "
                 "weights give volatile stocks less money and ATR stops give them more room, so every stop costs roughly "
-                "the same share of the capital. The diversified row has no reward : risk, because its typical move and the "
+                "the same share of the capital. **Target level** = price + the typical 3-month move: a reference, not a sell "
+                "order. Selling at a target was backtested on the live rule: a target one stop-distance up cost 0.9 pp a "
+                "quarter, targets 1.5-2 stop-distances up added nothing, and all of them doubled the trading; momentum "
+                "works by letting winners run, and the trailing stop locks in the gain instead. The diversified row has no reward : risk, because its typical move and the "
                 "all-stops-at-once loss are on different bases; the comparison with the Nifty 500 is on the Performance tab."
             )
-            show_rr = rr_df.drop(columns=["price", "stop_loss_price", "value_inr"], errors="ignore").rename(columns={
+            # Target level = price + the typical 3-month move: a reference for the reward, not a sell order. Selling
+            # at a target was tested (research/stop_rule_results.md): a 1R target cost 0.9 pp a quarter, 1.5R-2R
+            # added nothing, and every target doubled the trades; momentum winners are left to run.
+            rr_df.insert(rr_df.columns.get_loc("upside_1sd_3m_pct") + 1, "target_price",
+                         (rr_df["price"] * (1 + rr_df["upside_1sd_3m_pct"] / 100)).round(2))
+            show_rr = rr_df.drop(columns=["price", "value_inr"], errors="ignore").rename(columns={
+                "stop_loss_price": "Stop-loss (₹)", "target_price": "Target level (₹)",
                 "symbol": "Stock", "downside_to_stop_pct": "Downside to stop %", "upside_1sd_3m_pct": "Typical 3-month move %",
                 "first_hurdle_resistance": "First hurdle (resistance ₹)", "first_hurdle_above_pct": "Hurdle above price %",
                 "upside_pct": "Upside %", "reward_risk": "Reward : risk", "capm_3m_pct": "CAPM 3-month %",
@@ -1620,6 +1656,12 @@ with tab_risk:
 - **After a profit (not greedy):** {notes.get('Profit trigger', '')}.
 - **After a loss (not fearful):** no discretionary hedging; stock-specific falls are cut by each stock's stop-loss, and a market crash
   is covered by the puts.
+- **Keeping the hedge ratio:** every evening the lots needed are recomputed from the stocks' value and the latest tail hedge ratio;
+  when they differ from the lots held by a full lot, lots of the put held are bought or sold (an alert on the Overview tab).
+- **Why out of the money, not in the money:** an in-the-money put is mostly a short Nifty position. On 28-Sep, 8 lots of the 24000 PE
+  (5% in the money) cost ₹5.3 L with delta −0.79, hedging about ₹94 L of Nifty exposure: almost a full futures hedge, which gives
+  up the market return and removes only the {float(plan['Hedge effectiveness (R^2)']) * 100:.0f}% of variance the market explains,
+  for more than twice the cash we hold. The 22000 PE cost ₹1.1 L (delta −0.23): insurance against a crash, with the upside kept.
 """
         )
         if not scen_df.empty:

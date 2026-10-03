@@ -2,8 +2,9 @@
 Do the stop-loss and replacement rules help, and what do trading costs take? (28-Sep-2026)
 
 The selection rule was backtested (research/*); the rules that run the money afterwards were not: a stop
-at 3 x ATR(14) below the close that only ever rises, checked on the close; the sale proceeds buy the
-first reserve stock (ranks 9-15 at the start) still in an uptrend that day. This study replays them.
+at STOP_LOSS_ATR_MULTIPLE x ATR(14) below the close that only ever rises (3 when the study was first run;
+5 since 28-Sep-2026, so the S and R rows now use 5 and 3 is the "R 3xATR trailing" row), checked on the
+close; the sale proceeds buy the first reserve stock (ranks 9-15 at the start) still in an uptrend that day. This study replays them.
 
 DESIGN (written and run on 28-Sep-2026, after the list was frozen; not pre-registered)
   Universe    point in time (research/survivorship_study.py: approx. market cap >= Rs 5,000 cr and
@@ -11,8 +12,8 @@ DESIGN (written and run on 28-Sep-2026, after the list was frozen; not pre-regis
   Portfolios  each month from 2021: the top 8 by rs_126_skip21, equal weight (ERC weights are within a few
               points of equal), held 63 sessions. Reserve = ranks 9-15 on the start date.
     H  hold      no stops
-    S  stops     3 x ATR(14) trailing stop on the close; exit at the NEXT session's close (the order goes
-                 in after the close); proceeds wait in cash (the stopped stock's weight earns 0)
+    S  stops     STOP_LOSS_ATR_MULTIPLE x ATR(14) trailing stop on the close; exit at the NEXT session's
+                 close (the order goes in after the close); proceeds wait in cash (the stopped stock's weight earns 0)
     R  stops + replacement   as S, the proceeds buy the first reserve stock not yet bought whose
                  DI gap is >= 2 that day, at that close, with its own trailing stop
   Costs       0.25% of each trade's value (STT 0.1% + exchange/brokerage/impact), charged in S and R on
@@ -45,8 +46,13 @@ from survivorship_study import TURNOVER_WINDOW, candidates, panels  # noqa: E402
 
 TOP_N, RESERVE_N, COST = 8, 7, 0.0025
 # Sensitivity of the live rule (R) to the stop's width and to trailing (checked after the main result)
-VARIANTS = {"R 4xATR trailing": (4.0, True), "R 5xATR trailing": (5.0, True), "R 6xATR trailing": (6.0, True),
+VARIANTS = {"R 3xATR trailing": (3.0, True), "R 4xATR trailing": (4.0, True), "R 5xATR trailing": (5.0, True), "R 6xATR trailing": (6.0, True),
             "R 3xATR fixed": (3.0, False), "R 4xATR fixed": (4.0, False), "R 5xATR fixed": (5.0, False)}
+# Profit targets on top of the live rule (5 x ATR trailing + replacement), added 3-Oct-2026 when a group member
+# proposed a target level per stock: sell when the close reaches entry + k x the entry risk (entry - initial
+# stop; 5 x ATR is about the 1-sigma 3-month move, so k = 1 is roughly a 1-sigma target), next-close exit,
+# proceeds to the reserve queue as after a stop. Not pre-registered.
+TARGETS = {"R 5xATR + target 1R": 1.0, "R 5xATR + target 1.5R": 1.5, "R 5xATR + target 2R": 2.0}
 
 
 def atr_panel(close, high, low, n=14):
@@ -56,11 +62,14 @@ def atr_panel(close, high, low, n=14):
     return tr.ewm(alpha=1 / n, adjust=False, min_periods=n).mean()
 
 
-def run_quarter(i0, picks, reserve, close, atr, di, mode, mult=STOP_LOSS_ATR_MULTIPLE, trail=True):
-    """Portfolio value path (start 1.0) over HORIZON sessions from row i0 for mode H / S / R."""
+def run_quarter(i0, picks, reserve, close, atr, di, mode, mult=STOP_LOSS_ATR_MULTIPLE, trail=True, target_r=None):
+    """Portfolio value path (start 1.0) over HORIZON sessions from row i0 for mode H / S / R; target_r adds a
+    profit target at entry + target_r x (entry - initial stop)."""
     slots = [{"sym": s, "w": 1.0 / TOP_N, "px": close.iat[i0, close.columns.get_loc(s)],
               "stop": close.iat[i0, close.columns.get_loc(s)] - mult * atr.iat[i0, atr.columns.get_loc(s)],
               "open": True, "pending": False} for s in picks]
+    for slot in slots:
+        slot["target"] = slot["px"] + target_r * (slot["px"] - slot["stop"]) if target_r else np.inf
     queue, cash, costs = list(reserve), 0.0, 0.0
     for i in range(i0 + 1, i0 + HORIZON + 1):
         for slot in [s for s in slots if s["open"]]:
@@ -79,8 +88,9 @@ def run_quarter(i0, picks, reserve, close, atr, di, mode, mult=STOP_LOSS_ATR_MUL
                         cp, g = close.iat[i, j], di.iat[i, di.columns.get_loc(cand)] if cand in di else np.nan
                         if not np.isnan(cp) and g >= DI_GAP_THIN_THRESHOLD:
                             costs += value * COST
+                            stop = cp - mult * atr.iat[i, j]
                             slots.append({"sym": cand, "w": value, "px": cp, "open": True, "pending": False,
-                                          "stop": cp - mult * atr.iat[i, j]})
+                                          "stop": stop, "target": cp + target_r * (cp - stop) if target_r else np.inf})
                             cash -= value
                             break
                 continue
@@ -89,7 +99,7 @@ def run_quarter(i0, picks, reserve, close, atr, di, mode, mult=STOP_LOSS_ATR_MUL
             a = atr.iat[i, atr.columns.get_loc(slot["sym"])]
             if trail and not np.isnan(a):
                 slot["stop"] = max(slot["stop"], c - mult * a)
-            if c <= slot["stop"]:
+            if c <= slot["stop"] or c >= slot["target"]:
                 slot["pending"] = True
     end = i0 + HORIZON
     value = cash - costs
@@ -145,10 +155,14 @@ def main() -> None:
             v, n_exit = run_quarter(i0, picks, reserve, close, atr, di, "R", mult, trail)
             row[key] = (v - 1 - mkt) * 100
             row[f"{key} exits"] = n_exit
+        for key, k in TARGETS.items():
+            v, n_exit = run_quarter(i0, picks, reserve, close, atr, di, "R", 5.0, True, k)
+            row[key] = (v - 1 - mkt) * 100
+            row[f"{key} exits"] = n_exit
         rows.append(row)
     res = pd.DataFrame(rows)
     names = {"H": "H hold (no stops)", "S": "S stops, cash", "R": "R stops + replacement (live rule)",
-             **{k: k for k in VARIANTS}}
+             **{k: k for k in VARIANTS}, **{k: k for k in TARGETS}}
     table = {}
     for label, g in [("All", res)] + list(res.groupby("period")):
         for k, name in names.items():
@@ -157,7 +171,7 @@ def main() -> None:
                                     "worst quarter (pp)": round(g[k].min(), 2),
                                     "stock exits per quarter": round(g[f"{k} exits"].mean(), 1)}
     diffs = {}
-    for k in ["S", "R", *VARIANTS]:
+    for k in ["S", "R", *VARIANTS, *TARGETS]:
         dd = res[k] - res["H"]
         s = dd.iloc[::3]
         diffs[f"{names[k]} minus H"] = {

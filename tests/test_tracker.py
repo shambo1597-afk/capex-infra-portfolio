@@ -151,6 +151,44 @@ def test_a_same_strike_top_up_is_not_the_roll():
     assert out["status"] == "TRIGGERED"  # the Nifty has since risen: the real roll-up is still available
 
 
+def _drift(stocks, spot=22000.0, roll_status="waiting", price=200.0, ledger=None):
+    s = {"stocks_inr": stocks, "cash_inr": 2e5}
+    out = tracker.plan_hedge_drift(s, _roll_ledger() if ledger is None else ledger, pd.Timestamp("2026-10-20"), 1.25,
+                                   spot, 65, price, roll_status)
+    return dict(out.values)
+
+
+def test_hedge_drift_stays_put_inside_a_full_lot():
+    # 455 units = 7 lots held; the stocks need 7.7 lots: inside the band, no trade
+    out = _drift(stocks=7.7 * 22000 * 65 / 1.25)
+    assert out["status"] == "in band" and out["lots_held"] == 7 and out["lots_needed"] == pytest.approx(7.7)
+
+
+def test_hedge_drift_buys_back_to_the_rounded_lots():
+    out = _drift(stocks=8.2 * 22000 * 65 / 1.25)
+    assert out["status"] == "REBALANCE" and out["trade"] == "BUY 65 NIFTY 2026-12-29 22000 PE @ 200.00 (1 lots, hedge ratio)"
+    assert out["trade_value_inr"] == 13000 and out["cash_sufficient"]
+
+
+def test_hedge_drift_sells_when_the_stock_value_falls():
+    out = _drift(stocks=5.6 * 22000 * 65 / 1.25)
+    assert out["trade"].startswith("SELL 65 NIFTY 2026-12-29 22000 PE")
+
+
+def test_hedge_drift_leaves_resizing_to_a_triggered_roll_and_needs_puts():
+    assert _drift(stocks=9e6, roll_status="TRIGGERED")["status"] == "see profit lock"
+    assert _drift(stocks=9e6, ledger=_roll_ledger()[:1])["status"] == "no puts"
+    assert _drift(stocks=9.5 * 22000 * 65 / 1.25, price=None)["status"] == "no prices"
+
+
+def test_hedge_drift_trade_is_recorded_with_its_own_note():
+    out = tracker.plan_hedge_drift({"stocks_inr": 8.2 * 22000 * 65 / 1.25, "cash_inr": 2e5}, _roll_ledger(),
+                                   pd.Timestamp("2026-10-20"), 1.25, 22000.0, 65, 200.0)
+    t = tracker.roll_trades(out, "2026-10-21", note="hedge-ratio rebalance")
+    assert t[["instrument", "action", "quantity", "price", "note"]].values.tolist() == [
+        ["NIFTY 2026-12-29 22000 PE", "BUY", 65, 200.0, "hedge-ratio rebalance"]]
+
+
 # ---------------------------------------------------------------------------
 # 15 tracked, 8 invested: holdings and the stop-loss replacement rule
 # ---------------------------------------------------------------------------
@@ -366,6 +404,10 @@ def test_whatsapp_update():
     assert "Best: AAA +8.0%" in text and "BBB is 1.5% above its stop" in text
     assert "No action needed" in tracker.whatsapp_update(summary, pos.assign(near_stop=False), pd.DataFrame())
     assert "not invested yet" in tracker.whatsapp_update(None, pd.DataFrame(), pd.DataFrame())
+    drift = {"status": "REBALANCE", "lots_held": 8.0, "lots_needed": 9.1,
+             "trade": "BUY 65 NIFTY 2026-12-29 22000 PE @ 200.00 (1 lots, hedge ratio)"}
+    assert "Hedge ratio drifted (8 lots held, 9.10 needed): BUY 65 NIFTY 2026-12-29 22000 PE @ 200.00" in \
+        tracker.whatsapp_update(summary, pos.assign(near_stop=False), pd.DataFrame(), drift=drift)
 
 
 def test_a_recorded_sale_clears_the_replacement_alert():

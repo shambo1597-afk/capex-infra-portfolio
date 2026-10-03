@@ -572,6 +572,11 @@ TAIL_HEDGE_OTM_PCT = 5.0      # protective puts struck about 5% below spot: insu
 HEDGE_PROFIT_TRIGGER_PCT = 10.0  # once the portfolio is up 10%, roll the puts up to lock in part of the gain
 NEAR_STOP_PCT = 3.0              # amber warning when a holding closes within this % above its stop-loss
 HEDGE_MAX_ROLLS = 1              # roll up once (a team decision; raise to roll again at each further trigger)
+# Hedge-ratio drift (3-Oct-2026, a group member's suggestion): each evening the lots needed (tail hedge ratio x
+# stock value / (Nifty x lot)) are recomputed; when they differ from the lots held by a full lot or more, lots
+# of the put already held are bought or sold back to the rounded figure. A full-lot band, not rounding, so a
+# need of 8.49 vs 8.51 lots does not trade every other evening.
+HEDGE_DRIFT_LOTS = 1.0
 # CAPM expected return E[r_i] = r_f + beta_i x MRP (risk_model.py): r_f = the Nifty 1D Rate index
 # annualised over the last quarter; MRP = India's total equity risk premium from Damodaran's country
 # risk premium table (pages.stern.nyu.edu/~adamodar, "Country Default Spreads and Risk Premiums",
