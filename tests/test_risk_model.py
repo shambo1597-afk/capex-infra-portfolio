@@ -206,3 +206,18 @@ def test_capex_exposure_ranks_the_benchmark_the_portfolio_follows():
     assert table.iloc[0]["benchmark"] == "capex" and table.iloc[-1]["benchmark"] == "noise"
     model = factor_model(port, mkt, capex, None, None).set_index("term")
     assert model.loc["capex", "coef"] == pytest.approx(1.2, abs=0.1) and model.loc["capex", "t"] > 5
+
+
+def test_held_put_reads_the_ledger(tmp_path):
+    from risk_model import held_put
+
+    path = tmp_path / "trades.csv"
+    assert held_put(path) is None
+    pd.DataFrame([
+        {"date": "2026-09-28", "instrument": "AAA", "action": "BUY", "quantity": 10, "price": 100.0, "note": ""},
+        {"date": "2026-09-28", "instrument": "NIFTY 2026-12-29 22000 PE", "action": "BUY", "quantity": 520, "price": 208.2, "note": ""},
+        {"date": "2026-10-20", "instrument": "NIFTY 2026-12-29 22000 PE", "action": "BUY", "quantity": 65, "price": 300.0, "note": ""},
+    ]).to_csv(path, index=False)
+    h = held_put(path)
+    assert h["instrument"] == "NIFTY 2026-12-29 22000 PE" and h["units"] == 585 and h["strike"] == 22000.0
+    assert h["avg_cost"] == pytest.approx((520 * 208.2 + 65 * 300.0) / 585)

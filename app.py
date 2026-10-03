@@ -1640,15 +1640,33 @@ with tab_risk:
         h2.metric("Hedge effectiveness (R²)", f"{float(plan['Hedge effectiveness (R^2)']) * 100:.0f}%",
                   help=notes.get("Hedge effectiveness (R^2)"))
         h3.metric("Tail hedge ratio", f"{float(plan['Tail hedge ratio']):.2f}", help=notes.get("Tail hedge ratio"))
-        h4.metric("Puts cost", f"₹{float(plan['Puts: cost (Rs)']):,.0f}",
-                  help=notes.get("Puts: cost (Rs)"))
+        puts_held = "Puts: value today (Rs)" in plan
+        put_value = float(plan["Puts: value today (Rs)"]) if puts_held else float("nan")
+        if puts_held and pd.notna(put_value):
+            h4.metric("Puts: value today", _inr(put_value),
+                      f"{_inr(put_value - float(plan['Puts: cost (Rs)']))} vs {_inr(float(plan['Puts: cost (Rs)']))} paid",
+                      help="The puts held, at today's NSE settlement price")
+        else:
+            h4.metric("Puts cost", f"₹{float(plan['Puts: cost (Rs)']):,.0f}", help=notes.get("Puts: cost (Rs)"))
+        if puts_held:
+            day0 = (f"- **Held since the {pd.Timestamp(EVALUATION_START_DATE):%d-%b} snapshot:** "
+                    f"**{float(plan['Puts: lots']):g} lots of {plan['Puts: contract']}**, bought at "
+                    f"₹{float(plan['Puts: premium']):,.2f} (lot {int(float(plan['Nifty lot size']))}), "
+                    f"{_inr(float(plan['Puts: cost (Rs)']))} paid; strike {float(plan['Puts: strike below spot (%)']):.1f}% "
+                    f"below today's Nifty. Lots = tail hedge ratio × portfolio value / (Nifty × lot): "
+                    f"{float(plan['Puts: lots needed today (exact)']):.2f} needed today. The tail hedge ratio is the "
+                    "portfolio's beta on Nifty down days: stocks fall together in a sell-off. One expiry covers the "
+                    "whole window, so there is no roll.")
+        else:
+            day0 = (f"- **Day 0:** buy **{int(float(plan['Puts: lots']))} lots of {plan['Puts: contract']}** at "
+                    f"₹{float(plan['Puts: premium']):,.2f} (lot {int(float(plan['Nifty lot size']))}), about "
+                    f"₹{float(plan['Puts: cost (Rs)']):,.0f}. Lots = tail hedge ratio × portfolio value / (Nifty × lot). "
+                    "The tail hedge ratio is the portfolio's beta on Nifty down days: stocks fall together in a sell-off. "
+                    "One expiry covers the whole window, so there is no roll.")
         st.markdown(
             f"""
 **Decision: tail-hedge with puts from day 0; no futures hedge.**
-- **Day 0:** buy **{int(float(plan['Puts: lots']))} lots of {plan['Puts: contract']}** at ₹{float(plan['Puts: premium']):,.2f}
-  (lot {int(float(plan['Nifty lot size']))}), about ₹{float(plan['Puts: cost (Rs)']):,.0f}. Lots = tail hedge ratio × portfolio value /
-  (Nifty × lot). The tail hedge ratio is the portfolio's beta on Nifty down days: stocks fall together in a sell-off.
-  One expiry covers the whole window, so there is no roll.
+{day0}
 - **Why not futures:** a full futures hedge ({int(float(plan['Futures: lots for a full hedge (rounded)']))} lots) would cancel the market
   return we are positioned to earn, remove only {float(plan['Hedge effectiveness (R^2)']) * 100:.0f}% of the variance (the rest is stock-specific),
   needs a roll before the window ends, and ties up about ₹{float(plan['Futures: margin needed (Rs, assumed)']):,.0f} of margin (assumed
@@ -1676,8 +1694,12 @@ with tab_risk:
                                 xaxis_title="Nifty 50 move to expiry (%)", yaxis_title="Portfolio P&L (% of ₹1 crore)",
                                 margin=dict(l=10, r=10, t=30, b=10), legend=dict(orientation="h", y=1.08))
             st.plotly_chart(fig_s, width="stretch")
-            st.caption("Market-driven P&L only (beta × Nifty move; the down-day beta for falls). Stock-specific moves come on top "
-                       "and are handled by the stop-losses.")
+            st.caption("Market-driven P&L only (beta × Nifty move; the down-day beta for falls), "
+                       + ("from today's prices to expiry, with the puts held set against their value today. " if puts_held
+                          else "from the plan's prices to expiry. ")
+                       + "Stock-specific moves come on top and are handled by the stop-losses.")
+        if puts_held:
+            st.caption("The put table under the details compares the strikes one would buy today; it is not a trade.")
         with st.expander("Hedge plan details and put strikes compared"):
             st.dataframe(plan_df, hide_index=True, width="stretch", height=_fit_height(plan_df))
             st.dataframe(puts_df, hide_index=True, width="stretch", height=_fit_height(puts_df))

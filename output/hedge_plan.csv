@@ -15,11 +15,11 @@ Futures: lots for a full hedge (exact),7.49,h* x value / (futures price x lot)
 Futures: lots for a full hedge (rounded),7,achieved hedge ratio 1.05
 Futures: notional (Rs),10364582,
 "Futures: margin needed (Rs, assumed)",1243750,ASSUMPTION 12% of notional; exceeds the hedge budget
-Puts: contract,NIFTY 2026-12-29 21300 PE,expiry covers the evaluation window
-Puts: premium,159.15,settlement price
-Puts: lots,8,tail hedge ratio x value / (spot x lot)
-Puts: cost (Rs),82758,0.83% of the principal
-Puts: strike below spot (%),5.0,
-Hedge budget (Rs),103761,principal minus the stocks
-Cash after puts (Rs),21003,parked at the overnight rate (liquid ETF) for redeployment and the profit-trigger roll
+Puts: contract,NIFTY 2026-12-29 22000 PE,held (trade ledger)
+Puts: premium,208.2,average price paid
+Puts: lots,8.0,held; re-sized when a full lot off the need (hedge-ratio drift)
+Puts: lots needed today (exact),8.49,tail hedge ratio x value / (spot x lot)
+Puts: cost (Rs),108264,paid
+Puts: value today (Rs),150514,NSE settlement price today
+Puts: strike below spot (%),1.88,today
 Profit trigger,+10%,"portfolio up 10%: roll the puts up to about 5% below the new Nifty level, funded from cash, to lock in part of the gain"

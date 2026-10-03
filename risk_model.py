@@ -58,6 +58,7 @@ from config import (
     SUMMARY_OUTPUT_CSV,
     TAIL_HEDGE_OTM_PCT,
     TAIL_QUANTILE,
+    TRADES_CSV,
     TRADING_DAYS_PER_YEAR,
 )
 
@@ -521,9 +522,29 @@ def hedge_scenarios(portfolio_value: float, beta: float, spot: float, put: pd.Se
     return pd.DataFrame(rows)
 
 
+def held_put(trades_csv: Path = TRADES_CSV) -> Optional[Dict[str, object]]:
+    """The put held in the trade ledger (highest strike if several): instrument, strike, expiry, units and the
+    average price paid. None before the snapshot or without puts."""
+    if not Path(trades_csv).exists():
+        return None
+    from tracker import ledger_positions, parse_option
+
+    ledger = pd.read_csv(trades_csv)
+    held = {i: q for i, q in ledger_positions(ledger).items() if parse_option(i) and q > 0}
+    if not held:
+        return None
+    inst = max(held, key=lambda i: parse_option(i)["strike"])
+    buys = ledger[(ledger["instrument"] == inst) & (ledger["action"].str.upper() == "BUY")]
+    o = parse_option(inst)
+    return {"instrument": inst, "strike": o["strike"], "expiry": o["expiry"], "units": int(held[inst]),
+            "avg_cost": float((buys["quantity"] * buys["price"]).sum() / buys["quantity"].sum())}
+
+
 def build_hedge_plan(port: pd.Series, fx: pd.DataFrame, fo: pd.DataFrame, portfolio_value: float,
-                     evaluation_end: str = EVALUATION_END_DATE):
-    """Hedge plan rows (metric, value, note), put candidates and scenario table."""
+                     evaluation_end: str = EVALUATION_END_DATE, held: Optional[Dict[str, object]] = None):
+    """Hedge plan rows (metric, value, note), put candidates and scenario table. Once puts are held (`held`, from
+    the trade ledger) the put rows and the scenarios describe those puts, marked at today's settlement; the
+    candidates stay as the strikes one would compare when buying today."""
     betas = hedge_betas(port, fx)
     fut_expiries = sorted(fo.loc[fo["FinInstrmTp"] == "IDF", "XpryDt"].unique())
     near_fut = fo[(fo["FinInstrmTp"] == "IDF") & (fo["XpryDt"] == fut_expiries[0])].iloc[0]
@@ -542,7 +563,17 @@ def build_hedge_plan(port: pd.Series, fx: pd.DataFrame, fo: pd.DataFrame, portfo
     put_expiry = choose_expiry(fo, "IDO", evaluation_end)
     cands = put_candidates(fo, put_expiry, spot, portfolio_value, tail_ratio, lot)
     put = pick_tail_put(cands)
-    scen = hedge_scenarios(portfolio_value, h, spot, put, lot, down_beta=tail_ratio)
+    mark = None
+    if held is not None:
+        o = fo[(fo["FinInstrmTp"] == "IDO") & (fo["OptnTp"] == "PE") & (fo["XpryDt"] == held["expiry"])
+               & np.isclose(fo["StrkPric"], held["strike"])]
+        mark = float(o["SttlmPric"].iloc[0]) if not o.empty else None
+    if mark is not None:
+        # Scenarios from today: the held puts' payoff against their value today (what they could be sold for)
+        scen_put = pd.Series({"strike": held["strike"], "lots": held["units"] / lot, "premium": mark})
+    else:
+        scen_put = put
+    scen = hedge_scenarios(portfolio_value, h, spot, scen_put, lot, down_beta=tail_ratio)
     hedge_budget = PRINCIPAL_INR - portfolio_value
     trade_date = str(fo["TradDt"].iloc[0])
 
@@ -569,14 +600,31 @@ def build_hedge_plan(port: pd.Series, fx: pd.DataFrame, fo: pd.DataFrame, portfo
         ("Futures: notional (Rs)", round(fut_notional), ""),
         ("Futures: margin needed (Rs, assumed)", round(fut_notional * FUTURES_MARGIN_PCT_ASSUMED / 100),
          f"ASSUMPTION {FUTURES_MARGIN_PCT_ASSUMED:g}% of notional; exceeds the hedge budget"),
-        ("Puts: contract", f"NIFTY {put_expiry} {put['strike']:.0f} PE", "expiry covers the evaluation window"),
-        ("Puts: premium", round(float(put["premium"]), 2), "settlement price"),
-        ("Puts: lots", int(put["lots"]), "tail hedge ratio x value / (spot x lot)"),
-        ("Puts: cost (Rs)", int(put["cost_inr"]), f"{put['cost_pct_of_principal']:.2f}% of the principal"),
-        ("Puts: strike below spot (%)", float(put["strike_below_spot_pct"]), ""),
-        ("Hedge budget (Rs)", round(hedge_budget), "principal minus the stocks"),
-        ("Cash after puts (Rs)", round(hedge_budget - float(put["cost_inr"])),
-         "parked at the overnight rate (liquid ETF) for redeployment and the profit-trigger roll"),
+    ]
+    if held is not None:
+        plan += [
+            ("Puts: contract", held["instrument"], "held (trade ledger)"),
+            ("Puts: premium", round(held["avg_cost"], 2), "average price paid"),
+            ("Puts: lots", round(held["units"] / lot, 2), "held; re-sized when a full lot off the need (hedge-ratio drift)"),
+            ("Puts: lots needed today (exact)", round(round(tail_ratio, 3) * portfolio_value / (spot * lot), 2),
+             "tail hedge ratio x value / (spot x lot)"),
+            ("Puts: cost (Rs)", round(held["units"] * held["avg_cost"]), "paid"),
+            ("Puts: value today (Rs)", round(held["units"] * mark) if mark is not None else np.nan,
+             "NSE settlement price today" if mark is not None else "no settlement price today"),
+            ("Puts: strike below spot (%)", round((1 - held["strike"] / spot) * 100, 2), "today"),
+        ]
+    else:
+        plan += [
+            ("Puts: contract", f"NIFTY {put_expiry} {put['strike']:.0f} PE", "expiry covers the evaluation window"),
+            ("Puts: premium", round(float(put["premium"]), 2), "settlement price"),
+            ("Puts: lots", int(put["lots"]), "tail hedge ratio x value / (spot x lot)"),
+            ("Puts: cost (Rs)", int(put["cost_inr"]), f"{put['cost_pct_of_principal']:.2f}% of the principal"),
+            ("Puts: strike below spot (%)", float(put["strike_below_spot_pct"]), ""),
+            ("Hedge budget (Rs)", round(hedge_budget), "principal minus the stocks"),
+            ("Cash after puts (Rs)", round(hedge_budget - float(put["cost_inr"])),
+             "parked at the overnight rate (liquid ETF) for redeployment and the profit-trigger roll"),
+        ]
+    plan += [
         ("Profit trigger", f"+{HEDGE_PROFIT_TRIGGER_PCT:g}%",
          f"portfolio up {HEDGE_PROFIT_TRIGGER_PCT:g}%: roll the puts up to about {TAIL_HEDGE_OTM_PCT:g}% below the new "
          "Nifty level, funded from cash, to lock in part of the gain"),
@@ -624,7 +672,7 @@ def run(as_of: Optional[date] = None, refresh_factors: bool = True) -> Dict[str,
             return out
         logger.warning("No Nifty F&O prices for %s; using the latest cached file %s.", as_of, cached[-1].name)
         fo = pd.read_csv(cached[-1])
-    plan, cands, scen = build_hedge_plan(port, fx, fo, float(risk["invested_inr"].sum()))
+    plan, cands, scen = build_hedge_plan(port, fx, fo, float(risk["invested_inr"].sum()), held=held_put())
     plan.to_csv(HEDGE_PLAN_CSV, index=False)
     cands.to_csv(PUT_CANDIDATES_CSV, index=False)
     scen.to_csv(HEDGE_SCENARIOS_CSV, index=False)
