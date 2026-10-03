@@ -50,7 +50,7 @@ class TestAssessTriStaleness:
         # Just over: 4 trading days behind
         (date(2026, 9, 30), 4, True),
         # Very stale: a quarter behind
-        (date(2026, 12, 31), 70, True),
+        (date(2026, 12, 31), 65, True),  # 70 weekdays less 5 NSE holidays
     ], ids=["same-day", "one-day", "borderline-3", "just-over-4", "very-stale"])
     def test_gap_and_threshold(self, tri_df, reference_date, expected_gap, expected_stale):
         staleness = assess_tri_staleness(tri_df, reference_date)
@@ -91,7 +91,7 @@ class TestStalenessWarning:
 
         assert "WARNING: TRI benchmark data is stale." in banner
         assert "Last available date: 24-Sep-2026" in banner
-        assert "7 trading days behind" in banner
+        assert "6 trading days behind" in banner  # 2-Oct is an NSE holiday
         assert "05-Oct-2026" in banner
         assert "niftyindices.com" in banner
         assert all(len(line) <= 115 for line in banner.splitlines())

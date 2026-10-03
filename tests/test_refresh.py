@@ -16,6 +16,8 @@ from refresh_data import IST, latest_expected_session, refresh_steps, run_refres
     (datetime(2026, 9, 25, 14, 0, tzinfo=IST), date(2026, 9, 24)),   # Friday afternoon: yesterday's
     (datetime(2026, 9, 26, 12, 0, tzinfo=IST), date(2026, 9, 25)),   # Saturday: Friday
     (datetime(2026, 9, 28, 9, 0, tzinfo=IST), date(2026, 9, 25)),    # Monday morning: Friday
+    (datetime(2026, 10, 3, 9, 0, tzinfo=IST), date(2026, 10, 1)),    # Saturday after the 2-Oct NSE holiday
+    (datetime(2026, 10, 21, 9, 0, tzinfo=IST), date(2026, 10, 19)),  # morning after Dussehra (20-Oct)
 ])
 def test_latest_expected_session(now, expected):
     assert latest_expected_session(now) == expected

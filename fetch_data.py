@@ -49,6 +49,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 logger = logging.getLogger("fetch_data")
+RECENT_INDEX_REFETCH_DAYS = 7  # a cached index file this recent that lacks an index is downloaded again
 
 
 class NSEBhavcopyFetcher:
@@ -356,6 +357,21 @@ class NSEBhavcopyFetcher:
                 time.sleep(self.delay_seconds)
             day_df.columns = [c.strip() for c in day_df.columns]
             match = day_df[day_df["Index Name"].astype(str).str.strip().str.lower() == index_name.lower()]
+            if match.empty and cache_file.exists() and (date.today() - day).days <= RECENT_INDEX_REFETCH_DAYS:
+                # NSE adds some indices (the debt ones: 1D rate, G-sec) to the day's file later in the
+                # evening; a file cached before then lacks them, so a recent one is downloaded again
+                response = self._request_archive(NSE_INDEX_CLOSE_URL_TEMPLATE.format(ddmmyyyy=day.strftime("%d%m%Y")),
+                                                 f"index closes for {date_str}", "Index Name")
+                if response is not None and response.status_code == 200:
+                    fresh = pd.read_csv(io.StringIO(response.text))
+                    fresh.columns = [c.strip() for c in fresh.columns]
+                    if len(fresh) > len(day_df):
+                        day_df = fresh
+                        try:
+                            day_df.to_csv(cache_file, index=False)
+                        except OSError as exc:
+                            logger.warning("Could not write index cache for %s: %s", date_str, exc)
+                    match = day_df[day_df["Index Name"].astype(str).str.strip().str.lower() == index_name.lower()]
             if match.empty:
                 logger.warning("%s not found in NSE index file for %s.", index_name, date_str)
                 continue
@@ -534,8 +550,7 @@ def assess_tri_staleness(tri_df: pd.DataFrame, reference_date: Optional[date] = 
     Measure how many trading days the TRI data trails the analysis end date.
 
     The gap counts weekdays after the last available TRI date up to and including the
-    reference date (numpy busday_count); exchange holidays are not modelled, so the
-    figure can overstate the true gap by the number of holidays in between.
+    reference date (numpy busday_count, skipping config.NSE_TRADING_HOLIDAYS).
 
     Parameters:
         tri_df (pd.DataFrame): TRI data with a datetime 'Date' column.
@@ -551,7 +566,10 @@ def assess_tri_staleness(tri_df: pd.DataFrame, reference_date: Optional[date] = 
     reference_date = pd.Timestamp(reference_date).date() if reference_date is not None else date.today()
     gap = 0
     if reference_date > last_date:
-        gap = int(np.busday_count(last_date + timedelta(days=1), reference_date + timedelta(days=1)))
+        from config import NSE_TRADING_HOLIDAYS
+
+        gap = int(np.busday_count(last_date + timedelta(days=1), reference_date + timedelta(days=1),
+                                  holidays=NSE_TRADING_HOLIDAYS))
     return TriStaleness(last_date=last_date, reference_date=reference_date, trading_days_behind=gap)
 
 

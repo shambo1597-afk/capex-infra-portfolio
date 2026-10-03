@@ -43,6 +43,7 @@ from config import (
     HISTORICAL_OHLCV_CSV,
     LOCKED_PORTFOLIO,
     LOCKED_PORTFOLIO_SYMBOLS,
+    sector_of,
     INVESTED_COUNT,
     LOCK_AS_OF,
     FUNDAMENTAL_HARD_FIELDS,
@@ -54,6 +55,7 @@ from config import (
     OUTPUT_DIR,
     EQUITY_ALLOCATION_PCT,
     EVALUATION_START_DATE,
+    NSE_TRADING_HOLIDAYS,
     MARKET_RISK_PREMIUM_PCT,
     MARKET_RISK_PREMIUM_SOURCE,
     TAIL_HEDGE_OTM_PCT,
@@ -453,7 +455,7 @@ def portfolio_table_html(df: pd.DataFrame) -> str:
             f"<td>{_fmt(r.get('capm_expected_return_pct'), '.2f', suffix='%')}"
             f"<span class='sub'>{_fmt(r.get('capm_3m_return_pct'), '.2f', suffix='%')} over 3 months</span></td>"
             f"<td>{_fmt(r.get('weight_pct'), '.2f', suffix='%')}"
-            f"<span class='sub'>{_fmt(r.get('shares'), ',.0f')} sh · {_fmt(r.get('invested_inr'), ',.0f', prefix='₹')}</span></td>"
+            f"<span class='sub'>{_fmt(r.get('shares'), ',.0f')} sh · {_inr(r.get('invested_inr'))}</span></td>"
             f"<td>{_fmt(r.get('stop_loss_price'), ',.2f')}"
             f"<span class='sub'>{_fmt(r.get('stop_loss_pct_below_current'), '.2f', suffix='%')} · {method}</span></td>"
             f"<td>{_fmt(r['latest_adx'], '.2f')}</td>"
@@ -623,7 +625,8 @@ def render_data_freshness() -> None:
         st.rerun(scope="app")
 
     expected = latest_expected_session()
-    behind = int(np.busday_count(price_date + timedelta(days=1), expected + timedelta(days=1))) \
+    behind = int(np.busday_count(price_date + timedelta(days=1), expected + timedelta(days=1),
+                                 holidays=NSE_TRADING_HOLIDAYS)) \
         if price_date and expected > price_date else 0
 
     info_col, button_col = st.columns([5, 1.3])
@@ -692,7 +695,7 @@ def render_data_freshness() -> None:
                 st.warning(f"Last refresh: {warning}")
     if state != "running" and behind > 0:
         st.warning(f"Prices are {behind} trading day{'s' if behind > 1 else ''} old (latest expected session: "
-                   f"{expected:%d-%b-%Y}; exchange holidays are not modelled). {REFRESH_HINT}")
+                   f"{expected:%d-%b-%Y}). {REFRESH_HINT}")
 
 
 render_data_freshness()
@@ -932,7 +935,10 @@ with tab_overview:
                     "symbol": "Stock", "shares": "Shares", "avg_cost": "Avg cost (₹)", "close": "Close (₹)",
                     "value_inr": "Value (₹)", "pnl_inr": "P&L (₹)", "pnl_pct": "P&L %", "stop_loss_price": "Stop (₹)",
                     "at_risk_to_stop_inr": "At risk to stop (₹)", "stop_breached": "Stop breached",
-                    "near_stop": f"Within {NEAR_STOP_PCT:g}% of stop", "pct_above_stop": "% above stop"}),
+                    "near_stop": f"Within {NEAR_STOP_PCT:g}% of stop", "pct_above_stop": "% above stop"})
+                    .style.format({"Shares": "{:,.0f}", "Avg cost (₹)": "{:,.2f}", "Close (₹)": "{:,.2f}",
+                                   "Value (₹)": _inr, "P&L (₹)": _inr, "P&L %": "{:+.2f}%", "Stop (₹)": "{:,.2f}",
+                                   "At risk to stop (₹)": _inr, "% above stop": "{:.1f}%"}, na_rep="—"),
                     hide_index=True, width="stretch", height=_fit_height(pos))
         if not pos.empty and "near_stop" in pos and pos["near_stop"].any():
             near = pos[pos["near_stop"]]
@@ -1160,9 +1166,14 @@ with tab_overview:
     exceptions = []
     for _, r in portfolio_df.iterrows():
         if r.get("technically_attractive") == False:  # noqa: E712
-            exceptions.append(
-                f"**{r['symbol']}** does not pass the technical screen (RS vs Nifty 500 "
-                f"{r['rs_score_vs_nifty500']:+.2f} pp, needs > {TECHNICAL_RS_MARGIN_PP:+g} pp; trend {str(r['trend_direction']).split(' (')[0]}).")
+            why = []
+            if pd.notna(r.get("rs_score_vs_nifty500")) and r["rs_score_vs_nifty500"] <= TECHNICAL_RS_MARGIN_PP:
+                why.append(f"RS vs Nifty 500 {r['rs_score_vs_nifty500']:+.2f} pp over 63 sessions, needs > "
+                           f"{TECHNICAL_RS_MARGIN_PP:+g} pp")
+            if not str(r.get("trend_direction", "")).startswith("Bullish"):
+                why.append(f"trend {str(r['trend_direction']).split(' (')[0].lower()}")
+            exceptions.append(f"**{r['symbol']}** does not pass the technical screen today ("
+                              + ("; ".join(why) or "see the Technicals tab") + ").")
         failed = r.get("fundamentals_failed")
         if isinstance(failed, str) and failed.strip():
             if r.get("hard_fundamentals_pass") == False:  # noqa: E712
@@ -1426,15 +1437,30 @@ with tab_risk:
         notes = dict(zip(plan_df["metric"], plan_df["note"].fillna("")))
 
         # 1. Allocation of the Rs 1 crore
-        st.markdown("### Allocation of the ₹1 crore")
-        put_cost = float(plan.get("Puts: cost (Rs)", 0))
+        live = dict(zip(tracker_summary["metric"], tracker_summary["value"])) if not tracker_summary.empty else {}
+        live_pos = _out("tracker_positions.csv") if live else pd.DataFrame()
         alloc_rows = []
-        if not risk_df.empty:
-            for sector, value in risk_df.groupby("sector")["invested_inr"].sum().items():
+        if live and not live_pos.empty:
+            # Invested: today's market values from the trade ledger (stocks by sector, puts at settlement, cash)
+            st.markdown(f"### Allocation of the portfolio (as of {pd.Timestamp(live['as_of']):%d-%b-%Y})")
+            base = float(live["value_inr"])
+            for sector, value in live_pos.groupby(live_pos["symbol"].map(sector_of))["value_inr"].sum().items():
                 alloc_rows.append((f"{sector_label(sector)} stocks", value, SECTOR_CHART_COLORS.get(sector, "#64748B")))
-        stocks_total = sum(v for _, v, _ in alloc_rows)
-        alloc_rows.append(("Nifty puts (tail hedge)", put_cost, "#475569"))
-        alloc_rows.append(("Cash (liquid ETF, overnight rate)", PRINCIPAL_INR - stocks_total - put_cost, "#94A3B8"))
+            stocks_total = sum(v for _, v, _ in alloc_rows)
+            alloc_rows.append(("Nifty puts (tail hedge, value today)", float(live["options_inr"]), "#475569"))
+            alloc_rows.append(("Cash (liquid ETF, overnight rate)", float(live["cash_inr"]), "#94A3B8"))
+            base_label = "% of the portfolio"
+        else:
+            st.markdown("### Allocation of the ₹1 crore")
+            base = PRINCIPAL_INR
+            put_cost = float(plan.get("Puts: cost (Rs)", 0))
+            if not risk_df.empty:
+                for sector, value in risk_df.groupby("sector")["invested_inr"].sum().items():
+                    alloc_rows.append((f"{sector_label(sector)} stocks", value, SECTOR_CHART_COLORS.get(sector, "#64748B")))
+            stocks_total = sum(v for _, v, _ in alloc_rows)
+            alloc_rows.append(("Nifty puts (tail hedge)", put_cost, "#475569"))
+            alloc_rows.append(("Cash (liquid ETF, overnight rate)", PRINCIPAL_INR - stocks_total - put_cost, "#94A3B8"))
+            base_label = "% of principal"
         a_col1, a_col2 = st.columns([1.1, 1])
         with a_col1:
             pie = go.Figure(go.Pie(
@@ -1444,17 +1470,17 @@ with tab_risk:
                 hovertemplate="%{label}<br>₹%{value:,.0f} (%{percent})<extra></extra>"))
             pie.update_layout(height=360, margin=dict(l=10, r=10, t=10, b=10), showlegend=False,
                               template="plotly_white",
-                              annotations=[dict(text=f"{stocks_total / PRINCIPAL_INR * 100:.1f}%<br>in stocks",
+                              annotations=[dict(text=f"{stocks_total / base * 100:.1f}%<br>in stocks",
                                                 showarrow=False, font=dict(size=14))])
             st.plotly_chart(pie, width="stretch")
         with a_col2:
             st.dataframe(pd.DataFrame({
                 "Bucket": [r[0] for r in alloc_rows],
-                "₹": [f"₹{r[1]:,.0f}" for r in alloc_rows],
-                "% of principal": [f"{r[1] / PRINCIPAL_INR * 100:.2f}%" for r in alloc_rows],
+                "₹": [_inr(r[1]) for r in alloc_rows],
+                base_label: [f"{r[1] / base * 100:.2f}%" for r in alloc_rows],
             }), hide_index=True, width="stretch", height=_fit_height(alloc_rows))
             st.caption(
-                f"Market exposure: {stocks_total / PRINCIPAL_INR * 100:.1f}% in stocks (brief: at least 90%). "
+                f"Market exposure: {stocks_total / base * 100:.1f}% in stocks (brief: at least 90%). "
                 f"The {100 - EQUITY_ALLOCATION_PCT:g}% reserve pays for the day-0 puts and one profit-trigger roll-up; "
                 "until then it sits in a liquid ETF earning the overnight rate. A stop-loss exit is replaced from the reserve list "
                 "with its own sale proceeds (the rounding stays here; if nothing qualifies, the proceeds wait here too). No commodity or other ETF: none has a clear role (copper and aluminium "
@@ -1502,7 +1528,12 @@ with tab_risk:
             "Daily regression over the past year: r_i - r_f = α + β (r_m - r_f) + ε. Total variance = β²·var(r_m) "
             "(explained, systematic: hedgeable with index futures/options) + var(ε) (unexplained, stock-specific: "
             "handled by diversification and the stop-losses). R² is the explained share. The portfolio row "
-            "shows diversification at work: each stock is 60-98% stock-specific risk, the portfolio about half."
+            "shows diversification at work: "
+            + (lambda st_, pf: f"each stock is {st_.min():.0f}-{st_.max():.0f}% stock-specific risk, the portfolio "
+               f"{pf:.0f}%." if not st_.empty and pf is not None else "")(
+                single_df.loc[single_df["symbol"] != "PORTFOLIO", "unexplained_risk_pct"],
+                float(single_df.loc[single_df["symbol"] == "PORTFOLIO", "unexplained_risk_pct"].iloc[0])
+                if (single_df["symbol"] == "PORTFOLIO").any() else None)
         )
         port_row = single_df[single_df["symbol"] == "PORTFOLIO"]
         if not port_row.empty:
@@ -1576,7 +1607,7 @@ with tab_risk:
                 "selection uses. Weekly ρ₁ = lag-1 autocorrelation of non-overlapping 5-session returns (a short-horizon "
                 "momentum check; significant beyond its own bound)."
             )
-            st.dataframe(ac_df.rename(columns={
+            st.dataframe(ac_df.fillna({"significant_lags": "none"}).rename(columns={
                 "symbol": "Stock", "observations": "Days", "ar1_phi": "AR(1) φ", "ar1_t": "t", "rho_1": "ρ1", "rho_2": "ρ2",
                 "rho_3": "ρ3", "rho_4": "ρ4", "rho_5": "ρ5", "significance_bound": "±bound",
                 "significant_lags": "Significant lags", "ljung_box_q": "Ljung-Box Q", "ljung_box_critical_5pct": "Q 5% crit.",
@@ -1599,8 +1630,9 @@ with tab_risk:
                           help="Capped by the stops; a market crash is also covered by the puts")
                 r3.metric("Reward : risk (all stocks at once)", f"{float(ao['reward_risk']):.2f} : 1")
                 if not diversified.empty:
-                    r4.metric("Reward : risk (diversified portfolio)", f"{float(diversified.iloc[0]['reward_risk']):.2f} : 1",
-                              help="The portfolio's own 3-month move is smaller because the stocks do not all move together")
+                    r4.metric("Typical move, diversified portfolio", _inr(float(diversified.iloc[0]["upside_inr"])),
+                              help="The portfolio's own one-standard-deviation 3-month move: smaller than the sum of the "
+                                   "stocks' because they do not all move together")
             st.caption(
                 "Reward : risk = upside ÷ downside for the 3-month window. Downside = distance to the stop-loss (the loss the "
                 "stop allows). Upside = a typical 3-month move, one standard deviation = annual volatility × √(63/252); the "
@@ -1647,7 +1679,7 @@ with tab_risk:
                       f"{_inr(put_value - float(plan['Puts: cost (Rs)']))} vs {_inr(float(plan['Puts: cost (Rs)']))} paid",
                       help="The puts held, at today's NSE settlement price")
         else:
-            h4.metric("Puts cost", f"₹{float(plan['Puts: cost (Rs)']):,.0f}", help=notes.get("Puts: cost (Rs)"))
+            h4.metric("Puts cost", _inr(float(plan['Puts: cost (Rs)'])), help=notes.get("Puts: cost (Rs)"))
         if puts_held:
             day0 = (f"- **Held since the {pd.Timestamp(EVALUATION_START_DATE):%d-%b} snapshot:** "
                     f"**{float(plan['Puts: lots']):g} lots of {plan['Puts: contract']}**, bought at "
@@ -1660,7 +1692,7 @@ with tab_risk:
         else:
             day0 = (f"- **Day 0:** buy **{int(float(plan['Puts: lots']))} lots of {plan['Puts: contract']}** at "
                     f"₹{float(plan['Puts: premium']):,.2f} (lot {int(float(plan['Nifty lot size']))}), about "
-                    f"₹{float(plan['Puts: cost (Rs)']):,.0f}. Lots = tail hedge ratio × portfolio value / (Nifty × lot). "
+                    f"{_inr(float(plan['Puts: cost (Rs)']))}. Lots = tail hedge ratio × portfolio value / (Nifty × lot). "
                     "The tail hedge ratio is the portfolio's beta on Nifty down days: stocks fall together in a sell-off. "
                     "One expiry covers the whole window, so there is no roll.")
         st.markdown(
@@ -1669,7 +1701,7 @@ with tab_risk:
 {day0}
 - **Why not futures:** a full futures hedge ({int(float(plan['Futures: lots for a full hedge (rounded)']))} lots) would cancel the market
   return we are positioned to earn, remove only {float(plan['Hedge effectiveness (R^2)']) * 100:.0f}% of the variance (the rest is stock-specific),
-  needs a roll before the window ends, and ties up about ₹{float(plan['Futures: margin needed (Rs, assumed)']):,.0f} of margin (assumed
+  needs a roll before the window ends, and ties up about {_inr(float(plan['Futures: margin needed (Rs, assumed)']))} of margin (assumed
   {notes.get('Futures: margin needed (Rs, assumed)', '').split('ASSUMPTION ')[-1].split(' of')[0]} of notional). Forwards on the index are not available to us; exchange futures are the standardised forward.
 - **After a profit (not greedy):** {notes.get('Profit trigger', '')}.
 - **After a loss (not fearful):** no discretionary hedging; stock-specific falls are cut by each stock's stop-loss, and a market crash

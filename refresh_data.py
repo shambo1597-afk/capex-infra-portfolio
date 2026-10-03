@@ -234,12 +234,15 @@ def read_log_tail(lines: int = 20) -> List[str]:
 def latest_expected_session(now: Optional[datetime] = None) -> date:
     """
     The most recent session whose NSE Bhavcopy should be published by `now` (India time): today
-    after 19:00 IST on a weekday, otherwise the previous weekday. Exchange holidays are not
-    modelled, so on the day after a holiday data can look one session stale when it is not.
+    after 19:00 IST on a trading day, otherwise the previous trading day (weekends and
+    config.NSE_TRADING_HOLIDAYS skipped).
     """
+    from config import NSE_TRADING_HOLIDAYS
+
+    holidays = {date.fromisoformat(d) for d in NSE_TRADING_HOLIDAYS}
     now = now.astimezone(IST) if now else datetime.now(IST)
     day = now.date() if now.hour >= 19 else now.date() - timedelta(days=1)
-    while day.weekday() >= 5:
+    while day.weekday() >= 5 or day in holidays:
         day -= timedelta(days=1)
     return day
 
