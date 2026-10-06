@@ -162,14 +162,17 @@ def test_live_metrics_wait_for_enough_sessions_then_use_the_tracker(tmp_path, mo
     p = np.cumprod(np.r_[1.0, 1 + 1.1 * (m[1:] / m[:-1] - 1) + 0.0005]) * 1e7
     liquid = 1e7 * (1 + 0.0002) ** np.arange(26)
     pd.DataFrame({"date": idx.strftime("%Y-%m-%d"), "total_inr": p, "nifty500_inr": m,
-                  "liquid_fund_inr": liquid}).head(15).to_csv(path, index=False)
-    assert live_metrics() is None  # 14 returns: too few
+                  "liquid_fund_inr": liquid}).head(3).to_csv(path, index=False)
+    assert live_metrics() is None  # 2 returns: too few
     pd.DataFrame({"date": idx.strftime("%Y-%m-%d"), "total_inr": p, "nifty500_inr": m,
                   "liquid_fund_inr": liquid}).to_csv(path, index=False)
     out = live_metrics()
     assert out["window"].startswith("Live") and out["sessions"] == 25
     assert out["portfolio_return_pct"] == pytest.approx((p[-1] / 1e7 - 1) * 100, abs=0.01)
-    assert out["beta_vs_nifty500"] == pytest.approx(1.1, abs=0.02)
+    assert out["beta_vs_nifty500"] == pytest.approx(1.1, abs=0.02) and out["beta_basis"] == "regression on this window"
+    gp, gm, gf = p[-1] / 1e7, m[-1] / 1e7, liquid[-1] / 1e7
+    alpha = ((gp - 1) - ((gf - 1) + out["beta_vs_nifty500"] * ((gm - 1) - (gf - 1)))) * 100
+    assert out["jensen_alpha_period_pp"] == pytest.approx(alpha, abs=0.05)
 
 
 def test_missing_tri_sessions_are_bridged_with_the_price_index_and_flagged():
@@ -221,3 +224,18 @@ def test_held_put_reads_the_ledger(tmp_path):
     h = held_put(path)
     assert h["instrument"] == "NIFTY 2026-12-29 22000 PE" and h["units"] == 585 and h["strike"] == 22000.0
     assert h["avg_cost"] == pytest.approx((520 * 208.2 + 65 * 300.0) / 585)
+
+
+def test_a_short_live_window_uses_the_one_year_beta(tmp_path, monkeypatch):
+    import performance
+    import tracker
+    path = tmp_path / "tracker_daily.csv"
+    monkeypatch.setattr(tracker, "TRACKER_DAILY_CSV", path)
+    si = tmp_path / "single.csv"
+    pd.DataFrame({"symbol": ["AAA", "PORTFOLIO"], "beta": [0.9, 1.26]}).to_csv(si, index=False)
+    monkeypatch.setattr(performance, "SINGLE_INDEX_CSV", si)
+    pd.DataFrame({"date": pd.bdate_range("2026-09-28", periods=5).strftime("%Y-%m-%d"),
+                  "total_inr": [1e7, 1.01e7, 1.02e7, 1.015e7, 1.03e7], "nifty500_inr": [1e7, 0.99e7, 1.0e7, 0.995e7, 0.99e7],
+                  "liquid_fund_inr": 1e7 * (1 + 0.0002) ** np.arange(5)}).to_csv(path, index=False)
+    out = performance.live_metrics()
+    assert out["sessions"] == 4 and out["beta_vs_nifty500"] == 1.26 and out["beta_basis"].startswith("1-year")

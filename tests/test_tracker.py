@@ -75,12 +75,13 @@ def test_no_ledger_before_the_snapshot_session(tmp_path, monkeypatch):
     assert not (tmp_path / "trades.csv").exists()
 
 
-def test_summary_waits_30_days_for_xirr():
+def test_summary_shows_xirr_from_the_first_day():
     daily = pd.DataFrame({"date": ["2026-09-28", "2026-10-05"], "total_inr": [1e7, 1.01e7], "pnl_inr": [0, 1e5],
                           "pnl_pct": [0, 1.0], "nifty500_inr": [1e7, 1e7], "liquid_fund_inr": [1e7, 1.001e7],
                           "stocks_inr": [9.7e6, 9.8e6], "options_inr": [6e4, 5e4], "cash_inr": [2.4e5, 2.5e5]})
     s = dict(tracker.summarise(daily, pd.DataFrame()).values)
-    assert pd.isna(s["xirr_pct"]) and s["vs_liquid_fund_inr"] == pytest.approx(9e4)
+    assert s["xirr_pct"] == pytest.approx(((1.01) ** (365 / 7) - 1) * 100, rel=1e-3)
+    assert s["calendar_days"] == 7 and s["vs_liquid_fund_inr"] == pytest.approx(9e4)
 
 
 def test_ledger_positions_net_buys_and_sells():

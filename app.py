@@ -88,7 +88,7 @@ from refresh_data import (
     refresh_state,
     start_background_refresh,
 )
-from performance import MIN_LIVE_SESSIONS
+from performance import MIN_LIVE_SESSIONS, SHORT_LIVE_SESSIONS
 from sector_screen import review_table_path
 
 # -----------------------------------------------------------------------------
@@ -802,8 +802,11 @@ with tab_overview:
         l3.metric("Still at risk if every stop is hit", _inr(float(t["at_risk_to_stops_inr"])),
                   help="Sum over the stocks of (close - stop-loss) x shares; a gap below a stop can lose more.")
         xirr_val = t.get("xirr_pct")
-        l4.metric("XIRR (annualised)", f"{float(xirr_val):.1f}%" if pd.notna(xirr_val) and str(xirr_val) != "nan"
-                  else "after 30 days", help="Annualising only a few days' return is meaningless, so it is shown from day 30.")
+        n_days = int(float(t.get("calendar_days", 0) or 0))
+        l4.metric("XIRR (annualised)", f"{float(xirr_val):,.1f}%" if pd.notna(xirr_val) and str(xirr_val) != "nan" else "—",
+                  f"from {n_days} calendar day{'s' if n_days != 1 else ''}", delta_color="off",
+                  help="XIRR compounds the return so far to a full year: over a few days it is very large and swings "
+                       "with every move. The return actually earned is the P&L % above.")
         roll_df = _out("hedge_roll.csv")
         if not roll_df.empty:
             rv = dict(zip(roll_df["field"], roll_df["value"]))
@@ -1755,6 +1758,16 @@ with tab_performance:
                 "against the same ₹1 crore in the Nifty 500 TRI; risk-free = the liquid fund. The other columns are a "
                 "<strong>backtest</strong> of today's portfolio over past prices (hindsight, not a forecast).</span>",
                 unsafe_allow_html=True)
+            live_n = int(perf_df.loc[perf_df["window"].str.startswith("Live"), "sessions"].iloc[0])
+            if live_n < SHORT_LIVE_SESSIONS:
+                st.warning(
+                    f"The live column has only {live_n} trading days. Read its **period** rows (portfolio and Nifty 500 "
+                    "return, excess return, Jensen's alpha over the period, max drawdown). The **annualised** rows (Sharpe, "
+                    "Treynor, Sortino, annual alpha, information ratio, XIRR) compound a few days to a full year, so they "
+                    "are very large and change sharply each day. A beta regressed on a handful of days is noise, so Treynor and "
+                    "Jensen's alpha use the portfolio's 1-year beta until the window reaches "
+                    f"{SHORT_LIVE_SESSIONS} days; the capture ratios still rest on a handful of days, and Sortino shows a dash "
+                    "until the portfolio has a losing day.")
         else:
             st.markdown(
                 "<span class='placeholder-badge' style='margin-bottom:0;'>Backtest until live figures start</span> "
@@ -1774,9 +1787,10 @@ with tab_performance:
             "compounding_effect_pp": "Compounding effect (pp)",
             "benchmark_annualised_pct": "Nifty 500 annualised (%)", "risk_free_annualised_pct": "Risk-free, 1D rate (%)",
             "portfolio_vol_pct": "Portfolio volatility (%)", "benchmark_vol_pct": "Nifty 500 volatility (%)",
-            "beta_vs_nifty500": "Beta vs Nifty 500", "sharpe_portfolio": "Sharpe: portfolio",
+            "beta_vs_nifty500": "Beta vs Nifty 500", "beta_basis": "Beta estimated from", "sharpe_portfolio": "Sharpe: portfolio",
             "sharpe_benchmark": "Sharpe: Nifty 500", "treynor_portfolio_pct": "Treynor: portfolio (%)",
-            "treynor_benchmark_pct": "Treynor: Nifty 500 (%)", "jensen_alpha_pct": "Jensen's alpha (%)",
+            "treynor_benchmark_pct": "Treynor: Nifty 500 (%)", "jensen_alpha_pct": "Jensen's alpha, annualised (%)",
+            "jensen_alpha_period_pp": "Jensen's alpha over the period (pp)",
             "xirr_portfolio_pct": "XIRR: portfolio (%)", "xirr_benchmark_pct": "XIRR: Nifty 500 (%)",
             "sortino_portfolio": "Sortino: portfolio", "sortino_benchmark": "Sortino: Nifty 500",
             "max_drawdown_portfolio_pct": "Max drawdown: portfolio (%)", "max_drawdown_benchmark_pct": "Max drawdown: Nifty 500 (%)",

@@ -59,7 +59,7 @@ HEDGE_ROLL_CSV = OUTPUT_DIR / "hedge_roll.csv"
 HEDGE_DRIFT_CSV = OUTPUT_DIR / "hedge_drift.csv"
 REPLACEMENT_PLAN_CSV = OUTPUT_DIR / "replacement_plan.csv"
 SELECTION_RANKING_CSV = OUTPUT_DIR / "selection_ranking.csv"
-MIN_DAYS_FOR_XIRR = 30  # annualising a few days' return gives meaningless four-digit rates
+MIN_DAYS_FOR_XIRR = 1  # shown from day 1 (presentation on 14-Oct); the app says how many days it is annualised from
 LEDGER_COLUMNS = ["date", "instrument", "action", "quantity", "price", "note"]
 _OPTION = re.compile(r"^NIFTY (\d{4}-\d{2}-\d{2}) (\d+(?:\.\d+)?) (PE|CE)$")
 

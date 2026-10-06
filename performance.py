@@ -33,7 +33,7 @@ import pandas as pd
 
 from config import (HISTORICAL_OHLCV_CSV, OUTPUT_DIR, RISK_SUMMARY_OUTPUT_CSV, TRADING_DAYS_PER_YEAR, WEIGHT_MAX_PCT,
                     WEIGHT_MIN_PCT)
-from risk_model import excess_returns, load_factor_series, portfolio_returns, stock_return_matrix
+from risk_model import SINGLE_INDEX_CSV, excess_returns, load_factor_series, portfolio_returns, stock_return_matrix
 from weights import project_to_bounded_simplex
 
 logger = logging.getLogger("performance")
@@ -46,7 +46,8 @@ OPTIMISED_WEIGHTS_CSV = OUTPUT_DIR / "portfolio_weights_compared.csv"
 OPTIMISED_STATS_CSV = OUTPUT_DIR / "portfolio_weights_compared_stats.csv"
 WINDOWS = {"Last quarter (63 sessions)": 63, "Last year": None}
 LIVE_LABEL = "Live since the snapshot"
-MIN_LIVE_SESSIONS = 20  # ratios on fewer daily returns are noise
+MIN_LIVE_SESSIONS = 3   # live figures from the 3rd session (beta and volatility need a few returns); the
+SHORT_LIVE_SESSIONS = 20  # presentation is on 14-Oct, ~11 sessions in. Below 20 the app flags the annualised rows
 
 
 def xirr(cash_flows: Sequence[Tuple[date, float]]) -> float:
@@ -71,8 +72,10 @@ def xirr(cash_flows: Sequence[Tuple[date, float]]) -> float:
     return (lo + hi) / 2
 
 
-def window_metrics(port: pd.Series, mkt: pd.Series, rf: pd.Series, label: str) -> Dict[str, object]:
-    """Return, risk and risk-adjusted metrics of daily portfolio returns against the market over one window."""
+def window_metrics(port: pd.Series, mkt: pd.Series, rf: pd.Series, label: str,
+                   beta_override: Optional[float] = None) -> Dict[str, object]:
+    """Return, risk and risk-adjusted metrics of daily portfolio returns against the market over one window.
+    beta_override replaces the window's own regression beta (for a window too short to estimate one)."""
     data = pd.concat([port.rename("p"), mkt.rename("m"), rf.rename("rf")], axis=1).dropna()
     n = len(data)
     growth_p = float((1 + data["p"]).prod())
@@ -83,6 +86,9 @@ def window_metrics(port: pd.Series, mkt: pd.Series, rf: pd.Series, label: str) -
     sigma_p = data["p"].std() * np.sqrt(TRADING_DAYS_PER_YEAR)
     sigma_m = data["m"].std() * np.sqrt(TRADING_DAYS_PER_YEAR)
     beta = np.cov(data["p"] - data["rf"], data["m"] - data["rf"])[0, 1] / (data["m"] - data["rf"]).var()
+    beta_basis = "regression on this window"
+    if beta_override is not None and np.isfinite(beta_override):
+        beta, beta_basis = float(beta_override), "1-year regression, current weights (live window too short)"
     start, end = data.index[0], data.index[-1]
     # XIRR: invest Rs 1 the session before the first return, value on the last session
     start_flow_date = (start - pd.tseries.offsets.BDay(1)).date()
@@ -110,11 +116,14 @@ def window_metrics(port: pd.Series, mkt: pd.Series, rf: pd.Series, label: str) -
         "portfolio_vol_pct": round(sigma_p * 100, 2),
         "benchmark_vol_pct": round(sigma_m * 100, 2),
         "beta_vs_nifty500": round(beta, 3),
+        "beta_basis": beta_basis,
         "sharpe_portfolio": round((rp - rfa) / sigma_p, 2),
         "sharpe_benchmark": round((rm - rfa) / sigma_m, 2),
         "treynor_portfolio_pct": round((rp - rfa) / beta * 100, 2),
         "treynor_benchmark_pct": round((rm - rfa) * 100, 2),  # benchmark beta = 1
         "jensen_alpha_pct": round((rp - (rfa + beta * (rm - rfa))) * 100, 2),
+        # The same alpha over the window itself, not annualised (the meaningful figure for a short live window)
+        "jensen_alpha_period_pp": round(((growth_p - 1) - ((growth_f - 1) + beta * ((growth_m - 1) - (growth_f - 1)))) * 100, 2),
         "xirr_portfolio_pct": round(port_xirr * 100, 2),
         "xirr_benchmark_pct": round(mkt_xirr * 100, 2),
         "sortino_portfolio": round((rp - rfa) / downside(data["p"]), 2),
@@ -142,7 +151,14 @@ def live_metrics(min_sessions: int = MIN_LIVE_SESSIONS) -> Optional[Dict[str, ob
     if len(daily) - 1 < min_sessions:
         return None
     r = daily[["total_inr", "nifty500_inr", "liquid_fund_inr"]].pct_change().iloc[1:]
-    return window_metrics(r["total_inr"], r["nifty500_inr"], r["liquid_fund_inr"], LIVE_LABEL)
+    beta = None
+    if len(r) < SHORT_LIVE_SESSIONS and SINGLE_INDEX_CSV.exists():
+        # A beta regressed on a handful of days is noise (it can even come out negative), and Treynor and
+        # Jensen's alpha divide or scale by it: use the portfolio's 1-year beta until the window is long enough
+        si = pd.read_csv(SINGLE_INDEX_CSV)
+        row = si[si["symbol"] == "PORTFOLIO"]
+        beta = float(row["beta"].iloc[0]) if not row.empty else None
+    return window_metrics(r["total_inr"], r["nifty500_inr"], r["liquid_fund_inr"], LIVE_LABEL, beta_override=beta)
 
 
 def tangency_portfolio(mu: np.ndarray, cov: np.ndarray, rf: float, iterations: int = 4000) -> np.ndarray:
