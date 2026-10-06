@@ -30,6 +30,23 @@ _cached = _sys.modules.get("config")
 if _cached is not None and str(Path(getattr(_cached, "__file__", "") or "").resolve().parent) != _APP_DIR:
     del _sys.modules["config"]
 
+# A push redeploys by pulling the repo and re-running this script, but the server process keeps the project
+# modules it imported earlier (config, tracker, performance, ...): app.py would then import names that only
+# the new files have. Drop every project module whose file changed since it was loaded, so it is re-imported.
+import time as _time
+
+for _name, _mod in list(_sys.modules.items()):
+    _file = getattr(_mod, "__file__", None)
+    if (not _file or _name == "__main__" or Path(_file).name == "app.py"
+            or str(Path(_file).resolve().parent) != _APP_DIR):
+        continue
+    try:
+        _stale = Path(_file).stat().st_mtime > getattr(_mod, "_capex_loaded_at", 0.0)  # unstamped counts as stale
+    except OSError:
+        _stale = True
+    if _stale:
+        del _sys.modules[_name]
+
 try:
     import config as _config_check  # noqa: F401  (fail here with a readable message, not a redacted one)
     if not hasattr(_config_check, "LOCKED_PORTFOLIO_SYMBOLS"):
@@ -90,6 +107,12 @@ from refresh_data import (
 )
 from performance import MIN_LIVE_SESSIONS, SHORT_LIVE_SESSIONS
 from sector_screen import review_table_path
+
+for _mod in list(_sys.modules.values()):  # stamp the project modules this run imported (see the top of the file)
+    _file = getattr(_mod, "__file__", None)
+    if (_file and Path(_file).name != "app.py" and str(Path(_file).resolve().parent) == _APP_DIR
+            and getattr(_mod, "_capex_loaded_at", None) is None):
+        _mod._capex_loaded_at = _time.time()
 
 # -----------------------------------------------------------------------------
 # PAGE CONFIGURATION & THEME STYLING
