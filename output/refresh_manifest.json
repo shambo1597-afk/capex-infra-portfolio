@@ -1,6 +1,6 @@
 {
-  "as_of": "2026-10-05",
-  "started": "2026-10-05T19:23:56+05:30",
+  "as_of": "2026-10-06",
+  "started": "2026-10-06T19:23:48+05:30",
   "status": "ok",
   "pid": 377,
   "total_steps": 10,
@@ -17,57 +17,57 @@
     "Performance and CML"
   ],
   "expected_seconds": {
-    "Nifty 500 TRI (niftyindices.com)": 34,
-    "Prices, technicals and risk summary": 89,
-    "Technical-first sector screens": 9,
-    "Review tables and selection ranking": 28,
-    "Locked-portfolio run-up check": 13,
-    "Candidate sweep": 83,
-    "Regression and hedge plan": 7,
-    "Capex-cycle exposure": 15,
+    "Nifty 500 TRI (niftyindices.com)": 37,
+    "Prices, technicals and risk summary": 90,
+    "Technical-first sector screens": 7,
+    "Review tables and selection ranking": 27,
+    "Locked-portfolio run-up check": 12,
+    "Candidate sweep": 82,
+    "Regression and hedge plan": 9,
+    "Capex-cycle exposure": 16,
     "Live P&L of the Rs 1 crore": 1,
-    "Performance and CML": 148
+    "Performance and CML": 107
   },
   "steps": [
     {
       "name": "Nifty 500 TRI (niftyindices.com)",
       "returncode": 0,
-      "seconds": 37
+      "seconds": 85
     },
     {
       "name": "Prices, technicals and risk summary",
       "returncode": 0,
-      "seconds": 90
+      "seconds": 104
     },
     {
       "name": "Technical-first sector screens",
       "returncode": 0,
-      "seconds": 7
+      "seconds": 11
     },
     {
       "name": "Review tables and selection ranking",
       "returncode": 0,
-      "seconds": 27
+      "seconds": 39
     },
     {
       "name": "Locked-portfolio run-up check",
       "returncode": 0,
-      "seconds": 12
+      "seconds": 16
     },
     {
       "name": "Candidate sweep",
       "returncode": 0,
-      "seconds": 82
+      "seconds": 84
     },
     {
       "name": "Regression and hedge plan",
       "returncode": 0,
-      "seconds": 9
+      "seconds": 11
     },
     {
       "name": "Capex-cycle exposure",
       "returncode": 0,
-      "seconds": 16
+      "seconds": 21
     },
     {
       "name": "Live P&L of the Rs 1 crore",
@@ -77,12 +77,12 @@
     {
       "name": "Performance and CML",
       "returncode": 0,
-      "seconds": 107
+      "seconds": 175
     }
   ],
-  "heartbeat": "2026-10-05T19:30:25+05:30",
+  "heartbeat": "2026-10-06T19:32:53+05:30",
   "current_step": 10,
   "current_step_name": "Performance and CML",
-  "current_step_started": "2026-10-05T19:28:38+05:30",
-  "finished": "2026-10-05T19:30:25+05:30"
+  "current_step_started": "2026-10-06T19:29:58+05:30",
+  "finished": "2026-10-06T19:32:53+05:30"
 }

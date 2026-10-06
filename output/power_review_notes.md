@@ -1,8 +1,8 @@
 # Nifty Power review table: notes
 
 `power_full_review_table.csv` lists every Nifty Power constituent (22 rows,
-none excluded), with live fundamentals and technicals as of 05-Oct-2026 (price window
-05-Oct-2025 to 05-Oct-2026). It is sorted by `fundamentals_passed_count` (descending),
+none excluded), with live fundamentals and technicals as of 06-Oct-2026 (price window
+06-Oct-2025 to 06-Oct-2026). It is sorted by `fundamentals_passed_count` (descending),
 then `sector_rank` (ascending).
 
 ## Two relative strength measures
@@ -12,7 +12,7 @@ cumulative return minus the Nifty 500 price index's (NSE official closes), in pe
 Power as a theme deserves capital at all, versus simply holding the index.
 **`rs_score_vs_sector_avg`** measures which Power stock is best positioned relative to its
 Power peers: the same 63-session return minus the equal-weighted average return of all
-22 constituents (-11.39% over this window). It is the relevant measure once the
+22 constituents (-9.29% over this window). It is the relevant measure once the
 decision to hold Power exposure has been made, per the project's sector-rotation requirement.
 
 `sector_rank` ranks `rs_score_vs_sector_avg` from 1 (best) to 22 (worst); the spreads

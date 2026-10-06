@@ -1,8 +1,8 @@
 field,value
-as_of,2026-10-05
-pnl_pct,3.32
+as_of,2026-10-06
+pnl_pct,5.25
 trigger_pct,10.0
 rolls_done,0
 max_rolls,1
 status,waiting
-gap_to_trigger_pp,6.68
+gap_to_trigger_pp,4.75
