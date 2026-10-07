@@ -1,25 +1,25 @@
 metric,value,note
-Prices as of,2026-10-06,NSE F&O bhavcopy
-Portfolio value hedged (Rs),10213287,stocks at the latest close (97% sleeve)
-Nifty 50 spot,22776.1,
+Prices as of,2026-10-07,NSE F&O bhavcopy
+Portfolio value hedged (Rs),10198552,stocks at the latest close (97% sleeve)
+Nifty 50 spot,22603.05,
 Nifty lot size,65,NSE contract specification
 Regression sessions,247,"daily returns, portfolio vs Nifty 50"
-Minimum-variance hedge ratio h*,1.131,"cov(r_p, r_N50) / var(r_N50) = beta vs Nifty 50"
+Minimum-variance hedge ratio h*,1.13,"cov(r_p, r_N50) / var(r_N50) = beta vs Nifty 50"
 Hedge effectiveness (R^2),0.317,share of portfolio variance a full futures hedge removes
 Downside beta (Nifty 50 down days),1.251,
 Tail beta (worst 10% of days),0.614,25 days with Nifty 50 <= -1.07%; s.e. 0.62
 Tail hedge ratio,1.251,"max(downside beta, h*): puts sized on the sell-off beta; the worst-10% beta is too noisy (few days)"
 Futures: contract,NIFTY FUT 2026-12-29,longest listed expiry; a hedge to 2026-12-28 needs a roll
-Futures: price,23022.6,
-Futures: lots for a full hedge (exact),7.72,h* x value / (futures price x lot)
+Futures: price,22876.2,
+Futures: lots for a full hedge (exact),7.75,h* x value / (futures price x lot)
 Futures: lots for a full hedge (rounded),8,achieved hedge ratio 1.17
-Futures: notional (Rs),11971752,
-"Futures: margin needed (Rs, assumed)",1436610,ASSUMPTION 12% of notional; exceeds the hedge budget
+Futures: notional (Rs),11895624,
+"Futures: margin needed (Rs, assumed)",1427475,ASSUMPTION 12% of notional; exceeds the hedge budget
 Puts: contract,NIFTY 2026-12-29 22000 PE,held (trade ledger)
 Puts: premium,208.2,average price paid
 Puts: lots,8.0,held; re-sized when a full lot off the need (hedge-ratio drift)
-Puts: lots needed today (exact),8.63,tail hedge ratio x value / (spot x lot)
+Puts: lots needed today (exact),8.68,tail hedge ratio x value / (spot x lot)
 Puts: cost (Rs),108264,paid
-Puts: value today (Rs),108056,NSE settlement price today
-Puts: strike below spot (%),3.41,today
+Puts: value today (Rs),128700,NSE settlement price today
+Puts: strike below spot (%),2.67,today
 Profit trigger,+10%,"portfolio up 10%: roll the puts up to about 5% below the new Nifty level, funded from cash, to lock in part of the gain"
