@@ -239,3 +239,15 @@ def test_a_short_live_window_uses_the_one_year_beta(tmp_path, monkeypatch):
                   "liquid_fund_inr": 1e7 * (1 + 0.0002) ** np.arange(5)}).to_csv(path, index=False)
     out = performance.live_metrics()
     assert out["sessions"] == 4 and out["beta_vs_nifty500"] == 1.26 and out["beta_basis"].startswith("1-year")
+
+
+def test_the_frontier_starts_at_the_gmvp_and_carries_its_weights():
+    from performance import efficient_frontier, gmvp
+    rng = np.random.default_rng(3)
+    a = rng.normal(size=(4, 4))
+    cov = a @ a.T / 10 + np.eye(4) * 0.02
+    mu = np.array([0.10, 0.15, 0.20, 0.08])
+    f = efficient_frontier(mu, cov, points=5, iterations=500, names=["A", "B", "C", "D"])
+    w = gmvp(cov)
+    assert f.iloc[0]["sigma"] == pytest.approx(float(np.sqrt(w @ cov @ w)), rel=1e-9)
+    assert f.loc[0, ["w_A", "w_B", "w_C", "w_D"]].sum() == pytest.approx(100, abs=0.05)

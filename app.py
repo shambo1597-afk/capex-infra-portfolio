@@ -748,6 +748,100 @@ def _fit_height(df: pd.DataFrame) -> int:
     return 38 + 35 * len(df)
 
 
+CML_STYLE = {  # colour + marker shape per point kind (shape is the second encoding, so colour is never alone)
+    "portfolio": ("Our portfolio", "#B45309", "star", 20),
+    "gmvp": ("GMVP (long-only)", "#7C3AED", "triangle-up", 14),
+    "gmvp_bounded": ("GMVP (5-15% limits)", "#DB2777", "triangle-down", 14),
+    "tangency": ("Tangency (max Sharpe)", "#15803D", "diamond", 13),
+    "market": ("Nifty 500 TRI (market)", "#1D4ED8", "square", 12),
+    "risk_free": ("Risk-free (1D rate)", "#334155", "circle", 10),
+}
+CML_WEIGHT_COLUMN = {"portfolio": "our_weight_pct", "gmvp": "gmvp_long_only_pct",
+                     "gmvp_bounded": "gmvp_bounded_pct", "tangency": "tangency_pct"}
+
+
+def _label_positions(stocks: pd.DataFrame) -> list:
+    """Stock labels above the marker, except where two stocks sit close together: then on their outer sides."""
+    x, y = stocks["sigma"].values * 100, stocks["expected_return"].values * 100
+    pos = ["top center"] * len(x)
+    for i in range(len(x)):
+        for j in range(len(x)):
+            if i != j and abs(x[i] - x[j]) < 4 and abs(y[i] - y[j]) < 12:
+                pos[i] = "middle left" if x[i] < x[j] else "middle right"
+    return pos
+
+
+def cml_figure(pts: pd.DataFrame, frontier: pd.DataFrame, weights: pd.DataFrame):
+    """Interactive CML / efficient frontier / GMVP chart (plotly) from performance.py's outputs."""
+    rf = float(pts.loc[pts["kind"] == "risk_free", "expected_return"].iloc[0])
+    mkt = pts[pts["kind"] == "market"].iloc[0]
+    tan = pts[pts["kind"] == "tangency"].iloc[0]
+    m_sharpe = (mkt["expected_return"] - rf) / mkt["sigma"]
+    t_sharpe = (tan["expected_return"] - rf) / tan["sigma"]
+    pct = lambda x: x * 100  # noqa: E731
+    xmax = max(pts["sigma"].max(), frontier["sigma"].max()) * 1.08
+    xs = np.linspace(0, xmax, 60)
+
+    def mix(col: str) -> str:
+        if weights.empty or col not in weights:
+            return ""
+        w = weights[["symbol", col]].sort_values(col, ascending=False)
+        return "<br>".join(f"{r.symbol}: {getattr(r, col):.1f}%" for r in w.itertuples() if getattr(r, col) >= 0.05)
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=pct(xs), y=pct(rf + m_sharpe * xs), mode="lines", name=f"CML through the market (Sharpe {m_sharpe:.2f})",
+        line=dict(color="#1D4ED8", width=2),
+        hovertemplate="CML<br>σ %{x:.1f}% → E[r] %{y:.1f}%<extra></extra>"))
+    fig.add_trace(go.Scatter(
+        x=pct(xs), y=pct(rf + t_sharpe * xs), mode="lines", name=f"Line through the tangency (Sharpe {t_sharpe:.2f})",
+        line=dict(color="#15803D", width=2, dash="dash"),
+        hovertemplate="Capital allocation line via the tangency<br>σ %{x:.1f}% → E[r] %{y:.1f}%<extra></extra>"))
+    wcols = [c for c in frontier.columns if c.startswith("w_")]
+    f_text = ["<br>".join(f"{c[2:]}: {r[c]:.1f}%" for c in sorted(wcols, key=lambda c: -r[c]) if r[c] >= 0.05)
+              for _, r in frontier.iterrows()]
+    fig.add_trace(go.Scatter(
+        x=pct(frontier["sigma"]), y=pct(frontier["expected_return"]), mode="lines+markers",
+        name="Efficient frontier (long-only)", line=dict(color="#64748B", width=2), marker=dict(size=5, color="#64748B"),
+        customdata=np.c_[(frontier["expected_return"] - rf) / frontier["sigma"]], text=f_text,
+        hovertemplate="<b>Efficient frontier</b><br>σ %{x:.1f}% · return %{y:.1f}% · Sharpe %{customdata[0]:.2f}"
+                      "<br><br>Mix:<br>%{text}<extra></extra>"))
+    stocks = pts[pts["kind"] == "stock"]
+    our_w = weights.set_index("symbol")["our_weight_pct"] if "our_weight_pct" in weights else pd.Series(dtype=float)
+    fig.add_trace(go.Scatter(
+        x=pct(stocks["sigma"]), y=pct(stocks["expected_return"]), mode="markers+text", name="Invested stocks",
+        text=stocks["name"], textposition=_label_positions(stocks), textfont=dict(size=11, color="#475569"),
+        marker=dict(size=10, color="#94A3B8", line=dict(color="#FFFFFF", width=2)),
+        customdata=np.c_[(stocks["expected_return"] - rf) / stocks["sigma"], stocks["name"].map(our_w).fillna(0)],
+        hovertemplate="<b>%{text}</b><br>σ %{x:.1f}% · return %{y:.1f}% · Sharpe %{customdata[0]:.2f}"
+                      "<br>Our weight %{customdata[1]:.1f}%<extra></extra>"))
+    for kind, (label, color, symbol, size) in CML_STYLE.items():
+        row = pts[pts["kind"] == kind]
+        if row.empty:
+            continue
+        r = row.iloc[0]
+        sharpe = (r["expected_return"] - rf) / r["sigma"] if r["sigma"] > 0 else float("nan")
+        extra = mix(CML_WEIGHT_COLUMN[kind]) if kind in CML_WEIGHT_COLUMN else ""
+        body = (f"<b>{label}</b><br>σ {r['sigma'] * 100:.1f}% · return {r['expected_return'] * 100:.1f}%"
+                + (f" · Sharpe {sharpe:.2f}" if np.isfinite(sharpe) else "") + (f"<br><br>Weights:<br>{extra}" if extra else ""))
+        fig.add_trace(go.Scatter(
+            x=[pct(r["sigma"])], y=[pct(r["expected_return"])], mode="markers", name=label,
+            marker=dict(size=size, color=color, symbol=symbol, line=dict(color="#FFFFFF", width=2)),
+            hovertext=[body], hovertemplate="%{hovertext}<extra></extra>"))
+    fig.update_layout(
+        height=620, template="plotly_white", hovermode="closest", margin=dict(l=10, r=10, t=30, b=10),
+        xaxis_title="Volatility σ (annualised, %)", yaxis_title="Mean return (annualised, %)",
+        legend=dict(orientation="h", y=-0.2, x=0, yanchor="top"), hoverlabel=dict(bgcolor="white", font_size=12))
+    fig.add_hline(y=0, line=dict(color="#CBD5E1", width=1))
+    close = pts[pts["kind"].isin(["portfolio", "gmvp", "gmvp_bounded", "tangency"])]
+    pad_x = max(1.0, (close["sigma"].max() - close["sigma"].min()) * 100 * 0.4)
+    pad_y = max(4.0, (close["expected_return"].max() - close["expected_return"].min()) * 100 * 0.3)
+    info = {"market_sharpe": m_sharpe, "tangency_sharpe": t_sharpe,
+            "zoom_x": [close["sigma"].min() * 100 - pad_x, close["sigma"].max() * 100 + pad_x],
+            "zoom_y": [close["expected_return"].min() * 100 - pad_y, close["expected_return"].max() * 100 + pad_y]}
+    return fig, info
+
+
 tab_overview, tab_fundamentals, tab_technicals, tab_risk, tab_performance = st.tabs([
     "Portfolio Overview",
     "Fundamentals",
@@ -1848,16 +1942,35 @@ with tab_performance:
                                 legend=dict(orientation="h", y=1.08))
             st.plotly_chart(fig_g, width="stretch")
             st.caption("Growth of ₹1 crore over the past year with daily compounding (backtest).")
-        st.markdown("### Capital Market Line")
-        cml_png = OUTPUT_DIR / "cml.png"
-        if cml_png.exists():
-            st.image(str(cml_png), width="stretch")
-        st.caption(
-            "CML: E[r] = r_f + (E[r_m] - r_f)/σ_m × σ, through the Nifty 500 TRI. Over the past year the market returned less "
-            "than the risk-free rate, so the CML slopes down (negative market Sharpe). Our portfolio plots far above it; "
-            "the dashed line through the tangency portfolio of the invested stocks is the best risk-return trade-off they offered. "
-            "Ex-post: a chart of the past, not a forecast."
-        )
+        st.markdown("### Capital Market Line, efficient frontier and GMVP")
+        cml_pts, frontier_df = _out("cml_points.csv"), _out("efficient_frontier.csv")
+        w_cmp = _out("portfolio_weights_compared.csv")
+        if not cml_pts.empty and not frontier_df.empty:
+            fig_cml, cml_info = cml_figure(cml_pts, frontier_df, w_cmp)
+            view = st.radio("View", ["Full chart", "Zoom: our portfolio vs the GMVPs and tangency"], horizontal=True,
+                            label_visibility="collapsed", key="cml_view")
+            if view.startswith("Zoom"):
+                fig_cml.update_xaxes(range=cml_info["zoom_x"])
+                fig_cml.update_yaxes(range=cml_info["zoom_y"])
+                label_at = {CML_STYLE["portfolio"][0]: "middle right", CML_STYLE["gmvp"][0]: "middle right",
+                            CML_STYLE["gmvp_bounded"][0]: "bottom center", CML_STYLE["tangency"][0]: "bottom right"}
+                fig_cml.for_each_trace(lambda t: t.update(mode="markers+text", text=[t.name], textposition=label_at[t.name],
+                                                          textfont=dict(size=12, color="#334155"))
+                                       if t.name in label_at else None)
+            st.plotly_chart(fig_cml, width="stretch", config={"displaylogo": False})
+            st.caption(
+                "Hover any point for its volatility, return, Sharpe ratio and weights (each frontier point shows the stock mix "
+                "that achieves it); drag to zoom, double-click to reset; click a legend entry to hide it. "
+                f"CML: E[r] = r_f + (E[r_m] - r_f)/σ_m × σ, through the Nifty 500 TRI (market Sharpe {cml_info['market_sharpe']:.2f}). "
+                "Over the past year the market returned less than the risk-free rate, so the CML slopes down. The dashed line "
+                f"through the tangency portfolio (Sharpe {cml_info['tangency_sharpe']:.2f}) is the best risk-return trade-off the "
+                "invested stocks offered; the GMVP is the frontier's leftmost point, the lowest volatility they can reach. "
+                "Annualised from one year of daily returns: ex-post, a chart of the past, not a forecast."
+            )
+        else:
+            cml_png = OUTPUT_DIR / "cml.png"
+            if cml_png.exists():
+                st.image(str(cml_png), width="stretch")
         cmp_stats = _out("portfolio_weights_compared_stats.csv")
         cmp_w = _out("portfolio_weights_compared.csv")
         if not cmp_stats.empty:
@@ -1867,7 +1980,10 @@ with tab_performance:
                 "efficient frontier, purple triangles on the chart), long-only and within the brief's weight limits. "
                 "Effective number of stocks = 1 / Σw² (how many equal positions the portfolio behaves like). Our equal-risk "
                 "weights give up a little volatility against the GMVP for broader diversification; the tangency portfolio "
-                "has the best past Sharpe but bets half the money on one stock chosen with hindsight."
+                "has the best past Sharpe but puts "
+                + (f"{float(cmp_stats.loc[cmp_stats['portfolio'].str.startswith('Tangency'), 'largest_weight_pct'].iloc[0]):.0f}% "
+                   if cmp_stats["portfolio"].str.startswith("Tangency").any() else "a large share ")
+                + "of the money in one stock chosen with hindsight."
             )
             st.dataframe(cmp_stats.rename(columns={
                 "portfolio": "Portfolio", "volatility_pct": "Volatility %", "mean_return_pct": "Past-year mean return %",

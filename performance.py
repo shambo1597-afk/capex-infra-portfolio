@@ -42,6 +42,7 @@ PERFORMANCE_CSV = OUTPUT_DIR / "performance_summary.csv"
 GROWTH_CSV = OUTPUT_DIR / "performance_growth.csv"
 CML_CSV = OUTPUT_DIR / "cml_points.csv"
 CML_PNG = OUTPUT_DIR / "cml.png"
+FRONTIER_CSV = OUTPUT_DIR / "efficient_frontier.csv"  # the interactive CML on the dashboard
 OPTIMISED_WEIGHTS_CSV = OUTPUT_DIR / "portfolio_weights_compared.csv"
 OPTIMISED_STATS_CSV = OUTPUT_DIR / "portfolio_weights_compared_stats.csv"
 WINDOWS = {"Last quarter (63 sessions)": 63, "Last year": None}
@@ -187,16 +188,25 @@ def gmvp(cov: np.ndarray, lo: float = 0.0, hi: float = 1.0, iterations: int = 20
     return w
 
 
-def efficient_frontier(mu: np.ndarray, cov: np.ndarray, points: int = 40, iterations: int = 3000) -> pd.DataFrame:
-    """Long-only minimum-variance frontier: minimise w'Cw - lambda w'mu over a grid of lambda."""
+def efficient_frontier(mu: np.ndarray, cov: np.ndarray, points: int = 40, iterations: int = 3000,
+                       names: Optional[List[str]] = None) -> pd.DataFrame:
+    """Long-only minimum-variance frontier: minimise w'Cw - lambda w'mu over a grid of lambda.
+    With `names`, each point also carries its weights (w_<name>, in %) for the dashboard's hover."""
     rows = []
     for lam in np.concatenate([[0.0], np.geomspace(0.01, 50, points)]):
-        w = np.full(len(mu), 1.0 / len(mu))
-        step = 0.5 / (np.linalg.eigvalsh(cov).max() + 1e-12)
-        for _ in range(iterations):
-            w = project_to_bounded_simplex(w - step * (2 * cov @ w - lam * mu), 0.0, 1.0)
-        rows.append({"sigma": float(np.sqrt(w @ cov @ w)), "expected_return": float(w @ mu)})
-    return pd.DataFrame(rows).drop_duplicates().sort_values("sigma").reset_index(drop=True)
+        if lam == 0.0:  # the frontier starts at the GMVP: the same solver, so the chart's two points coincide
+            w = gmvp(cov)
+        else:
+            w = np.full(len(mu), 1.0 / len(mu))
+            step = 0.5 / (np.linalg.eigvalsh(cov).max() + 1e-12)
+            for _ in range(iterations):
+                w = project_to_bounded_simplex(w - step * (2 * cov @ w - lam * mu), 0.0, 1.0)
+        row = {"sigma": float(np.sqrt(w @ cov @ w)), "expected_return": float(w @ mu)}
+        if names is not None:
+            row.update({f"w_{n}": round(float(x) * 100, 2) for n, x in zip(names, w)})
+        rows.append(row)
+    out = pd.DataFrame(rows)
+    return out.drop_duplicates(subset=["sigma", "expected_return"]).sort_values("sigma").reset_index(drop=True)
 
 
 def cml_points(returns: pd.DataFrame, port: pd.Series, fx: pd.DataFrame,
@@ -240,7 +250,7 @@ def cml_points(returns: pd.DataFrame, port: pd.Series, fx: pd.DataFrame,
                       "sharpe": round((er - rf) / sd, 2), "effective_n_stocks": round(1 / float((w ** 2).sum()), 1),
                       "largest_weight_pct": round(float(w.max()) * 100, 1),
                       "stocks_above_1pct": int((w > 0.01).sum())})
-    return {"points": pd.DataFrame(points), "frontier": efficient_frontier(mu, cov), "rf": rf,
+    return {"points": pd.DataFrame(points), "frontier": efficient_frontier(mu, cov, names=list(returns.columns)), "rf": rf,
             "market_sharpe": (m_mu - rf) / m_sigma, "tangency_weights": dict(zip(returns.columns, np.round(w_t, 4))),
             "weights_table": table, "weights_stats": pd.DataFrame(stats)}
 
@@ -384,6 +394,7 @@ def run(as_of: Optional[date] = None) -> Dict[str, pd.DataFrame]:
 
     cml = cml_points(returns, port, fx, risk.set_index("symbol")["weight_pct"] / 100)
     cml["points"].to_csv(CML_CSV, index=False, float_format="%.6f")
+    cml["frontier"].to_csv(FRONTIER_CSV, index=False, float_format="%.6f")
     cml["weights_table"].to_csv(OPTIMISED_WEIGHTS_CSV, index=False)
     cml["weights_stats"].to_csv(OPTIMISED_STATS_CSV, index=False)
     plot_cml(cml)
