@@ -1,10 +1,14 @@
 field,value
-as_of,2026-10-09
+as_of,2026-10-12
 contract,NIFTY 2026-12-29 22000 PE
 lots_held,8.0
-lots_needed,8.72
-hedge_ratio,1.312
-stocks_inr,9728074
-nifty_spot,22520.45
+lots_needed,9.11
+hedge_ratio,1.318
+stocks_inr,10048932
+nifty_spot,22363.35
 band_lots,1.0
-status,in band
+status,REBALANCE
+trade,"BUY 65 NIFTY 2026-12-29 22000 PE @ 324.80 (1 lots, hedge ratio)"
+trade_value_inr,21112
+cash_inr,203734
+cash_sufficient,True
