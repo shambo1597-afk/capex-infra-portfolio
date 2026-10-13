@@ -8,3 +8,4 @@ date,instrument,action,quantity,price,note
 2026-09-28,APARINDS,BUY,69,17263.0,snapshot: 12.36% of the equity sleeve at the close
 2026-09-28,ACMESOLAR,BUY,3322,437.9,snapshot: 15.00% of the equity sleeve at the close
 2026-09-28,NIFTY 2026-12-29 22000 PE,BUY,520,208.2,"tail hedge (risk_model.py), NSE settlement price"
+2026-10-13,NIFTY 2026-12-29 22000 PE,BUY,65,197.95,hedge-ratio rebalance
