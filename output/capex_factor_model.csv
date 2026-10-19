@@ -1,9 +1,9 @@
 term,coef,t
-alpha (annualised %),86.21,4.33
-market,0.9,11.17
-capex,1.244,6.24
+alpha (annualised %),86.12,4.35
+market,0.9,11.25
+capex,1.245,6.28
 size,0.106,0.39
-momentum,0.492,3.42
-R^2,0.715,
-days,178.0,
+momentum,0.491,3.45
+R^2,0.716,
+days,179.0,
 "corr(capex, size)",0.83,
