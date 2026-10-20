@@ -2,7 +2,7 @@
 
 `power_full_review_table.csv` lists every Nifty Power constituent (22 rows,
 none excluded), with live fundamentals and technicals as of 19-Oct-2026 (price window
-19-Oct-2025 to 19-Oct-2026). It is sorted by `fundamentals_passed_count` (descending),
+20-Oct-2025 to 19-Oct-2026). It is sorted by `fundamentals_passed_count` (descending),
 then `sector_rank` (ascending).
 
 ## Two relative strength measures
