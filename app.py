@@ -920,8 +920,11 @@ with tab_overview:
                   help="Sum over the stocks of (close - stop-loss) x shares; a gap below a stop can lose more.")
         xirr_val = t.get("xirr_pct")
         n_days = int(float(t.get("calendar_days", 0) or 0))
+        n500_x = t.get("nifty500_xirr_pct")
+        n500_txt = (f"Nifty 500 {float(n500_x):,.1f}% · " if n500_x is not None and pd.notna(n500_x)
+                    and str(n500_x) != "nan" else "")
         l4.metric("XIRR (annualised)", f"{float(xirr_val):,.1f}%" if pd.notna(xirr_val) and str(xirr_val) != "nan" else "—",
-                  f"from {n_days} calendar day{'s' if n_days != 1 else ''}", delta_color="off",
+                  f"{n500_txt}from {n_days} calendar day{'s' if n_days != 1 else ''}", delta_color="off",
                   help="XIRR compounds the return so far to a full year: over a few days it is very large and swings "
                        "with every move. The return actually earned is the P&L % above.")
         roll_df = _out("hedge_roll.csv")
@@ -1709,7 +1712,8 @@ with tab_risk:
                 k3.metric("In rupees on ₹1 crore (3 months)", _inr(PRINCIPAL_INR * c["capm_3m_return_pct"] / 100))
                 k4.metric("Risk-free / market risk premium", f"{c['risk_free_pct']:.2f}% / {c['market_risk_premium_pct']:.2f}%")
             st.caption(
-                "E[r] = r_f + β × MRP. r_f = Nifty 1D Rate index annualised over the last quarter; β = single-index beta vs "
+                "E[r] = r_f + β × MRP. r_f = the 91-day T-bill cut-off yield at RBI's latest auction (the annualised 3-month rate, "
+                "matching the horizon); β = single-index beta vs "
                 f"the Nifty 500 TRI (above); MRP = {MARKET_RISK_PREMIUM_SOURCE}. CAPM is what the market pays for the risk "
                 "taken, not a forecast of our picks: our thesis is to beat it (alpha). Per stock: Portfolio Overview table."
             )
@@ -1856,6 +1860,123 @@ with tab_risk:
             st.dataframe(plan_df, hide_index=True, width="stretch", height=_fit_height(plan_df))
             st.dataframe(puts_df, hide_index=True, width="stretch", height=_fit_height(puts_df))
 
+        # 5. Hedging strategy to the professor's exit: probabilities first, then the call
+        hs_df, hs_meta = _out("hedge_strategies.csv"), _out("hedge_strategy_meta.csv")
+        if not hs_df.empty and not hs_meta.empty:
+            hm = dict(zip(hs_meta["metric"], hs_meta["value"]))
+            st.markdown(f"### Hedging strategy to {pd.Timestamp(hm['Horizon (professor exits)']):%d-%b-%Y} (the exit)")
+            rec = hs_df[hs_df["recommended"].astype(str) == "True"]
+            p_cols = [k for k in hm if str(k).startswith("P(Nifty below")]
+            st.markdown(
+                f"**Step 1, probabilities.** The market prices the Nifty 50 with an implied volatility of "
+                f"{float(hm['At-the-money implied volatility (%)']):.1f}% a year for the {hm['Option expiry used']} expiry "
+                f"(the first one after the exit, so nothing expires before it). Over the "
+                f"{int(float(hm['Sessions to the horizon']))} sessions to the exit that gives: "
+                + "; ".join(f"{k.split('P(Nifty below ')[1].split(' on')[0]}: {float(hm[k]):.0f}%" for k in p_cols)
+                + " (chance the Nifty closes below each strike). Our stocks move with the Nifty through their beta "
+                f"({float(hm['Beta on falls (downside)']):.2f} on falls, {float(hm['Beta on rises (h*)']):.2f} on rises) "
+                f"plus their own risk ({float(hm['Stocks own daily volatility (%)']):.2f}% a day), "
+                f"which no index option can hedge: the Nifty explains only {float(hm['R^2 vs Nifty 50']) * 100:.0f}% of "
+                "our daily moves (15-Oct: the Nifty rose 1.7% and our stocks fell 6%).")
+            st.markdown(
+                "**Step 2, every strategy on the same 20,000 simulated outcomes to the exit** (same notional as the "
+                "puts held; every option revalued at the exit at its own implied volatility). Cost if the Nifty is "
+                "unchanged = pure time decay; expected cost = premium minus the hedge's expected value at the exit; "
+                "CVaR 95% = the average loss in the worst 5% of outcomes.")
+            show_hs = hs_df.drop(columns=["legs", "recommended"]).rename(columns={
+                "strategy": "Strategy", "net_premium_inr": "Premium of the position (₹)",
+                "net_premium_pct": "Premium, % of portfolio", "net_cash_today_inr": "Net cash today (₹)",
+                "cost_if_nifty_unchanged_inr": "Cost if Nifty unchanged (₹)",
+                "expected_hedge_cost_inr": "Expected cost (₹)", "expected_hedge_cost_pct": "Expected cost, %",
+                "prob_hedge_profit_pct": "P(hedge ends in profit) %", "expected_pnl_inr": "Expected portfolio P&L (₹)",
+                "var95_inr": "VaR 95% (₹)", "cvar95_inr": "CVaR 95% (₹)", "worst_1pct_inr": "Worst 1% (₹)",
+                "cvar95_saved_inr": "CVaR saved vs no hedge (₹)", "cvar_saved_per_rupee_cost": "CVaR saved per ₹ of cost"})
+            st.dataframe(show_hs.style.format(precision=2, na_rep="—", thousands=",")
+                         .apply(lambda r: ["background-color: rgba(21,128,61,0.12)" if r["Strategy"] in set(rec["strategy"])
+                                           else "" for _ in r], axis=1),
+                         hide_index=True, width="stretch", height=_fit_height(show_hs))
+            if not rec.empty:
+                rr_ = rec.iloc[0]
+                keep = hs_df[hs_df["strategy"].str.startswith("Keep the puts held (")]
+                st.success(
+                    f"**Step 3, the call: {rr_['strategy']}.** Legs: {rr_['legs']}. Net cash today "
+                    f"{_inr(float(rr_['net_cash_today_inr']))} (positive = cash in). It cuts the average loss in the worst 5% of "
+                    f"outcomes by {_inr(float(rr_['cvar95_saved_inr']))} for an expected cost of "
+                    f"{_inr(float(rr_['expected_hedge_cost_inr']))} ({float(rr_['cvar_saved_per_rupee_cost']):.0f} rupees of tail "
+                    "loss saved per rupee of cost), the best ratio among the strategies that cost at most "
+                    f"{float(hm['Expected-cost budget (% of portfolio)']):g}% of the portfolio and save at least "
+                    f"{float(hm['Minimum CVaR cut to count as cover (% of portfolio)']):g}% of it."
+                    + (f" Keeping the December put instead saves {_inr(float(keep.iloc[0]['cvar95_saved_inr']))}: it pays "
+                       "little by the exit because its strike is far below the Nifty." if not keep.empty else "")
+                    + " Prices are NSE settlements of " + str(hm["Prices as of"]) + "; re-check before trading.")
+            bk = _out("hedge_strategy_buckets.csv")
+            if not bk.empty:
+                with st.expander("P&L by Nifty outcome at the exit, with its probability"):
+                    piv = bk.pivot_table(index="nifty_move", columns="strategy", values="mean_portfolio_pnl_inr", sort=False)
+                    prob = bk.drop_duplicates("nifty_move").set_index("nifty_move")["probability_pct"]
+                    piv.insert(0, "Probability %", prob)
+                    st.dataframe(piv.style.format("{:,.0f}", na_rep="—").format("{:.1f}", subset=["Probability %"]),
+                                 width="stretch", height=_fit_height(piv))
+                    st.caption("Mean portfolio P&L (stocks + options, ₹) in each band of the Nifty's move to the exit. "
+                               "The probabilities come from the options' implied volatility.")
+            curve = _out("hedge_strategy_curve.csv")
+            if not curve.empty:
+                fig_h = go.Figure()
+                atm_put = next((c for c in curve.columns if "protective put" in c), None)  # the strike nearest the Nifty
+                show = [c for c in curve.columns[2:] if c.startswith(("No hedge", "Keep the puts held (")) or
+                        c in set(rec["strategy"]) or "collar" in c or c == atm_put]
+                palette = ["#94A3B8", "#1D4ED8", "#15803D", "#B45309", "#7C3AED", "#DB2777"]
+                for i, col in enumerate(show):
+                    fig_h.add_trace(go.Scatter(x=curve["nifty_move_pct"], y=curve[col] / 1e5, name=col, mode="lines",
+                                               line=dict(width=3 if col in set(rec["strategy"]) else 2,
+                                                         color=palette[i % len(palette)],
+                                                         dash="dot" if col.startswith("No hedge") else "solid"),
+                                               hovertemplate="Nifty %{x:+.1f}%: ₹%{y:,.2f} L<extra>" + col + "</extra>"))
+                fig_h.update_layout(height=380, template="plotly_white", hovermode="x unified",
+                                    xaxis_title="Nifty 50 move to the exit (%)", yaxis_title="Portfolio P&L (₹ lakh)",
+                                    margin=dict(l=10, r=10, t=30, b=10), legend=dict(orientation="h", y=-0.25))
+                st.plotly_chart(fig_h, width="stretch")
+                st.caption("Market-driven P&L at the exit for each Nifty move (the stocks' own risk set to zero), options "
+                           "revalued at the exit. The spread's protection stops at its lower strike, so in a crash beyond it the "
+                           "December put (or a protective put) covers more, at a higher cost; the collar is nearly free but "
+                           "gives up gains above its call strike. A fall beyond the spread's lower strike by the exit has a "
+                           "probability of only a few per cent (Step 1).")
+
+        # 6. Value-at-Risk and marginal VaR
+        var_s, var_c = _out("var_summary.csv"), _out("var_components.csv")
+        if not var_s.empty:
+            vm = dict(zip(var_s["measure"], var_s["stocks_inr"]))
+            st.markdown("### Value-at-Risk, marginal and component VaR")
+            body = var_s[~var_s["measure"].isin(["As of", "Horizon"])].copy()
+            for col in [c for c in body.columns if c != "measure"]:
+                body[col] = pd.to_numeric(body[col], errors="coerce")
+            st.caption(
+                f"As of {vm.get('As of')}; horizon {vm.get('Horizon')}. Parametric VaR = z × σ_P × √h with σ_P² = x′Σx "
+                "(x = rupee positions, Σ = one year of daily returns); historical VaR = the loss today's positions would "
+                "have made on the past year's worst days; CVaR = the average loss beyond the VaR. The puts enter as a Nifty "
+                "50 position equal to their delta, which understates their crash protection (conservative).")
+            st.dataframe(body.rename(columns={"measure": "Measure", "stocks_inr": "Stocks only (₹)", "stocks_pct": "% of stocks",
+                                              "with_puts_inr": "With the puts (₹)", "with_puts_pct": "% of stocks "})
+                         .style.format({"Stocks only (₹)": "{:,.0f}", "With the puts (₹)": "{:,.0f}",
+                                        "% of stocks": "{:.2f}%", "% of stocks ": "{:.2f}%"}, na_rep="—"),
+                         hide_index=True, width="stretch", height=_fit_height(body))
+            if not var_c.empty:
+                st.dataframe(var_c.rename(columns={
+                    "position": "Position", "value_inr": "Value (₹)", "weight_pct": "% of stocks",
+                    "standalone_var95_inr": "Standalone VaR 95% (₹)",
+                    "marginal_var95_per_lakh_inr": "Marginal VaR per ₹1 L more (₹)",
+                    "component_var95_inr": "Component VaR (₹)", "share_of_var_pct": "Share of portfolio VaR %"})
+                    .style.format({"Value (₹)": "{:,.0f}", "% of stocks": "{:.1f}", "Standalone VaR 95% (₹)": "{:,.0f}",
+                                   "Marginal VaR per ₹1 L more (₹)": "{:,.0f}", "Component VaR (₹)": "{:,.0f}",
+                                   "Share of portfolio VaR %": "{:.1f}"}),
+                    hide_index=True, width="stretch", height=_fit_height(var_c))
+                top = var_c[~var_c["position"].str.startswith("NIFTY")].sort_values("component_var95_inr").iloc[-1]
+                st.caption(
+                    f"Marginal VaR = how much the 1-day 95% VaR rises per ₹1 lakh more in a position (z × (Σx)ᵢ / σ_P); "
+                    f"component VaR = position × marginal VaR, and the components add up to the portfolio VaR. "
+                    f"The largest share is {top['position']} ({float(top['share_of_var_pct']):.1f}%); a negative component "
+                    "(the puts) is a position that lowers the portfolio's risk.")
+
 
 # =============================================================================
 # TAB 5: PERFORMANCE
@@ -1872,7 +1993,8 @@ with tab_performance:
             st.markdown(
                 "<span style='font-size:0.82rem;'>The <strong>Live</strong> column is the real portfolio since the "
                 f"{pd.Timestamp(EVALUATION_START_DATE):%d-%b-%Y} snapshot (stocks + Nifty puts + cash, from the trade ledger) "
-                "against the same ₹1 crore in the Nifty 500 TRI; risk-free = the liquid fund. The other columns are a "
+                "against the same ₹1 crore in the Nifty 500 TRI; risk-free = the 91-day T-bill yield (annualised 3-month rate). "
+                "The other columns are a "
                 "<strong>backtest</strong> of today's portfolio over past prices (hindsight, not a forecast).</span>",
                 unsafe_allow_html=True)
             live_n = int(perf_df.loc[perf_df["window"].str.startswith("Live"), "sessions"].iloc[0])
@@ -1922,7 +2044,9 @@ with tab_performance:
             "Sharpe = (R_p - R_f) / σ_p (reward per unit of total risk); Treynor = (R_p - R_f) / β (per unit of market "
             "risk); Jensen's alpha = R_p - [R_f + β (R_m - R_f)]. XIRR solves Σ CF / (1 + r)^(days/365) = 0 for the "
             "dated cash flows (invest at the start, value at the end); a loss gives a negative XIRR, annualised the same way. "
-            "Risk-free = Nifty 1D Rate index. Against the benchmark, measured the same way for both: Sortino = excess "
+            "Risk-free: the 91-day T-bill yield for the live column; for the backtest windows the Nifty 1D Rate index over "
+            "the same days (a T-bill history is not kept). Every alpha and beta is against the Nifty 500 TRI (the Nifty 50 "
+            "appears only in the hedge, because the options are on the Nifty 50). Against the benchmark, measured the same way for both: Sortino = excess "
             "return ÷ downside volatility; max drawdown = worst fall from a peak; up/down-capture = the portfolio's average "
             "return on the Nifty 500's up / down days ÷ the Nifty 500's (above 1 up and below 1 down is the aim); "
             "information ratio = annual excess return over the Nifty 500 ÷ tracking error."
@@ -1942,6 +2066,59 @@ with tab_performance:
                                 legend=dict(orientation="h", y=1.08))
             st.plotly_chart(fig_g, width="stretch")
             st.caption("Growth of ₹1 crore over the past year with daily compounding (backtest).")
+        # Three timelines from the snapshot (the professor, 14-Oct): ours, the reverse order, the original strict 4
+        tl_sum, tl_growth = _out("timelines_summary.csv"), _out("timelines_growth.csv")
+        if not tl_sum.empty and not tl_growth.empty:
+            st.markdown("### Three timelines from the 28-Sep snapshot")
+            st.caption(
+                "Same money, same day, same rules for valuing them; only the stock selection differs: 97% of ₹1 crore in "
+                "whole shares at the 28-Sep close, no hedge, held to the latest close. "
+                "**1. Ours**: technicals rank, fundamentals screen. **2. Reverse**: the same eligible stocks, but "
+                "fundamentals rank (ROCE, OPM, quarterly profit and sales growth, low debt/equity) and technicals screen. "
+                "**3. Original strict screen**: technicals first, then the full multi-year fundamental screen of 24-Sep; "
+                "only 4 stocks passed, and we then widened the criteria to reach 8. Alpha uses each portfolio's one-year "
+                "beta before the snapshot; risk-free = the 91-day T-bill.")
+            g = tl_growth.copy()
+            g["date"] = pd.to_datetime(g["date"])
+            fig_tl = go.Figure()
+            colors = {"Nifty 500 TRI": "#1D4ED8"}
+            palette = ["#B45309", "#7C3AED", "#15803D"]
+            for i, col in enumerate([c for c in g.columns if c != "date"]):
+                fig_tl.add_trace(go.Scatter(x=g["date"], y=g[col] / 1e5, name=col, mode="lines",
+                                            line=dict(width=3 if col.startswith("1.") else 2,
+                                                      color=colors.get(col, palette[(i - 1) % len(palette)]),
+                                                      dash="dot" if col == "Nifty 500 TRI" else "solid"),
+                                            hovertemplate="%{x|%d-%b}: ₹%{y:,.2f} L<extra>" + col + "</extra>"))
+            fig_tl.update_layout(height=360, template="plotly_white", hovermode="x unified", yaxis_title="₹ lakh",
+                                 margin=dict(l=10, r=10, t=30, b=10), legend=dict(orientation="h", y=-0.2))
+            st.plotly_chart(fig_tl, width="stretch")
+            tl_sum = tl_sum.assign(vs_nifty500_inr=tl_sum["vs_nifty500_inr"].map(lambda v: _inr(float(v))))
+            tl_show = tl_sum.set_index("window")[[
+                "stocks", "portfolio_return_pct", "benchmark_return_pct", "excess_return_pp", "jensen_alpha_period_pp",
+                "beta_vs_nifty500", "sortino_portfolio", "max_drawdown_portfolio_pct", "xirr_portfolio_pct",
+                "xirr_benchmark_pct", "vs_nifty500_inr"]].T
+            tl_show.index = ["Stocks", "Return (%)", "Nifty 500 TRI return (%)", "Excess return (pp)",
+                             "Jensen's alpha over the period (pp)", "Beta (one year before the snapshot)", "Sortino",
+                             "Max drawdown (%)", "XIRR (%)", "Nifty 500 XIRR (%)", "Ahead / behind the Nifty 500 (₹)"]
+            st.dataframe(tl_show.astype(object).where(tl_show.notna(), "—").astype(str), width="stretch",
+                         height=_fit_height(tl_show))
+            with st.expander("The rule behind each timeline and its holdings"):
+                for _, r in tl_sum.iterrows():
+                    st.markdown(f"**{r['window']}**: {r['rule']}")
+                tl_h = _out("timelines_holdings.csv")
+                if not tl_h.empty:
+                    st.dataframe(tl_h.rename(columns={"timeline": "Timeline", "symbol": "Stock", "weight_pct": "Weight %",
+                                                      "shares": "Shares", "entry_price": "28-Sep close (₹)",
+                                                      "latest_price": "Latest close (₹)", "return_pct": "Return %"})
+                                 [["Timeline", "Stock", "Weight %", "Shares", "28-Sep close (₹)", "Latest close (₹)", "Return %"]],
+                                 hide_index=True, width="stretch", height=_fit_height(tl_h))
+            st.caption(
+                "**Benchmark audit.** Every alpha, beta and comparison here is against the Nifty 500 TRI: its daily returns "
+                "match NSE's Nifty 500 index with a correlation of 0.9999 (vs 0.968 with the Nifty 50). The Nifty 50 is used "
+                "only for the hedge, because the options are on the Nifty 50. The very high backtest alpha in the windows "
+                "above is hindsight (today's stocks were chosen for their past strength), not the benchmark: measured "
+                "against the Nifty 50, it would be slightly higher still.")
+
         st.markdown("### Capital Market Line, efficient frontier and GMVP")
         cml_pts, frontier_df = _out("cml_points.csv"), _out("efficient_frontier.csv")
         w_cmp = _out("portfolio_weights_compared.csv")

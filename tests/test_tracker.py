@@ -363,6 +363,9 @@ def test_validate_ledger_catches_bad_rows():
     assert "date" in problems and "BUY or SELL" in problems and "quantity" in problems and "price" in problems
     oversold = pd.concat([good, good.assign(action="SELL", quantity=11)])
     assert "sells more than was bought" in " ".join(tracker.validate_ledger(oversold))
+    written = pd.concat([good, pd.DataFrame([{"date": "2026-10-22", "instrument": "NIFTY 2026-11-03 22200 PE",
+                                              "action": "SELL", "quantity": 585, "price": 49.85, "note": "spread"}])])
+    assert tracker.validate_ledger(written) == []  # the short leg of a spread is allowed
 
 
 def test_save_ledger_writes_clean_rows(tmp_path, monkeypatch):

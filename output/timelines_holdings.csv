@@ -1,0 +1,21 @@
+symbol,weight_pct,shares,entry_price,latest_price,return_pct,timeline
+WELCORP,13.8,488,2739.7,2592.9,-5.36,"1. Ours: technicals rank, fundamentals screen"
+RPEL,11.38,647,1703.9,1777.8,4.34,"1. Ours: technicals rank, fundamentals screen"
+SBCL,12.7,1109,1110.2,999.9,-9.94,"1. Ours: technicals rank, fundamentals screen"
+AEROFLEX,9.2,1738,513.4,505.2,-1.6,"1. Ours: technicals rank, fundamentals screen"
+TDPOWERSYS,11.35,1524,722.0,737.0,2.08,"1. Ours: technicals rank, fundamentals screen"
+RAMRAT,14.25,2432,568.2,558.25,-1.75,"1. Ours: technicals rank, fundamentals screen"
+APARINDS,12.32,69,17263.0,15737.0,-8.84,"1. Ours: technicals rank, fundamentals screen"
+ACMESOLAR,15.0,3322,437.9,417.75,-4.6,"1. Ours: technicals rank, fundamentals screen"
+AEROFLEX,9.75,1842,513.4,505.2,-1.6,"2. Reverse: fundamentals rank, technicals screen"
+ENRIN,15.0,456,3189.0,2832.0,-11.19,"2. Reverse: fundamentals rank, technicals screen"
+TDPOWERSYS,11.07,1487,722.0,737.0,2.08,"2. Reverse: fundamentals rank, technicals screen"
+RPEL,11.87,675,1703.9,1777.8,4.34,"2. Reverse: fundamentals rank, technicals screen"
+ENGINERSIN,13.22,4085,313.9,269.85,-14.03,"2. Reverse: fundamentals rank, technicals screen"
+WAAREERTL,15.0,1761,826.05,826.2,0.02,"2. Reverse: fundamentals rank, technicals screen"
+QPOWER,11.84,721,1592.7,1407.1,-11.65,"2. Reverse: fundamentals rank, technicals screen"
+SBCL,12.25,1070,1110.2,999.9,-9.94,"2. Reverse: fundamentals rank, technicals screen"
+WELCORP,25.0,885,2739.7,2592.9,-5.36,3. Original strict screen (4 stocks)
+FINCABLES,25.0,1722,1408.1,1282.5,-8.92,3. Original strict screen (4 stocks)
+VOLTAMP,25.0,230,10513.0,10410.0,-0.98,3. Original strict screen (4 stocks)
+ELGIEQUIP,25.0,4049,598.85,544.35,-9.1,3. Original strict screen (4 stocks)

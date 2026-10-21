@@ -323,12 +323,6 @@ def multifactor_table(returns: pd.DataFrame, port: pd.Series, fx: pd.DataFrame) 
     return pd.DataFrame(rows)
 
 
-def annualised_risk_free(fx: pd.DataFrame, sessions: int = 63) -> float:
-    """The overnight rate compounded over the last `sessions` sessions, annualised (a fraction)."""
-    rf = fx["rf"].dropna().tail(sessions)
-    return float((1 + rf).prod() ** (TRADING_DAYS_PER_YEAR / len(rf)) - 1)
-
-
 def capm_table(single: pd.DataFrame, rf_annual: float, mrp_pct: float = MARKET_RISK_PREMIUM_PCT) -> pd.DataFrame:
     """
     CAPM expected return per stock and for the portfolio: E[r] = r_f + beta x MRP (annual), and the
@@ -652,7 +646,10 @@ def run(as_of: Optional[date] = None, refresh_factors: bool = True) -> Dict[str,
 
     single = single_index_table(returns, port, fx)
     multi = multifactor_table(returns, port, fx)
-    capm = capm_table(single, annualised_risk_free(fx))
+    from risk_free import risk_free_3m, update_cache
+
+    update_cache()  # the latest 91-day T-bill auction (keeps the cached rate if RBI is unreachable)
+    capm = capm_table(single, risk_free_3m()[0])  # the 3-month T-bill yield (the horizon's risk-free rate)
     autocorr = autocorrelation_table(returns, port)
     single.to_csv(SINGLE_INDEX_CSV, index=False)
     multi.to_csv(MULTIFACTOR_CSV, index=False)

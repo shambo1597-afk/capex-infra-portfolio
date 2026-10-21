@@ -151,7 +151,11 @@ def live_metrics(min_sessions: int = MIN_LIVE_SESSIONS) -> Optional[Dict[str, ob
     daily = pd.read_csv(TRACKER_DAILY_CSV, parse_dates=["date"]).set_index("date")
     if len(daily) - 1 < min_sessions:
         return None
+    from risk_free import daily_rate, risk_free_3m
+
     r = daily[["total_inr", "nifty500_inr", "liquid_fund_inr"]].pct_change().iloc[1:]
+    # Risk-free for the live window: the 3-month T-bill yield (the professor's rule), as a daily rate
+    r["liquid_fund_inr"] = daily_rate(risk_free_3m()[0])
     beta = None
     if len(r) < SHORT_LIVE_SESSIONS and SINGLE_INDEX_CSV.exists():
         # A beta regressed on a handful of days is noise (it can even come out negative), and Treynor and

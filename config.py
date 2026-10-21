@@ -555,7 +555,13 @@ EVALUATION_START_DATE = "2026-09-28"
 NSE_TRADING_HOLIDAYS = ["2026-01-15", "2026-01-26", "2026-03-03", "2026-03-26", "2026-03-31", "2026-04-03",
                         "2026-04-14", "2026-05-01", "2026-05-28", "2026-06-26", "2026-09-14", "2026-10-02",
                         "2026-10-20", "2026-11-10", "2026-11-24", "2026-12-25"]
-EVALUATION_END_DATE = "2026-12-28"
+# The professor exits at the close of 29-Oct-2026 (his instruction of 14-Oct): returns are judged, and the
+# portfolio protected, up to that day. The window was 28-Dec until then.
+EVALUATION_END_DATE = "2026-10-29"
+# 3-month risk-free rate (the professor: "annualised rf for 3 months"): RBI's 91-day T-bill cut-off yield,
+# refreshed by risk_free.py; this is the fallback if RBI cannot be reached (auction result of 14-Oct-2026).
+RISK_FREE_3M_FALLBACK_PCT = 5.7281
+RISK_FREE_3M_FALLBACK_DATE = "2026-10-14"
 TRADES_CSV = DATA_DIR / "trades.csv"
 
 # -----------------------------------------------------------------------------

@@ -12,11 +12,12 @@ liquid_fund_value_inr,10030725.8
 vs_nifty500_inr,-259954.11
 vs_liquid_fund_inr,-374158.02
 xirr_pct,-45.52
+nifty500_xirr_pct,-13.56
 stocks_inr,9354108.4
 options_inr,111384.0
 cash_inr,191075.38
 at_risk_to_stops_inr,1404524.87
 stops_breached,
 near_stop,
-evaluation_end,2026-12-28
+evaluation_end,2026-10-29
 ledger_sha1,c201ef1f6aabc7a1c09ea7a22cf6c0a18bb6e4be

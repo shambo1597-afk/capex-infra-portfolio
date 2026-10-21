@@ -398,6 +398,9 @@ def summarise(daily: pd.DataFrame, positions: pd.DataFrame) -> pd.DataFrame:
     port_xirr = (xirr([(pd.Timestamp(first["date"]).date(), -PRINCIPAL_INR),
                        (pd.Timestamp(last["date"]).date(), float(last["total_inr"]))]) * 100
                  if days >= MIN_DAYS_FOR_XIRR else np.nan)
+    n500_xirr = (xirr([(pd.Timestamp(first["date"]).date(), -PRINCIPAL_INR),
+                       (pd.Timestamp(last["date"]).date(), float(last["nifty500_inr"]))]) * 100
+                 if days >= MIN_DAYS_FOR_XIRR else np.nan)
     rows = [
         ("snapshot_date", first["date"]), ("as_of", last["date"]), ("calendar_days", days),
         ("principal_inr", PRINCIPAL_INR), ("value_inr", last["total_inr"]), ("pnl_inr", last["pnl_inr"]),
@@ -407,6 +410,7 @@ def summarise(daily: pd.DataFrame, positions: pd.DataFrame) -> pd.DataFrame:
         ("vs_nifty500_inr", round(last["total_inr"] - last["nifty500_inr"], 2)),
         ("vs_liquid_fund_inr", round(last["total_inr"] - last["liquid_fund_inr"], 2)),
         ("xirr_pct", round(port_xirr, 2) if pd.notna(port_xirr) else np.nan),
+        ("nifty500_xirr_pct", round(n500_xirr, 2) if pd.notna(n500_xirr) else np.nan),
         ("stocks_inr", last["stocks_inr"]), ("options_inr", last["options_inr"]), ("cash_inr", last["cash_inr"]),
         ("at_risk_to_stops_inr", round(positions["at_risk_to_stop_inr"].sum(), 2) if not positions.empty else np.nan),
         ("stops_breached", ", ".join(positions.loc[positions["stop_breached"], "symbol"]) if not positions.empty else ""),
@@ -565,7 +569,8 @@ def validate_ledger(ledger: pd.DataFrame) -> list:
             problems.append(f"row {i + 1}: instrument is empty")
     if not problems:
         held = ledger_positions(ledger.assign(action=ledger["action"].str.upper()))
-        short = [k for k, v in held.items() if v < 0]
+        # A written option (the short leg of a spread) is a legitimate negative position; a short stock is not
+        short = [k for k, v in held.items() if v < 0 and not parse_option(k)]
         if short:
             problems.append(f"sells more than was bought: {', '.join(short)}")
     return problems

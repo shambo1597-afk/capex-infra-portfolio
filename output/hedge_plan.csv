@@ -9,7 +9,7 @@ Hedge effectiveness (R^2),0.258,share of portfolio variance a full futures hedge
 Downside beta (Nifty 50 down days),1.327,
 Tail beta (worst 10% of days),0.519,25 days with Nifty 50 <= -1.13%; s.e. 0.65
 Tail hedge ratio,1.327,"max(downside beta, h*): puts sized on the sell-off beta; the worst-10% beta is too noisy (few days)"
-Futures: contract,NIFTY FUT 2026-12-29,longest listed expiry; a hedge to 2026-12-28 needs a roll
+Futures: contract,NIFTY FUT 2026-12-29,longest listed expiry; a hedge to 2026-10-29 needs a roll
 Futures: price,23157.5,
 Futures: lots for a full hedge (exact),6.44,h* x value / (futures price x lot)
 Futures: lots for a full hedge (rounded),6,achieved hedge ratio 0.97
