@@ -1,16 +1,16 @@
 symbol,rs_score_vs_nifty500,rs_last_10d,recent_10day_contribution_pct,recent_spike_flag,next_results_date,results_date_status,results_within_30_days,prior_year_sep_qtr_results_date,q2_results_date,q2_results_basis,days_to_results,last_results_date
-WELCORP,66.03,3.5,5.3,False,,not announced,,2025-10-30,2026-10-29,estimate,9,2026-07-24
-RPEL,44.11,-2.92,-6.6,False,,not announced,,2025-10-27,2026-10-16,reported,-4,2026-10-16
-SBCL,39.41,-7.43,-18.9,False,,not announced,,2025-11-12,2026-11-11,estimate,22,2026-08-06
-AEROFLEX,29.91,-7.51,-25.1,False,2026-10-28,announced,True,2025-10-28,2026-10-28,announced,8,2026-07-27
-TDPOWERSYS,34.73,-9.66,-27.8,False,,not announced,,2025-10-30,2026-10-29,estimate,9,2026-08-11
-RAMRAT,36.69,-12.43,-33.9,False,,not announced,,2025-11-12,2026-11-11,estimate,22,2026-07-31
-APARINDS,18.91,-13.38,-70.8,False,2026-10-29,announced,True,2025-10-29,2026-10-29,announced,9,2026-07-24
-ACMESOLAR,16.2,-2.63,-16.2,False,,not announced,,2025-11-03,2026-11-02,estimate,13,2026-07-29
-QPOWER,29.09,-13.47,-46.3,False,,not announced,,2025-11-12,2026-11-11,estimate,22,2026-08-09
-FINCABLES,31.86,-12.91,-40.5,False,,not announced,,2025-11-11,2026-11-10,estimate,21,2026-08-11
-GRINDWELL,-8.6,-9.17,,False,2026-10-29,announced,True,2025-10-30,2026-10-29,announced,9,2026-07-24
-ACE,17.3,-10.05,-58.1,False,,not announced,,2025-11-06,2026-11-05,estimate,16,2026-07-20
-CARBORUNIV,5.72,-14.41,-251.9,False,2026-11-02,announced,True,2025-10-30,2026-11-02,announced,13,2026-08-07
-GOODLUCK,18.65,21.72,116.5,True,,not announced,,2025-11-08,2026-11-07,estimate,18,2026-08-06
-ENGINERSIN,22.99,-12.66,-55.1,False,2026-10-30,announced,True,2025-11-14,2026-10-30,announced,10,2026-08-13
+WELCORP,63.99,-1.94,-3.0,False,,not announced,,2025-10-30,2026-10-29,estimate,8,2026-07-24
+RPEL,39.06,-6.7,-17.2,False,,not announced,,2025-10-27,2026-10-16,reported,-5,2026-10-16
+SBCL,30.32,-13.47,-44.4,False,,not announced,,2025-11-12,2026-11-11,estimate,21,2026-08-06
+AEROFLEX,24.76,-11.16,-45.1,False,2026-10-28,announced,True,2025-10-28,2026-10-28,announced,7,2026-07-27
+TDPOWERSYS,28.58,-13.88,-48.6,False,,not announced,,2025-10-30,2026-10-29,estimate,8,2026-08-11
+RAMRAT,39.71,-10.93,-27.5,False,2026-10-29,announced,True,2025-11-12,2026-10-29,announced,8,2026-07-31
+APARINDS,15.74,-14.42,-91.6,False,2026-10-29,announced,True,2025-10-29,2026-10-29,announced,8,2026-07-24
+ACMESOLAR,14.63,-8.33,-56.9,False,2026-10-28,announced,True,2025-11-03,2026-10-28,announced,7,2026-07-29
+QPOWER,31.16,-13.09,-42.0,False,,not announced,,2025-11-12,2026-11-11,estimate,21,2026-08-09
+FINCABLES,25.98,-16.78,-64.6,False,,not announced,,2025-11-11,2026-11-10,estimate,20,2026-08-11
+GRINDWELL,-4.12,-6.23,,False,2026-10-29,announced,True,2025-10-30,2026-10-29,announced,8,2026-07-24
+ACE,10.26,-12.54,-122.2,False,,not announced,,2025-11-06,2026-11-05,estimate,15,2026-07-20
+CARBORUNIV,4.24,-14.87,-350.7,False,2026-11-02,announced,True,2025-10-30,2026-11-02,announced,12,2026-08-07
+GOODLUCK,18.31,19.56,106.8,True,,not announced,,2025-11-08,2026-11-07,estimate,17,2026-08-06
+ENGINERSIN,20.44,-15.38,-75.2,False,2026-10-30,announced,True,2025-11-14,2026-10-30,announced,9,2026-08-13

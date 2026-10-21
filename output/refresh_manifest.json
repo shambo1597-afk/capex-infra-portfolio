@@ -1,9 +1,9 @@
 {
-  "as_of": "2026-10-20",
-  "started": "2026-10-20T19:24:24+05:30",
+  "as_of": "2026-10-21",
+  "started": "2026-10-21T20:19:10+05:30",
   "status": "ok",
-  "pid": 1695,
-  "total_steps": 10,
+  "pid": 389,
+  "total_steps": 13,
   "step_names": [
     "Nifty 500 TRI (niftyindices.com)",
     "Prices, technicals and risk summary",
@@ -14,60 +14,63 @@
     "Regression and hedge plan",
     "Capex-cycle exposure",
     "Live P&L of the Rs 1 crore",
-    "Performance and CML"
+    "Performance and CML",
+    "VaR and marginal VaR",
+    "Hedging strategies to the horizon",
+    "Three timelines from the snapshot"
   ],
   "expected_seconds": {
-    "Nifty 500 TRI (niftyindices.com)": 40,
-    "Prices, technicals and risk summary": 85,
-    "Technical-first sector screens": 11,
-    "Review tables and selection ranking": 36,
-    "Locked-portfolio run-up check": 14,
-    "Candidate sweep": 74,
-    "Regression and hedge plan": 32,
-    "Capex-cycle exposure": 19,
-    "Live P&L of the Rs 1 crore": 28,
-    "Performance and CML": 165
+    "Nifty 500 TRI (niftyindices.com)": 46,
+    "Prices, technicals and risk summary": 79,
+    "Technical-first sector screens": 13,
+    "Review tables and selection ranking": 41,
+    "Locked-portfolio run-up check": 29,
+    "Candidate sweep": 93,
+    "Regression and hedge plan": 10,
+    "Capex-cycle exposure": 21,
+    "Live P&L of the Rs 1 crore": 1,
+    "Performance and CML": 161
   },
   "steps": [
     {
       "name": "Nifty 500 TRI (niftyindices.com)",
       "returncode": 0,
-      "seconds": 46
+      "seconds": 25
     },
     {
       "name": "Prices, technicals and risk summary",
       "returncode": 0,
-      "seconds": 79
+      "seconds": 72
     },
     {
       "name": "Technical-first sector screens",
       "returncode": 0,
-      "seconds": 13
+      "seconds": 10
     },
     {
       "name": "Review tables and selection ranking",
       "returncode": 0,
-      "seconds": 41
+      "seconds": 34
     },
     {
       "name": "Locked-portfolio run-up check",
       "returncode": 0,
-      "seconds": 29
+      "seconds": 15
     },
     {
       "name": "Candidate sweep",
       "returncode": 0,
-      "seconds": 93
+      "seconds": 81
     },
     {
       "name": "Regression and hedge plan",
       "returncode": 0,
-      "seconds": 10
+      "seconds": 14
     },
     {
       "name": "Capex-cycle exposure",
       "returncode": 0,
-      "seconds": 21
+      "seconds": 18
     },
     {
       "name": "Live P&L of the Rs 1 crore",
@@ -77,12 +80,27 @@
     {
       "name": "Performance and CML",
       "returncode": 0,
-      "seconds": 161
+      "seconds": 101
+    },
+    {
+      "name": "VaR and marginal VaR",
+      "returncode": 0,
+      "seconds": 1
+    },
+    {
+      "name": "Hedging strategies to the horizon",
+      "returncode": 0,
+      "seconds": 1
+    },
+    {
+      "name": "Three timelines from the snapshot",
+      "returncode": 0,
+      "seconds": 1
     }
   ],
-  "heartbeat": "2026-10-20T19:32:36+05:30",
-  "current_step": 10,
-  "current_step_name": "Performance and CML",
-  "current_step_started": "2026-10-20T19:29:56+05:30",
-  "finished": "2026-10-20T19:32:36+05:30"
+  "heartbeat": "2026-10-21T20:25:23+05:30",
+  "current_step": 13,
+  "current_step_name": "Three timelines from the snapshot",
+  "current_step_started": "2026-10-21T20:25:21+05:30",
+  "finished": "2026-10-21T20:25:23+05:30"
 }

@@ -1,15 +1,9 @@
 selection_rank,symbol,company_name,sector,locked,rule_pick,why_not_picked,rs_6m_skip1m,rs_score_vs_nifty500,di_gap,latest_adx,rrg_quadrant_vs_nifty500,rrg_quadrant_vs_sector,conviction,soft_fundamental_fails,median_turnover_cr,qtr_net_profit,qtr_profit_yoy,qtr_sales_yoy,pe,business_focus_note
-1,RPEL,Raghav Product.,Capital Goods,True,True,,133.46,44.11,5.15,29.62,LEADING,LEADING,High,,13.78,19.57,67.55,48.72,124.49,"KEPT (borderline): ramming mass, the refractory lining of induction furnaces, sold to secondary steel makers (mostly TMT for construction). An industrial consumable, not equipment; NSE classes it Capital Goods > Industrial Products > Electrodes & Refractories."
-2,CEMPRO,Cemindia Project,Capital Goods,False,True,,94.55,-22.61,6.09,15.2,LAGGING,LAGGING,Low,,40.46,140.83,2.62,5.61,35.9,
-3,CEIGALL,Ceigall India,Capital Goods,False,True,,28.0,20.92,14.13,35.02,LEADING,LEADING,High,Cash from operations last year > 0 (Rs Cr),11.32,63.75,18.23,15.68,20.81,
-4,GOODLUCK,Goodluck India,Capital Goods,True,True,,25.36,18.65,21.84,30.6,LEADING,LEADING,High,,27.0,67.22,59.54,30.93,25.67,"KEPT (borderline): steel engineering products. CR coils, pipes and tubes (~37%: roads, bridges, railways) and engineering structures (~23%: transmission towers, solar structures) fit; precision and auto tubes (~25%) are automotive; forgings (~15%) include a new defence (shell) unit."
-5,ATLANTAELE,Atlanta Electric,Capital Goods,False,True,,19.66,2.73,3.98,18.92,LEADING,IMPROVING,Moderate,,21.06,46.84,50.42,47.99,57.28,
-6,NUVOCO,Nuvoco Vistas,Cement,False,True,,3.38,4.27,12.28,14.79,WEAKENING,WEAKENING,Low,ROCE > 8%,8.76,159.63,19.98,8.91,28.87,"FIT: Nuvoco Vistas (Nirma group), cement and ready-mix concrete; the only Cement stock in the 15."
-7,RITES,Rites,Capital Goods,False,True,,-5.38,-1.74,9.15,18.67,IMPROVING,IMPROVING,Moderate,,7.9,97.78,8.88,8.67,22.95,
-8,JSWCEMENT,JSW Cement,Cement,False,True,,-6.4,-12.13,6.91,26.99,LAGGING,IMPROVING,Moderate,,15.23,153.43,359.81,21.58,19.96,
-9,ULTRACEMCO,UltraTech Cem.,Cement,False,True,,-8.5,-4.97,4.3,25.89,LAGGING,LEADING,Moderate,,281.04,2603.72,15.75,15.85,38.11,
-10,SUPREMEIND,Supreme Inds.,Capital Goods,False,True,,-8.89,10.91,11.69,16.45,WEAKENING,WEAKENING,Low,,55.55,280.72,38.76,4.16,43.68,
-11,FINPIPE,Finolex Inds.,Capital Goods,False,True,,-10.61,-2.79,5.67,21.43,IMPROVING,IMPROVING,Moderate,,5.66,114.52,16.67,-15.3,15.54,
-12,WAAREERTL,Waaree Renewab.,Capital Goods,False,True,,-26.39,-13.48,5.94,16.49,IMPROVING,IMPROVING,Moderate,,9.02,114.49,32.3,34.53,17.03,
-13,WAAREEENER,Waaree Energies,Capital Goods,False,True,,-27.71,-5.46,7.51,29.65,IMPROVING,IMPROVING,Moderate,,142.82,891.87,14.09,79.22,17.83,
-14,TRANSRAILL,Transrail Light,Capital Goods,False,True,,-28.52,-3.57,3.74,27.68,IMPROVING,IMPROVING,Moderate,,15.32,107.88,1.95,4.59,15.08,
+1,RPEL,Raghav Product.,Capital Goods,True,True,,132.22,39.06,3.17,28.06,WEAKENING,LEADING,Moderate,,13.78,19.57,67.55,48.72,124.49,"KEPT (borderline): ramming mass, the refractory lining of induction furnaces, sold to secondary steel makers (mostly TMT for construction). An industrial consumable, not equipment; NSE classes it Capital Goods > Industrial Products > Electrodes & Refractories."
+2,CEMPRO,Cemindia Project,Capital Goods,False,True,,98.29,-22.24,2.29,14.52,LAGGING,LAGGING,Low,,39.37,140.83,2.62,5.61,35.9,
+3,GOODLUCK,Goodluck India,Capital Goods,True,True,,26.57,18.31,15.28,31.09,LEADING,LEADING,High,,29.82,67.22,59.54,30.93,25.67,"KEPT (borderline): steel engineering products. CR coils, pipes and tubes (~37%: roads, bridges, railways) and engineering structures (~23%: transmission towers, solar structures) fit; precision and auto tubes (~25%) are automotive; forgings (~15%) include a new defence (shell) unit."
+4,CEIGALL,Ceigall India,Capital Goods,False,True,,21.32,20.46,12.03,35.12,LEADING,LEADING,High,Cash from operations last year > 0 (Rs Cr),11.54,63.75,18.23,15.68,20.81,
+5,NUVOCO,Nuvoco Vistas,Cement,False,True,,6.73,-1.76,3.77,14.26,LAGGING,WEAKENING,Low,ROCE > 8%,8.76,159.63,19.98,8.91,28.87,"FIT: Nuvoco Vistas (Nirma group), cement and ready-mix concrete; the only Cement stock in the 15."
+6,SUPREMEIND,Supreme Inds.,Capital Goods,False,True,,-3.43,11.05,7.24,16.49,WEAKENING,LEADING,Moderate,,55.55,280.72,38.76,4.16,43.68,
+7,ULTRACEMCO,UltraTech Cem.,Cement,False,True,,-7.47,-3.81,3.92,24.94,LAGGING,LEADING,Moderate,,281.04,2603.72,15.75,15.85,38.11,
+8,TRANSRAILL,Transrail Light,Capital Goods,False,True,,-27.68,1.68,13.24,27.65,LEADING,IMPROVING,Moderate,,15.62,107.88,1.95,4.59,15.08,
