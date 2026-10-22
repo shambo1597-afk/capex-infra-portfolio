@@ -20,7 +20,9 @@ Method
                the puts held now (units), so the comparison is like for like.
   Strategies   keep the puts held; sell them (no hedge); protective puts; vertical bear put spreads
                (long the higher strike, short the lower: the professor's notes, p. 26); a near-zero-cost
-               collar; and the puts held plus a spread.
+               collar; the puts held plus a spread; and a horizontal (calendar) spread: keep the
+               puts held and sell the same strike on the near expiry (cheap carry, but the short put
+               gives back the protection below the strike, so it fails the tail-cover test).
   Measures     net premium now; cost if the Nifty is unchanged at H (pure time decay); expected cost of the
                hedge to H (premium minus its expected value at H); probability the hedge ends in profit; the portfolio's expected P&L, 5%
                VaR and 5% CVaR at H; the tail loss saved per rupee of expected cost.
@@ -109,6 +111,13 @@ def build_strategies(c: pd.DataFrame, spot: float, held: Optional[Dict], held_le
         if best_spread:
             out.append({"name": f"Keep the puts held and add a {best_spread['name'].split('a ', 1)[1]}",
                         "legs": [held_leg] + best_spread["legs"], "keep": True})
+        # Horizontal (calendar) spread: keep the longer-dated put and sell the same strike on the near expiry,
+        # so the near put's time decay pays for part of the far put's
+        same = c[(c["OptnTp"] == "PE") & np.isclose(c["StrkPric"], held_leg["strike"])]
+        if not same.empty and same["XpryDt"].iloc[0] != held_leg["expiry"]:
+            near = same.iloc[0]
+            out.append({"name": f"Calendar spread: keep the puts held, sell the {near['XpryDt']} {near['StrkPric']:.0f} put",
+                        "legs": [held_leg, leg(near, -1)], "keep": True, "calendar": True})
     return out
 
 

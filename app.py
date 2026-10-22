@@ -1200,6 +1200,47 @@ with tab_overview:
     if missing_symbols:
         st.warning(f"No pipeline data for {', '.join(missing_symbols)}. Run `python main.py` to refresh the outputs.")
 
+    # 2b. How the list was built: top-down (theme -> sectors -> universe), then bottom-up (stock screens -> rank -> weights)
+    st.markdown("### How the portfolio was built: top-down, then bottom-up")
+    try:
+        from config import DATA_DIR, SCREENER_DIR, WEIGHT_MAX_PCT, WEIGHT_MIN_PCT, sector_universe
+        raw = sum(len(pd.read_csv(f)) for f in sorted(SCREENER_DIR.glob("*.csv")))
+        uni = {sec: len(sector_universe(sec)) for sec in SECTOR_SCREENS}
+        frozen = pd.read_csv(DATA_DIR / "locked" / "selection_ranking_2026-09-25.csv")
+        n_tracked = len(LOCKED_PORTFOLIO_SYMBOLS)
+        stages = [("Screener.in exports: cement, capital goods, construction (EPC), power", raw),
+                  ("Theme universe: market cap ≥ ₹5,000 cr, capex/infra businesses only", sum(uni.values())),
+                  ("Eligible: hard fundamentals, uptrend (DI gap ≥ 2), ≥ ₹5 cr a day traded, profit up", len(frozen)),
+                  ("Tracked: top 15 by 6-month relative strength (skip 1 month)", n_tracked),
+                  ("Invested: top 8, equal-risk weights", INVESTED_COUNT)]
+        fig_f = go.Figure(go.Funnel(y=[s_[0] for s_ in stages], x=[s_[1] for s_ in stages], textinfo="value",
+                                    marker=dict(color=["#94A3B8", "#64748B", "#1D4ED8", "#1E40AF", "#15803D"])))
+        fig_f.update_layout(height=300, margin=dict(l=10, r=10, t=10, b=10), template="plotly_white")
+        st.plotly_chart(fig_f, width="stretch")
+        by_sector = frozen.groupby("sector")["symbol"].count()
+        invested = frozen[frozen["symbol"].isin(LOCKED_PORTFOLIO_SYMBOLS[:INVESTED_COUNT])].groupby("sector")["symbol"].count()
+        c_td, c_bu = st.columns(2)
+        with c_td:
+            st.markdown(
+                "**Top-down (the theme picks the sectors).** India's capex cycle: government infrastructure spending, "
+                "power transmission and renewables, and private manufacturing capex (PLI). The beneficiaries are the "
+                "makers of cement, capital goods (pipes, cables, transformers, motors, abrasives), the EPC contractors "
+                "and power producers. Universe per sector: "
+                + ", ".join(f"{k} {v}" for k, v in uni.items())
+                + ". No sector quotas: the professor confirmed (29-Sep) that what counts is capturing the capex cycle, "
+                "and the portfolio's returns track our capex universe (R² 0.68) more than the Nifty 500 (0.45).")
+        with c_bu:
+            st.markdown(
+                "**Bottom-up (the stocks pick themselves).** Inside the universe every stock faces the same rules: "
+                "hard fundamentals (pledge < 15%, debt/equity < 1.5, interest cover) are pass/fail; then it needs a "
+                "real uptrend, enough daily turnover to trade and a profit that grew last quarter. The eligible "
+                "stocks are ranked by 6-month relative strength vs the Nifty 500 (skipping the latest month). "
+                f"Eligible by sector: {', '.join(f'{k} {v}' for k, v in by_sector.items())}; invested: "
+                f"{', '.join(f'{k} {v}' for k, v in invested.items())}. Weights: equal risk contribution, each "
+                f"{WEIGHT_MIN_PCT:g}-{WEIGHT_MAX_PCT:g}%; then a Nifty put hedges the market risk (Risk & Hedging tab).")
+    except Exception as e:  # the funnel is context; never block the tab
+        st.caption(f"Construction funnel unavailable: {e}")
+
     # 3. Sector-grouped, one row per stock with every field the brief requires
     st.markdown("### Portfolio Constituents by Sector")
     st.caption(
@@ -1907,8 +1948,27 @@ with tab_risk:
                     f"{float(hm['Expected-cost budget (% of portfolio)']):g}% of the portfolio and save at least "
                     f"{float(hm['Minimum CVaR cut to count as cover (% of portfolio)']):g}% of it."
                     + (f" Keeping the December put instead saves {_inr(float(keep.iloc[0]['cvar95_saved_inr']))}: it pays "
-                       "little by the exit because its strike is far below the Nifty." if not keep.empty else "")
+                       "little by the exit because its strike is far below the Nifty."
+                       if not keep.empty and keep.iloc[0]["strategy"] != rr_["strategy"] else "")
                     + " Prices are NSE settlements of " + str(hm["Prices as of"]) + "; re-check before trading.")
+                why = []
+                vert = hs_df[hs_df["strategy"].str.contains("bear put spread") & ~hs_df["strategy"].str.startswith("Keep")]
+                if not vert.empty:
+                    v = vert.sort_values("cvar_saved_per_rupee_cost", ascending=False).iloc[0]
+                    why.append(f"**Vertical spread** (best: {v['strategy'].split('spread ')[1]}): saves "
+                               f"{_inr(float(v['cvar95_saved_inr']))} of tail loss for {_inr(float(v['expected_hedge_cost_inr']))} "
+                               f"expected cost ({float(v['cvar_saved_per_rupee_cost']):.0f} per rupee); the short lower "
+                               "strike caps the protection, so in a crash it stops paying.")
+                cal = hs_df[hs_df["strategy"].str.startswith("Calendar spread")]
+                if not cal.empty:
+                    v = cal.iloc[0]
+                    why.append(f"**Horizontal (calendar) spread** (keep the December put, sell the same strike on the "
+                               f"near expiry): it earns carry (expected cost {_inr(float(v['expected_hedge_cost_inr']))}) but "
+                               f"saves only {_inr(float(v['cvar95_saved_inr']))}, because the short near put pays out "
+                               "exactly when the Nifty falls below the strike: it cancels the protection in the tail we "
+                               "want to cover. It fails the minimum-cover test.")
+                if why:
+                    st.markdown("**Why not a spread?** " + " ".join(why))
             bk = _out("hedge_strategy_buckets.csv")
             if not bk.empty:
                 with st.expander("P&L by Nifty outcome at the exit, with its probability"):

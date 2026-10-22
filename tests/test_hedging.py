@@ -100,3 +100,15 @@ def test_fundamental_score_prefers_quality_and_treats_missing_as_middle():
     review = pd.DataFrame({"roce": [30, 5, np.nan], "opm": [25, 4, np.nan], "debt_to_equity": [0.0, 1.2, np.nan]},
                           index=["GOOD", "BAD", "GAP"])
     assert list(fundamental_score(eligible, review).index) == ["GOOD", "GAP", "BAD"]
+
+
+def test_calendar_spread_keeps_the_far_put_and_sells_the_near_one():
+    import hedge_strategies as hs
+    t, r = 15 / 365, 0.0573
+    c = hs.chain(_chain(), "2026-11-03", 22900.0, t, r)
+    held_leg = {"kind": "PE", "strike": 22200.0, "price": 230.0, "iv": 0.17, "qty": 1, "expiry": "2026-12-29"}
+    held = {"instrument": "NIFTY 2026-12-29 22200 PE"}
+    cal = [s for s in hs.build_strategies(c, 22900.0, held, held_leg) if s.get("calendar")]
+    assert len(cal) == 1
+    far, near = cal[0]["legs"]
+    assert far is held_leg and near["qty"] == -1 and near["strike"] == 22200 and near["expiry"] == "2026-11-03"

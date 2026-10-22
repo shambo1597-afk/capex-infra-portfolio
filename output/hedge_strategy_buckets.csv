@@ -59,3 +59,9 @@ Keep the puts held and add a bear put spread 22800/22150,-3% to -1%,21.5,-69181
 Keep the puts held and add a bear put spread 22800/22150,-1% to +1%,31.2,-45656
 Keep the puts held and add a bear put spread 22800/22150,+1% to +3%,23.7,22445
 Keep the puts held and add a bear put spread 22800/22150,above +3%,13.9,198962
+"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",below -6%,0.6,-855621
+"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",-6% to -3%,9.2,-416867
+"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",-3% to -1%,21.5,-169075
+"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",-1% to +1%,31.2,1613
+"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",+1% to +3%,23.7,143566
+"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",above +3%,13.9,341460
