@@ -7,7 +7,7 @@ Nifty 50 spot,22811.35
 At-the-money implied volatility (%),17.15
 "Risk-free (91-day T-bill, %)",5.7281
 "Nifty drift in the simulation (CAPM market return, % a year)",12.81
-Units per strategy,585
+Units per strategy,520
 Stocks valued (Rs),9021435
 Beta on rises (h*),1.041
 Beta on falls (downside),1.299
