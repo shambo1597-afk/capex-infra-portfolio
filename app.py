@@ -1141,7 +1141,12 @@ with tab_overview:
             cal = cal.merge(risk_df[["symbol", "stop_loss_price", "stop_loss_pct_below_current"]], on="symbol", how="left")
         cal = cal.sort_values("date")
         soon = cal[(cal["q2_results_basis"] != "reported") & cal["days"].between(0, 7)]
-        for _, r in soon.iterrows():
+        held_now = soon["stop_loss_price"].notna() if "stop_loss_price" in soon else pd.Series(True, index=soon.index)
+        if (~held_now).any():  # reserve stocks: no money in them, no stop to gap through
+            st.caption("Reserve stocks reporting in the next 7 days (no money in them; a result changes only whether "
+                       "they still qualify as a replacement): " + ", ".join(
+                           f"{r['symbol']} {r['date']:%d-%b}" for _, r in soon[~held_now].iterrows()) + ".")
+        for _, r in soon[held_now].iterrows():
             st.warning(f"**{r['symbol']} reports Q2 results {'today' if r['days'] == 0 else f'in {r.days} day(s)'}** "
                        f"({r['date']:%a %d-%b}, {'announced' if r['q2_results_basis'] == 'announced' else 'ESTIMATE from last year'}). "
                        f"A bad result can gap the price straight through its stop at ₹{r['stop_loss_price']:,.2f}.")
@@ -1782,7 +1787,7 @@ with tab_risk:
         # 3d. Risk-reward for the 3-month window
         rr_df = _out("risk_reward.csv")
         if not rr_df.empty:
-            st.markdown("### Risk-reward for the next 3 months")
+            st.markdown("### Risk-reward over the 3-month mandate (from the 28-Sep snapshot)")
             stocks_rr = rr_df[~rr_df["symbol"].str.startswith("PORTFOLIO")]
             all_once = rr_df[rr_df["symbol"] == "PORTFOLIO (all stocks at once)"]
             diversified = rr_df[rr_df["symbol"] == "PORTFOLIO (diversified)"]
@@ -1798,6 +1803,18 @@ with tab_risk:
                     r4.metric("Typical move, diversified portfolio", _inr(float(diversified.iloc[0]["upside_inr"])),
                               help="The portfolio's own one-standard-deviation 3-month move: smaller than the sum of the "
                                    "stocks' because they do not all move together")
+                    try:  # the same move scaled to what is left before the professor's exit
+                        from config import EVALUATION_END_DATE
+                        from risk_model import HORIZON_SESSIONS
+                        from var_model import sessions_to_horizon
+                        _asof = pd.to_datetime(_out("tracker_daily.csv")["date"]).max().date()
+                        _h = sessions_to_horizon(_asof)
+                        st.caption(f"To the professor's exit ({pd.Timestamp(EVALUATION_END_DATE):%d-%b}, {_h} sessions "
+                                   f"after {_asof:%d-%b}): the diversified portfolio's typical move shrinks to about "
+                                   f"{_inr(float(diversified.iloc[0]['upside_inr']) * (_h / HORIZON_SESSIONS) ** 0.5)} "
+                                   f"(× √({_h}/{HORIZON_SESSIONS})); the Value-at-Risk section measures the loss side to that date.")
+                    except Exception:
+                        pass
             st.caption(
                 "Reward : risk = upside ÷ downside for the 3-month window. Downside = distance to the stop-loss (the loss the "
                 "stop allows). Upside = a typical 3-month move, one standard deviation = annual volatility × √(63/252); the "
