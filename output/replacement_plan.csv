@@ -1,1 +1,2 @@
 sell,source,sell_shares,sell_close,stop_loss_price,proceeds_inr,kind,buy,buy_rank,alloc_pct,buy_close,buy_shares,buy_inr,cash_left_inr,note
+APARINDS,stop,69,14379.0,14678.04,992151.0,reserve,GOODLUCK,14,100.0,544.95,1820,991809.0,342.0,"skipped (fails the selection rule today): QPOWER, FINCABLES, GRINDWELL, ACE, CARBORUNIV, ENGINERSIN"
