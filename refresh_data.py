@@ -68,6 +68,7 @@ def refresh_steps(as_of: date) -> List[Tuple[str, List[str]]]:
         ("Live P&L of the Rs 1 crore", [py, "tracker.py", "--as-of", end]),
         ("Performance and CML", [py, "performance.py", "--as-of", end]),
         ("VaR and marginal VaR", [py, "var_model.py", "--as-of", end]),
+        ("Portfolio delta and the puts' Greeks", [py, "greeks.py", "--as-of", end]),
         ("Hedging strategies to the horizon", [py, "hedge_strategies.py", "--as-of", end]),
         ("Three timelines from the snapshot", [py, "timelines.py", "--as-of", end]),
     ]

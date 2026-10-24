@@ -1,5 +1,5 @@
 """
-Black-Scholes prices, deltas and implied volatilities for Nifty options (European, no dividend yield).
+Black-Scholes prices, Greeks and implied volatilities for Nifty options (European, no dividend yield).
 
 Used to value the puts held at a future date (the horizon), to give them a delta in the VaR, and to read
 the market's implied volatility, which turns option prices into probabilities for the hedging decision.
@@ -57,3 +57,23 @@ def implied_vol(price: float, spot: float, strike: float, t: float, r: float, ki
         else:
             lo = mid
     return (lo + hi) / 2
+
+
+def bs_greeks(spot: float, strike: float, t: float, r: float, vol: float, kind: str = "PE") -> dict:
+    """Per unit of the underlying: delta; gamma (delta change per 1 point); vega (per 1 volatility point, i.e.
+    0.01); theta (per calendar day); rho (per 1 percentage point of the rate)."""
+    if t <= 0 or vol <= 0:
+        return {"delta": bs_delta(spot, strike, t, r, vol, kind), "gamma": 0.0, "vega": 0.0, "theta": 0.0, "rho": 0.0}
+    sq = sqrt(t)
+    d1 = (log(spot / strike) + (r + vol * vol / 2) * t) / (vol * sq)
+    d2 = d1 - vol * sq
+    pdf = exp(-d1 * d1 / 2) / sqrt(2 * np.pi)
+    disc = strike * exp(-r * t)
+    if kind == "PE":
+        theta = -spot * pdf * vol / (2 * sq) + r * disc * norm_cdf(-d2)
+        rho = -t * disc * norm_cdf(-d2)
+    else:
+        theta = -spot * pdf * vol / (2 * sq) - r * disc * norm_cdf(d2)
+        rho = t * disc * norm_cdf(d2)
+    return {"delta": bs_delta(spot, strike, t, r, vol, kind), "gamma": pdf / (spot * vol * sq),
+            "vega": spot * pdf * sq / 100, "theta": theta / 365, "rho": rho / 100}

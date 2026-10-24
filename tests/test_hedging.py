@@ -112,3 +112,25 @@ def test_calendar_spread_keeps_the_far_put_and_sells_the_near_one():
     assert len(cal) == 1
     far, near = cal[0]["legs"]
     assert far is held_leg and near["qty"] == -1 and near["strike"] == 22200 and near["expiry"] == "2026-11-03"
+
+
+def test_greeks_match_finite_differences():
+    from option_pricing import bs_greeks
+    s, k, t, r, v = 22600.0, 22000.0, 67 / 365, 0.0573, 0.165
+    g = bs_greeks(s, k, t, r, v)
+    h = 1.0
+    assert g["delta"] == pytest.approx((bs_price(s + h, k, t, r, v) - bs_price(s - h, k, t, r, v)) / (2 * h), abs=1e-4)
+    assert g["gamma"] == pytest.approx((bs_delta(s + h, k, t, r, v) - bs_delta(s - h, k, t, r, v)) / (2 * h), rel=1e-3)
+    assert g["vega"] == pytest.approx(bs_price(s, k, t, r, v + 0.01) - bs_price(s, k, t, r, v), rel=0.02)
+    assert g["theta"] == pytest.approx(bs_price(s, k, t - 1 / 365, r, v) - bs_price(s, k, t, r, v), rel=0.02)
+    assert g["rho"] == pytest.approx(bs_price(s, k, t, r + 0.01, v) - bs_price(s, k, t, r, v), rel=0.05)
+
+
+def test_sensitivity_puts_offset_falls_more_than_their_delta():
+    from greeks import sensitivity
+    sens = sensitivity(9.1e6, 520, 22000.0, 67 / 365, 61 / 365, 0.0573, 0.165, 22600.0).set_index("nifty_move_pct")
+    assert sens.loc[0, "total_now_inr"] == 0 and sens.loc[0, "puts_pnl_at_exit_inr"] < 0  # time decay
+    assert sens.loc[-10, "puts_pnl_now_inr"] > 0 > sens.loc[10, "puts_pnl_now_inr"]
+    # convexity: the gain in a 10% fall exceeds 10x the gain in a 1% fall
+    assert sens.loc[-10, "puts_pnl_now_inr"] > 10 * sens.loc[-1, "puts_pnl_now_inr"]
+    assert sens.loc[-5, "puts_pnl_iv_up5_inr"] > sens.loc[-5, "puts_pnl_now_inr"]

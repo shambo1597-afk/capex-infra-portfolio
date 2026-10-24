@@ -1,0 +1,20 @@
+metric,value,note
+As of,2026-10-23,
+Nifty 50 spot,22600.0,"NSE F&O file, underlying price"
+Put held,NIFTY 2026-12-29 22000 PE,"520 units (8 lots), settlement Rs 294.75"
+Implied volatility (%),16.46,from the settlement price
+Days to expiry,67,
+Risk-free (%),5.7281,91-day T-bill
+Stocks delta (Nifty units),404,sum of value x beta / spot
+Stocks delta (Rs per 1% Nifty move),91339,
+Puts delta per unit,-0.2857,Black-Scholes
+Puts delta (Nifty units),-149,negative: gains when the Nifty falls
+Puts delta (Rs per 1% Nifty move),-33578,
+Net delta (Nifty units),256,stocks + puts
+Net delta (Rs per 1% Nifty move),57761,
+Share of the stocks' delta hedged (%),36.8,rises as the Nifty falls (gamma)
+"Puts gamma (delta change per 1% Nifty move, units)",25.1,a 1% fall makes the puts' delta this much more negative
+Puts vega (Rs per 1 IV point),17115,a jump in fear raises the puts' value
+Puts theta (Rs per calendar day),-1551,the daily cost of the insurance
+Puts rho (Rs per 1 pp rate),-6445,small: rates barely matter
+Exit date for the sensitivity,2026-10-29,6 days of time decay

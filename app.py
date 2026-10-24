@@ -2054,6 +2054,61 @@ with tab_risk:
                     f"The largest share is {top['position']} ({float(top['share_of_var_pct']):.1f}%); a negative component "
                     "(the puts) is a position that lowers the portfolio's risk.")
 
+        # 7. Portfolio delta, the puts' Greeks and the sensitivity to the Nifty (greeks.py)
+        g_sum, g_stk, g_sens = _out("greeks_summary.csv"), _out("greeks_stocks.csv"), _out("greeks_sensitivity.csv")
+        if not g_sum.empty and not g_sens.empty:
+            gm = dict(zip(g_sum["metric"], g_sum["value"]))
+            gf = lambda k: float(gm[k])  # noqa: E731
+            hedged_pct = gf("Share of the stocks' delta hedged (%)")
+            st.markdown("### Portfolio delta, Greeks and sensitivity")
+            st.caption(
+                f"As of {gm['As of']}: Nifty 50 {gf('Nifty 50 spot'):,.0f}; put held {gm['Put held']}, implied volatility "
+                f"{gf('Implied volatility (%)'):.1f}%, {int(gf('Days to expiry'))} days to expiry. Every position is in Nifty 50 "
+                "terms (the index the puts are on): a stock's delta = value × its beta vs the Nifty 50; the puts' Greeks are "
+                "Black-Scholes at the settlement price's implied volatility and the T-bill rate.")
+            g1, g2, g3, g4 = st.columns(4)
+            g1.metric("Stocks delta", f"{gf('Stocks delta (Nifty units)'):,.0f} units",
+                      f"{_inr(gf('Stocks delta (Rs per 1% Nifty move)'))} per 1% Nifty", delta_color="off")
+            g2.metric("Puts delta", f"{gf('Puts delta (Nifty units)'):,.0f} units",
+                      f"Δ {gf('Puts delta per unit'):.2f} per unit", delta_color="off")
+            g3.metric("Net portfolio delta", f"{gf('Net delta (Nifty units)'):,.0f} units",
+                      f"{_inr(gf('Net delta (Rs per 1% Nifty move)'))} per 1% Nifty", delta_color="off")
+            g4.metric("Stocks' delta hedged", f"{hedged_pct:.0f}%",
+                      "rises as the Nifty falls", delta_color="off")
+            h1, h2, h3, h4 = st.columns(4)
+            h1.metric("Gamma (per 1% Nifty move)", f"{gf('Puts gamma (delta change per 1% Nifty move, units)'):,.1f} units",
+                      help="A 1% fall makes the puts' delta this many Nifty units more negative: the cover grows into a fall")
+            h2.metric("Vega (per 1 IV point)", _inr(gf("Puts vega (Rs per 1 IV point)")),
+                      help="Fear rises in a sell-off, so implied volatility usually jumps exactly when the puts are needed")
+            h3.metric("Theta (per day)", _inr(gf("Puts theta (Rs per calendar day)")),
+                      help="The daily cost of holding the insurance if nothing moves")
+            h4.metric("Rho (per 1 pp rate)", _inr(gf("Puts rho (Rs per 1 pp rate)")))
+            sens_show = g_sens.rename(columns={
+                "nifty_move_pct": "Nifty move %", "nifty_level": "Nifty", "stocks_pnl_inr": "Stocks (β) ₹",
+                "puts_pnl_now_inr": "Puts now ₹", "total_now_inr": "Total now ₹",
+                "puts_pnl_at_exit_inr": f"Puts on {pd.Timestamp(gm['Exit date for the sensitivity']):%d-%b} ₹",
+                "total_at_exit_inr": f"Total on {pd.Timestamp(gm['Exit date for the sensitivity']):%d-%b} ₹",
+                "puts_pnl_iv_up5_inr": "Puts, IV +5 pts ₹", "puts_pnl_iv_down5_inr": "Puts, IV −5 pts ₹"})
+            st.dataframe(sens_show.style.format("{:,.0f}").format("{:+.1f}", subset=["Nifty move %"]),
+                         hide_index=True, width="stretch", height=_fit_height(sens_show))
+            down10 = g_sens[g_sens["nifty_move_pct"] == -10].iloc[0]
+            st.caption(
+                "Sensitivity: the stocks move with the Nifty through their beta; the puts are fully revalued (not the delta "
+                "shortcut), so gamma shows: in a 10% fall the stocks lose "
+                f"{_inr(-float(down10['stocks_pnl_inr']))} and the puts gain {_inr(float(down10['puts_pnl_now_inr']))}, "
+                f"cutting the loss by {float(down10['puts_pnl_now_inr']) / -float(down10['stocks_pnl_inr']) * 100:.0f}%, more "
+                f"than the {hedged_pct:.0f}% delta hedge today. The exit columns include the "
+                "time decay to that date; the IV columns show vega (a sell-off usually lifts IV, adding to the cover). "
+                "The stocks' own risk, which no index option hedges, is not in this table: see the VaR above.")
+            if not g_stk.empty:
+                with st.expander("Each stock's delta (beta vs the Nifty 50)"):
+                    st.dataframe(g_stk.rename(columns={"symbol": "Stock", "value_inr": "Value (₹)",
+                                                       "beta_vs_nifty50": "Beta vs Nifty 50",
+                                                       "delta_inr_per_1pct": "₹ per 1% Nifty move"})
+                                 .style.format({"Value (₹)": "{:,.0f}", "Beta vs Nifty 50": "{:.2f}",
+                                                "₹ per 1% Nifty move": "{:,.0f}"}),
+                                 hide_index=True, width="stretch", height=_fit_height(g_stk))
+
 
 # =============================================================================
 # TAB 5: PERFORMANCE
