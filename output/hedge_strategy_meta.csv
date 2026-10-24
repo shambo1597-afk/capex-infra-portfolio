@@ -8,11 +8,11 @@ At-the-money implied volatility (%),17.49
 "Risk-free (91-day T-bill, %)",5.7281
 "Nifty drift in the simulation (CAPM market return, % a year)",12.81
 Units per strategy,520
-Stocks valued (Rs),8504179
-Beta on rises (h*),1.055
-Beta on falls (downside),1.274
-R^2 vs Nifty 50,0.258
-Stocks own daily volatility (%),1.573
+Stocks valued (Rs),8503837
+Beta on rises (h*),1.068
+Beta on falls (downside),1.379
+R^2 vs Nifty 50,0.272
+Stocks own daily volatility (%),1.545
 Expected-cost budget (% of portfolio),0.3
 Minimum CVaR cut to count as cover (% of portfolio),1.0
 "P(Nifty below 22,600 on 29-Oct)",50.4

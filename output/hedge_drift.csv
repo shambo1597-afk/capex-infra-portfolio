@@ -2,9 +2,9 @@ field,value
 as_of,2026-10-23
 contract,NIFTY 2026-12-29 22000 PE
 lots_held,8.0
-lots_needed,7.38
-hedge_ratio,1.274
-stocks_inr,8504179
+lots_needed,7.98
+hedge_ratio,1.379
+stocks_inr,8503837
 nifty_spot,22600.0
 band_lots,1.0
 status,in band
