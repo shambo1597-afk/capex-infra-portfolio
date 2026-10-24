@@ -10,3 +10,5 @@ date,instrument,action,quantity,price,note
 2026-09-28,NIFTY 2026-12-29 22000 PE,BUY,520,208.2,"tail hedge (risk_model.py), NSE settlement price"
 2026-10-13,NIFTY 2026-12-29 22000 PE,BUY,65,197.95,hedge-ratio rebalance
 2026-10-22,NIFTY 2026-12-29 22000 PE,SELL,65,230.75,hedge-ratio rebalance
+2026-10-23,APARINDS,SELL,69,14379.0,stop-loss exit (stop 14678.04)
+2026-10-23,GOODLUCK,BUY,1820,544.95,replaces APARINDS (reserve rank #14)
