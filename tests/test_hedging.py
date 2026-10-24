@@ -134,3 +134,17 @@ def test_sensitivity_puts_offset_falls_more_than_their_delta():
     # convexity: the gain in a 10% fall exceeds 10x the gain in a 1% fall
     assert sens.loc[-10, "puts_pnl_now_inr"] > 10 * sens.loc[-1, "puts_pnl_now_inr"]
     assert sens.loc[-5, "puts_pnl_iv_up5_inr"] > sens.loc[-5, "puts_pnl_now_inr"]
+
+
+def test_attribution_parts_add_up_and_follow_beta():
+    from attribution import split_pnl
+    idx = pd.date_range("2026-09-28", periods=4, freq="B")
+    closes = pd.DataFrame({"A": [100.0, 98.0, 99.0, 95.0], "B": [50.0, 51.0, 50.0, 52.0]}, index=idx)
+    shares = pd.DataFrame({"A": [10, 10, 10, 0], "B": [20, 20, 20, 20]}, index=idx, dtype=float)  # A sold on day 4
+    mkt = pd.Series([0.0, -0.01, 0.005, -0.02], index=idx)
+    theme = pd.Series([0.0, -0.005, 0.0, 0.01], index=idx)
+    out = split_pnl(shares, closes, mkt, pd.Series({"A": 2.0, "B": 0.5}), theme)
+    assert out.loc["A", "pnl_inr"] == pytest.approx(10 * (95 - 100))
+    assert out.loc["A", "market_part_inr"] == pytest.approx(2.0 * (1000 * -0.01 + 980 * 0.005 + 990 * -0.02))
+    parts = out["market_part_inr"] + out["theme_part_inr"] + out["picks_part_inr"]
+    assert list(parts.round(6)) == list(out["pnl_inr"].round(6))

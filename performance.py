@@ -122,6 +122,9 @@ def window_metrics(port: pd.Series, mkt: pd.Series, rf: pd.Series, label: str,
         "sharpe_benchmark": round((rm - rfa) / sigma_m, 2),
         "treynor_portfolio_pct": round((rp - rfa) / beta * 100, 2),
         "treynor_benchmark_pct": round((rm - rfa) * 100, 2),  # benchmark beta = 1
+        # Modigliani M2: the portfolio's Sharpe at the benchmark's volatility, comparable with the benchmark's return
+        "m2_pct": round((rfa + (rp - rfa) / sigma_p * sigma_m) * 100, 2),
+        "m2_minus_benchmark_pp": round((rfa + (rp - rfa) / sigma_p * sigma_m - rm) * 100, 2),
         "jensen_alpha_pct": round((rp - (rfa + beta * (rm - rfa))) * 100, 2),
         # The same alpha over the window itself, not annualised (the meaningful figure for a short live window)
         "jensen_alpha_period_pp": round(((growth_p - 1) - ((growth_f - 1) + beta * ((growth_m - 1) - (growth_f - 1)))) * 100, 2),

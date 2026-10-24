@@ -2156,11 +2156,12 @@ with tab_performance:
             "portfolio_annualised_compound_pct": "Portfolio annualised, compounded (%)",
             "portfolio_annualised_simple_pct": "Portfolio annualised, simple (%)",
             "compounding_effect_pp": "Compounding effect (pp)",
-            "benchmark_annualised_pct": "Nifty 500 annualised (%)", "risk_free_annualised_pct": "Risk-free, 1D rate (%)",
+            "benchmark_annualised_pct": "Nifty 500 annualised (%)", "risk_free_annualised_pct": "Risk-free (%)",
             "portfolio_vol_pct": "Portfolio volatility (%)", "benchmark_vol_pct": "Nifty 500 volatility (%)",
             "beta_vs_nifty500": "Beta vs Nifty 500", "beta_basis": "Beta estimated from", "sharpe_portfolio": "Sharpe: portfolio",
             "sharpe_benchmark": "Sharpe: Nifty 500", "treynor_portfolio_pct": "Treynor: portfolio (%)",
-            "treynor_benchmark_pct": "Treynor: Nifty 500 (%)", "jensen_alpha_pct": "Jensen's alpha, annualised (%)",
+            "treynor_benchmark_pct": "Treynor: Nifty 500 (%)", "m2_pct": "M² (Modigliani): portfolio (%)",
+            "m2_minus_benchmark_pp": "M² minus Nifty 500 return (pp)", "jensen_alpha_pct": "Jensen's alpha, annualised (%)",
             "jensen_alpha_period_pp": "Jensen's alpha over the period (pp)",
             "xirr_portfolio_pct": "XIRR: portfolio (%)", "xirr_benchmark_pct": "XIRR: Nifty 500 (%)",
             "sortino_portfolio": "Sortino: portfolio", "sortino_benchmark": "Sortino: Nifty 500",
@@ -2174,7 +2175,7 @@ with tab_performance:
             "r(p) = Σ wᵢ rᵢ each day (current weights), compounded: R = Π(1 + r_t) - 1. Annualised (compounded) = "
             "(1 + R)^(252/n) - 1; the simple figure R × 252/n understates it, and the gap is the compounding effect. "
             "Sharpe = (R_p - R_f) / σ_p (reward per unit of total risk); Treynor = (R_p - R_f) / β (per unit of market "
-            "risk); Jensen's alpha = R_p - [R_f + β (R_m - R_f)]. XIRR solves Σ CF / (1 + r)^(days/365) = 0 for the "
+            "risk); M² = R_f + Sharpe_p × σ_m (the portfolio's return levered or de-levered to the Nifty 500's volatility, so it compares directly with the Nifty 500's return; when the excess return is negative, as in the live column, Sharpe and M² mislead: more volatility makes a negative Sharpe less negative, so read the period return and Jensen's alpha there instead); Jensen's alpha = R_p - [R_f + β (R_m - R_f)]. XIRR solves Σ CF / (1 + r)^(days/365) = 0 for the "
             "dated cash flows (invest at the start, value at the end); a loss gives a negative XIRR, annualised the same way. "
             "Risk-free: the 91-day T-bill yield for the live column; for the backtest windows the Nifty 1D Rate index over "
             "the same days (a T-bill history is not kept). Every alpha and beta is against the Nifty 500 TRI (the Nifty 50 "
@@ -2198,6 +2199,47 @@ with tab_performance:
                                 legend=dict(orientation="h", y=1.08))
             st.plotly_chart(fig_g, width="stretch")
             st.caption("Growth of ₹1 crore over the past year with daily compounding (backtest).")
+        # Where the live return came from: market, capex theme, our picks, hedge, cash (attribution.py)
+        at_sum, at_stk = _out("attribution_summary.csv"), _out("attribution_stocks.csv")
+        if not at_sum.empty:
+            am = at_sum.set_index("item")
+            st.markdown(f"### Where the return came from (28-Sep to {pd.Timestamp(at_sum['as_of'].iloc[0]):%d-%b})")
+            gap = float(am.loc["Gap vs the Nifty 500", "inr"])
+            parts = [i for i in am.index if i[0].isdigit()]
+            fig_a = go.Figure(go.Waterfall(
+                x=["Nifty 500 TRI"] + parts + ["Our portfolio"],
+                measure=["absolute"] + ["relative"] * len(parts) + ["total"],
+                y=[float(am.loc["Same Rs 1 crore in the Nifty 500 TRI", "inr"]) / 1e5]
+                  + [float(am.loc[i, "inr"]) / 1e5 if not i.startswith("2.") else 0.0 for i in parts] + [0],
+                text=[_inr(float(am.loc["Same Rs 1 crore in the Nifty 500 TRI", "inr"]))]
+                     + [_inr(float(am.loc[i, "inr"])) for i in parts] + [_inr(float(am.loc["Portfolio P&L", "inr"]))],
+                textposition="outside", connector=dict(line=dict(color="#94A3B8")),
+                decreasing=dict(marker=dict(color="#B91C1C")), increasing=dict(marker=dict(color="#15803D")),
+                totals=dict(marker=dict(color="#1D4ED8"))))
+            fig_a.update_layout(height=380, template="plotly_white", yaxis_title="P&L on ₹1 crore (₹ lakh)",
+                                margin=dict(l=10, r=10, t=30, b=10), showlegend=False)
+            st.plotly_chart(fig_a, width="stretch")
+            theme = float(am.loc["2a. of which the capex theme", "inr"])
+            picks = float(am.loc["2b. of which our picks within the theme", "inr"])
+            st.markdown(
+                f"We trail the Nifty 500 by **{_inr(-gap) if gap < 0 else _inr(gap)}**. Each stock's daily P&L is split with "
+                "its beta (one year to the snapshot): the **market part** is what the Nifty 500 gave it; the rest is its own "
+                "move, split again into the **capex theme** (the average capex stock's own move: all 157 stocks of our "
+                "universe, equal weight, net of their beta) and **our picks** (our stocks against that average). "
+                f"The theme explains {_inr(theme)} ({theme / gap * 100:.0f}% of the gap): capex stocks as a group fell "
+                f"after the snapshot (15-Oct: the rotation into large caps). Our picks within the theme: {_inr(picks)}. "
+                f"The puts added {_inr(float(am.loc['3. Hedge (Nifty puts)', 'inr']))}.")
+            if not at_stk.empty:
+                with st.expander("Each stock: P&L split into market, theme and pick"):
+                    st.dataframe(at_stk.rename(columns={
+                        "symbol": "Stock", "status": "Status", "from": "From", "to": "To", "invested_inr": "Invested (₹)",
+                        "beta_vs_nifty500": "Beta", "pnl_inr": "P&L (₹)", "market_part_inr": "Market (₹)",
+                        "specific_part_inr": "Own move (₹)", "theme_part_inr": "Theme (₹)", "picks_part_inr": "Pick (₹)",
+                        "return_pct": "Return %", "contribution_pct_of_capital": "% of ₹1 crore"})
+                        .style.format({c: "{:,.0f}" for c in ["Invested (₹)", "P&L (₹)", "Market (₹)", "Own move (₹)",
+                                                              "Theme (₹)", "Pick (₹)"]} | {"Beta": "{:.2f}",
+                                       "Return %": "{:+.2f}", "% of ₹1 crore": "{:+.2f}"}),
+                        hide_index=True, width="stretch", height=_fit_height(at_stk))
         # Three timelines from the snapshot (the professor, 14-Oct): ours, the reverse order, the original strict 4
         tl_sum, tl_growth = _out("timelines_summary.csv"), _out("timelines_growth.csv")
         if not tl_sum.empty and not tl_growth.empty:
