@@ -14,7 +14,7 @@ Three timelines from the 28-Sep-2026 snapshot (added 21-Oct-2026 at the professo
                                weights (four stocks cannot meet a 15% cap).
 
 All three are valued the same way, so only the stock selection differs: 97% of Rs 1 crore in whole shares
-at the 28-Sep close, the rest in cash (no interest, no hedge, no stops: none was hit), held to the latest
+at the 28-Sep close, the rest in cash (no interest, no hedge, no stop-loss replacements: buy-and-hold), held to the latest
 close; the same Rs 1 crore in the Nifty 500 TRI alongside. Risk-free: the 91-day T-bill. Beta for alpha:
 each portfolio's one-year beta before the snapshot (a regression on a few weeks is noise).
 

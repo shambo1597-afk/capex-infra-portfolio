@@ -1142,10 +1142,11 @@ with tab_overview:
         cal = cal.sort_values("date")
         soon = cal[(cal["q2_results_basis"] != "reported") & cal["days"].between(0, 7)]
         held_now = soon["stop_loss_price"].notna() if "stop_loss_price" in soon else pd.Series(True, index=soon.index)
-        if (~held_now).any():  # reserve stocks: no money in them, no stop to gap through
+        not_held = soon[~held_now & soon["symbol"].isin(RESERVE_QUEUE)]  # sold stocks are out of the list
+        if not not_held.empty:  # reserve stocks: no money in them, no stop to gap through
             st.caption("Reserve stocks reporting in the next 7 days (no money in them; a result changes only whether "
                        "they still qualify as a replacement): " + ", ".join(
-                           f"{r['symbol']} {r['date']:%d-%b}" for _, r in soon[~held_now].iterrows()) + ".")
+                           f"{r['symbol']} {r['date']:%d-%b}" for _, r in not_held.iterrows()) + ".")
         for _, r in soon[held_now].iterrows():
             st.warning(f"**{r['symbol']} reports Q2 results {'today' if r['days'] == 0 else f'in {r.days} day(s)'}** "
                        f"({r['date']:%a %d-%b}, {'announced' if r['q2_results_basis'] == 'announced' else 'ESTIMATE from last year'}). "
@@ -1157,6 +1158,7 @@ with tab_overview:
                            "reported": "Reported"}
             show_cal = pd.DataFrame({
                 "Stock": cal["symbol"],
+                "Status": cal["symbol"].map(_status),
                 "Q2 results": cal["date"].dt.strftime("%a %d-%b-%Y"),
                 "Basis": cal["q2_results_basis"].map(lambda b: basis_label.get(b, b)),
                 "Days away": cal["days"].map(lambda d: "done" if d < 0 else ("today" if d == 0 else f"{d}")),
@@ -1217,7 +1219,7 @@ with tab_overview:
                   ("Theme universe: market cap ≥ ₹5,000 cr, capex/infra businesses only", sum(uni.values())),
                   ("Eligible: hard fundamentals, uptrend (DI gap ≥ 2), ≥ ₹5 cr a day traded, profit up", len(frozen)),
                   ("Tracked: top 15 by 6-month relative strength (skip 1 month)", n_tracked),
-                  ("Invested: top 8, equal-risk weights", INVESTED_COUNT)]
+                  ("Invested at the snapshot: top 8, equal-risk weights", INVESTED_COUNT)]
         fig_f = go.Figure(go.Funnel(y=[s_[0] for s_ in stages], x=[s_[1] for s_ in stages], textinfo="value",
                                     marker=dict(color=["#94A3B8", "#64748B", "#1D4ED8", "#1E40AF", "#15803D"])))
         fig_f.update_layout(height=300, margin=dict(l=10, r=10, t=10, b=10), template="plotly_white")
@@ -1240,7 +1242,7 @@ with tab_overview:
                 "hard fundamentals (pledge < 15%, debt/equity < 1.5, interest cover) are pass/fail; then it needs a "
                 "real uptrend, enough daily turnover to trade and a profit that grew last quarter. The eligible "
                 "stocks are ranked by 6-month relative strength vs the Nifty 500 (skipping the latest month). "
-                f"Eligible by sector: {', '.join(f'{k} {v}' for k, v in by_sector.items())}; invested: "
+                f"Eligible by sector: {', '.join(f'{k} {v}' for k, v in by_sector.items())}; invested at the snapshot: "
                 f"{', '.join(f'{k} {v}' for k, v in invested.items())}. Weights: equal risk contribution, each "
                 f"{WEIGHT_MIN_PCT:g}-{WEIGHT_MAX_PCT:g}%; then a Nifty put hedges the market risk (Risk & Hedging tab).")
     except Exception as e:  # the funnel is context; never block the tab
@@ -1281,7 +1283,7 @@ with tab_overview:
 
     # 3b. The reserve: tracked, no money yet; the first one still passing the selection rule replaces
     # a stopped-out holding
-    reserve_df = portfolio_df[portfolio_df["status"] != "Invested"].copy()
+    reserve_df = portfolio_df[portfolio_df["status"].str.startswith("Reserve")].copy()
     if not reserve_df.empty:
         # Figures from the review tables, which cover every universe stock (the ranking lists only those that
         # pass every rule today, so a reserve stock failing one would show blanks)
@@ -1316,7 +1318,8 @@ with tab_overview:
                    "turnover ≥ ₹5 cr a day, a real profit that grew in the latest quarter); if none does, they top up the other holdings that are still in an uptrend "
                    "(DI gap ≥ 2), none above the 15% cap, and only if none is, they wait in the liquid ETF until a stock qualifies. "
                    "A stock that has been sold never comes back. 'Would be bought today?' names the rule a stock fails; the "
-                   "list stays frozen, so a failing stock is only skipped for that day's replacement.")
+                   "list stays frozen, so a failing stock is only skipped for that day's replacement."
+                   + (f" Sold at the stop and out of the list for good: {', '.join(sorted(SOLD))}." if SOLD else ""))
         show_res = pd.DataFrame({
             "Queue": reserve_df["status"],
             "Stock": reserve_df["symbol"],
@@ -2246,7 +2249,8 @@ with tab_performance:
             st.markdown("### Three timelines from the 28-Sep snapshot")
             st.caption(
                 "Same money, same day, same rules for valuing them; only the stock selection differs: 97% of ₹1 crore in "
-                "whole shares at the 28-Sep close, no hedge, held to the latest close. "
+                "whole shares at the 28-Sep close, no hedge, held to the latest close with no stop-loss replacements (so "
+                "timeline 1 is buy-and-hold of our original 8 and differs from the live portfolio once a stop is hit). "
                 "**1. Ours**: technicals rank, fundamentals screen. **2. Reverse**: the same eligible stocks, but "
                 "fundamentals rank (ROCE, OPM, quarterly profit and sales growth, low debt/equity) and technicals screen. "
                 "**3. Original strict screen**: technicals first, then the full multi-year fundamental screen of 24-Sep; "
