@@ -148,3 +148,10 @@ def test_attribution_parts_add_up_and_follow_beta():
     assert out.loc["A", "market_part_inr"] == pytest.approx(2.0 * (1000 * -0.01 + 980 * 0.005 + 990 * -0.02))
     parts = out["market_part_inr"] + out["theme_part_inr"] + out["picks_part_inr"]
     assert list(parts.round(6)) == list(out["pnl_inr"].round(6))
+
+
+def test_recommendation_takes_free_cover_first():
+    import hedge_strategies as hs
+    t = pd.DataFrame({"strategy": ["No hedge", "A", "Free"], "expected_hedge_cost_inr": [0, 2000, -900],
+                      "cvar95_saved_inr": [0, 110000, 105000], "cvar_saved_per_rupee_cost": [np.nan, 55.0, np.nan]})
+    assert hs.recommend(t, value=1e7).loc[lambda d: d["recommended"], "strategy"].tolist() == ["Free"]

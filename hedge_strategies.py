@@ -190,9 +190,11 @@ def _bucket_label(lo: float, hi: float) -> str:
 
 def recommend(table: pd.DataFrame, value: float, budget_pct: float = HEDGE_COST_BUDGET_PCT,
               min_saved_pct: float = MIN_CVAR_SAVED_PCT) -> pd.DataFrame:
-    ok = table[(table["expected_hedge_cost_inr"] > 0) & (table["expected_hedge_cost_inr"] <= value * budget_pct / 100)
+    ok = table[(table["expected_hedge_cost_inr"] <= value * budget_pct / 100)
                & (table["cvar95_saved_inr"] >= value * min_saved_pct / 100)]
-    best = ok.sort_values(["cvar_saved_per_rupee_cost", "cvar95_saved_inr"], ascending=False).head(1)
+    # A strategy whose expected cost is zero or negative gives its cover for free: it ranks first
+    ratio = ok["cvar_saved_per_rupee_cost"].where(ok["expected_hedge_cost_inr"] > 0, np.inf)
+    best = ok.assign(_r=ratio).sort_values(["_r", "cvar95_saved_inr"], ascending=False).head(1)
     return table.assign(recommended=table["strategy"].isin(best["strategy"]))
 
 
