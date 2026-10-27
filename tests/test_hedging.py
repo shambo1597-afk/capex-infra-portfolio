@@ -155,3 +155,27 @@ def test_recommendation_takes_free_cover_first():
     t = pd.DataFrame({"strategy": ["No hedge", "A", "Free"], "expected_hedge_cost_inr": [0, 2000, -900],
                       "cvar95_saved_inr": [0, 110000, 105000], "cvar_saved_per_rupee_cost": [np.nan, 55.0, np.nan]})
     assert hs.recommend(t, value=1e7).loc[lambda d: d["recommended"], "strategy"].tolist() == ["Free"]
+
+
+def test_option_legs_and_core_put_with_a_spread_overlay(tmp_path):
+    from risk_model import held_put, option_legs
+    csv = tmp_path / "trades.csv"
+    pd.DataFrame([
+        {"date": "2026-09-28", "instrument": "NIFTY 2026-12-29 22000 PE", "action": "BUY", "quantity": 520, "price": 208.2, "note": ""},
+        {"date": "2026-10-27", "instrument": "NIFTY 2026-11-03 22750 PE", "action": "BUY", "quantity": 520, "price": 200.35, "note": ""},
+        {"date": "2026-10-27", "instrument": "NIFTY 2026-11-03 22100 PE", "action": "SELL", "quantity": 520, "price": 47.05, "note": ""},
+    ]).to_csv(csv, index=False)
+    # The core hedge is the longest-dated long put, not the higher-strike overlay
+    assert held_put(csv)["instrument"] == "NIFTY 2026-12-29 22000 PE"
+    units = {lg["instrument"]: lg["units"] for lg in option_legs(csv)}
+    assert units == {"NIFTY 2026-12-29 22000 PE": 520, "NIFTY 2026-11-03 22750 PE": 520, "NIFTY 2026-11-03 22100 PE": -520}
+
+
+def test_spread_sensitivity_is_capped_between_its_strikes():
+    from greeks import sensitivity_legs
+    legs = [{"units": 520, "strike": 22750.0, "kind": "PE", "t_now": 8 / 365, "t_exit": 5 / 365, "vol": 0.16},
+            {"units": -520, "strike": 22100.0, "kind": "PE", "t_now": 8 / 365, "t_exit": 5 / 365, "vol": 0.16}]
+    sens = sensitivity_legs(0.0, legs, 0.0573, 22753.0).set_index("nifty_move_pct")
+    # Deep in the money both legs pay; the spread's value can never exceed the strike gap
+    assert sens.loc[-10, "puts_pnl_now_inr"] > sens.loc[-3, "puts_pnl_now_inr"] > 0
+    assert sens.loc[-10, "puts_pnl_now_inr"] < 650 * 520

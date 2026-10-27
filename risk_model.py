@@ -516,18 +516,36 @@ def hedge_scenarios(portfolio_value: float, beta: float, spot: float, put: pd.Se
     return pd.DataFrame(rows)
 
 
+def option_legs(trades_csv: Path = TRADES_CSV) -> List[Dict[str, object]]:
+    """Every option position open in the trade ledger: instrument, strike, expiry, type ('PE'/'CE') and signed
+    units (negative = written). The core hedge plus any overlay such as a bear put spread."""
+    if not Path(trades_csv).exists():
+        return []
+    from tracker import ledger_positions, parse_option
+
+    out = []
+    for inst, q in ledger_positions(pd.read_csv(trades_csv)).items():
+        o = parse_option(inst)
+        if o and q:
+            out.append({"instrument": inst, "strike": o["strike"], "expiry": o["expiry"], "type": o["type"],
+                        "units": int(q)})
+    return out
+
+
 def held_put(trades_csv: Path = TRADES_CSV) -> Optional[Dict[str, object]]:
-    """The put held in the trade ledger (highest strike if several): instrument, strike, expiry, units and the
-    average price paid. None before the snapshot or without puts."""
+    """The core put hedge in the trade ledger: the long put with the latest expiry (highest strike on a tie), with
+    instrument, strike, expiry, units and the average price paid. A shorter-dated overlay (a spread added for the
+    last sessions) is not the core hedge; option_legs lists it. None before the snapshot or without puts."""
     if not Path(trades_csv).exists():
         return None
     from tracker import ledger_positions, parse_option
 
     ledger = pd.read_csv(trades_csv)
-    held = {i: q for i, q in ledger_positions(ledger).items() if parse_option(i) and q > 0}
+    held = {i: q for i, q in ledger_positions(ledger).items()
+            if parse_option(i) and parse_option(i)["type"] == "PE" and q > 0}
     if not held:
         return None
-    inst = max(held, key=lambda i: parse_option(i)["strike"])
+    inst = max(held, key=lambda i: (parse_option(i)["expiry"], parse_option(i)["strike"]))
     buys = ledger[(ledger["instrument"] == inst) & (ledger["action"].str.upper() == "BUY")]
     o = parse_option(inst)
     return {"instrument": inst, "strike": o["strike"], "expiry": o["expiry"], "units": int(held[inst]),

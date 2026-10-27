@@ -2,7 +2,6 @@ field,value
 as_of,2026-10-26
 pnl_pct,-10.49
 trigger_pct,10.0
-rolls_done,0
+rolls_done,1
 max_rolls,1
-status,waiting
-gap_to_trigger_pp,20.49
+status,done

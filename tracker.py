@@ -509,16 +509,18 @@ def plan_hedge_drift(summary: Dict[str, object], ledger: pd.DataFrame, as_of: pd
                      band_lots: float = HEDGE_DRIFT_LOTS) -> pd.DataFrame:
     """
     Keep the hedge ratio: lots needed = hedge_ratio x stock value / (Nifty spot x lot). When they differ from the
-    lots held by `band_lots` or more, buy or sell lots of the put held (the highest strike) back to the rounded
+    lots held by `band_lots` or more, buy or sell lots of the core put (the longest-dated) back to the rounded
     figure. Returns rows (field, value); status is 'in band', 'REBALANCE' (with the trade), 'see profit lock'
     (the roll re-sizes the hedge itself), 'no puts' or 'no prices'.
     """
-    held = {i: q for i, q in ledger_positions(ledger).items() if parse_option(i) and q > 0}
+    held = {i: q for i, q in ledger_positions(ledger).items()
+            if parse_option(i) and parse_option(i)["type"] == "PE" and q > 0}
     rows = [("as_of", as_of.strftime("%Y-%m-%d"))]
     if not held:
         return pd.DataFrame(rows + [("status", "no puts")], columns=["field", "value"])
-    inst = max(held, key=lambda i: parse_option(i)["strike"])
-    held_lots = sum(held.values()) / lot
+    # The core hedge is the longest-dated put; a short-dated overlay (a spread for the last sessions) is not sized here
+    inst = max(held, key=lambda i: (parse_option(i)["expiry"], parse_option(i)["strike"]))
+    held_lots = held[inst] / lot
     need = hedge_ratio * float(summary["stocks_inr"]) / (spot * lot)
     rows += [("contract", inst), ("lots_held", round(held_lots, 2)), ("lots_needed", round(need, 2)),
              ("hedge_ratio", round(hedge_ratio, 3)), ("stocks_inr", round(float(summary["stocks_inr"]))),

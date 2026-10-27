@@ -1,10 +1,10 @@
 strategy,nifty_move,probability_pct,mean_portfolio_pnl_inr
-Keep the puts held (NIFTY 2026-12-29 22000 PE),below -6%,0.0,
-Keep the puts held (NIFTY 2026-12-29 22000 PE),-6% to -3%,1.5,-294785.0
-Keep the puts held (NIFTY 2026-12-29 22000 PE),-3% to -1%,20.9,-148268.0
-Keep the puts held (NIFTY 2026-12-29 22000 PE),-1% to +1%,51.1,-13753.0
-Keep the puts held (NIFTY 2026-12-29 22000 PE),+1% to +3%,24.1,112421.0
-Keep the puts held (NIFTY 2026-12-29 22000 PE),above +3%,2.4,245059.0
+Keep the options held (NIFTY 2026-12-29 22000 PE and 2 more legs),below -6%,0.0,
+Keep the options held (NIFTY 2026-12-29 22000 PE and 2 more legs),-6% to -3%,1.5,-109283.0
+Keep the options held (NIFTY 2026-12-29 22000 PE and 2 more legs),-3% to -1%,20.9,-60283.0
+Keep the options held (NIFTY 2026-12-29 22000 PE and 2 more legs),-1% to +1%,51.1,-18972.0
+Keep the options held (NIFTY 2026-12-29 22000 PE and 2 more legs),+1% to +3%,24.1,52749.0
+Keep the options held (NIFTY 2026-12-29 22000 PE and 2 more legs),above +3%,2.4,168052.0
 No hedge: sell the puts held,below -6%,0.0,
 No hedge: sell the puts held,-6% to -3%,1.5,-431905.0
 No hedge: sell the puts held,-3% to -1%,20.9,-203391.0
@@ -53,15 +53,9 @@ Switch to a bear put spread 22300/21600,above +3%,2.4,294110.0
 "Switch to a collar: long put 22300, short call 23200",-1% to +1%,51.1,-9079.0
 "Switch to a collar: long put 22300, short call 23200",+1% to +3%,24.1,77052.0
 "Switch to a collar: long put 22300, short call 23200",above +3%,2.4,99184.0
-Keep the puts held and add a bear put spread 22750/22100,below -6%,0.0,
-Keep the puts held and add a bear put spread 22750/22100,-6% to -3%,1.5,-109283.0
-Keep the puts held and add a bear put spread 22750/22100,-3% to -1%,20.9,-60283.0
-Keep the puts held and add a bear put spread 22750/22100,-1% to +1%,51.1,-18972.0
-Keep the puts held and add a bear put spread 22750/22100,+1% to +3%,24.1,52749.0
-Keep the puts held and add a bear put spread 22750/22100,above +3%,2.4,168052.0
 "Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",below -6%,0.0,
-"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",-6% to -3%,1.5,-389770.0
-"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",-3% to -1%,20.9,-166451.0
-"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",-1% to +1%,51.1,-3294.0
-"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",+1% to +3%,24.1,130763.0
-"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",above +3%,2.4,264759.0
+"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",-6% to -3%,1.5,-204267.0
+"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",-3% to -1%,20.9,-78466.0
+"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",-1% to +1%,51.1,-8513.0
+"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",+1% to +3%,24.1,71091.0
+"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",above +3%,2.4,187751.0

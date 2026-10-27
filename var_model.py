@@ -36,7 +36,7 @@ VAR_SUMMARY_CSV = OUTPUT_DIR / "var_summary.csv"
 VAR_COMPONENTS_CSV = OUTPUT_DIR / "var_components.csv"
 Z = {0.95: 1.6449, 0.99: 2.3263}
 WINDOW = 245
-NIFTY = "NIFTY 50 (puts, delta)"
+NIFTY = "NIFTY 50 (options, delta)"
 
 
 def sessions_to_horizon(as_of: date, horizon: str = EVALUATION_END_DATE) -> int:
@@ -94,26 +94,30 @@ def var_tables(positions: pd.Series, returns: pd.DataFrame, horizon_sessions: in
 
 
 def put_delta_position(as_of: date) -> Optional[float]:
-    """Rupee Nifty 50 exposure of the puts held: units x delta x spot (negative), from the day's F&O file."""
+    """Rupee Nifty 50 exposure of every option leg held (puts and any spread legs): sum of units x delta x spot,
+    each leg at the implied volatility of its own settlement price in the day's F&O file."""
     from option_pricing import bs_delta, implied_vol
     from risk_free import risk_free_3m
-    from risk_model import fetch_nifty_derivatives, held_put
+    from risk_model import fetch_nifty_derivatives, option_legs
 
-    held = held_put()
-    fo = fetch_nifty_derivatives(as_of, use_cache=True, save=False) if held else None
-    if not held or fo is None or fo.empty:
+    legs = option_legs()
+    fo = fetch_nifty_derivatives(as_of, use_cache=True, save=False) if legs else None
+    if not legs or fo is None or fo.empty:
         return None
-    o = fo[(fo["FinInstrmTp"] == "IDO") & (fo["OptnTp"] == "PE") & (fo["XpryDt"] == held["expiry"])
-           & np.isclose(fo["StrkPric"], held["strike"])]
-    if o.empty:
-        return None
-    spot = float(o["UndrlygPric"].iloc[0])
-    t = (pd.Timestamp(held["expiry"]) - pd.Timestamp(as_of)).days / 365
     r = risk_free_3m()[0]
-    vol = implied_vol(float(o["SttlmPric"].iloc[0]), spot, held["strike"], t, r)
-    if not np.isfinite(vol):
-        return None
-    return held["units"] * bs_delta(spot, held["strike"], t, r, vol) * spot
+    total = 0.0
+    for lg in legs:
+        o = fo[(fo["FinInstrmTp"] == "IDO") & (fo["OptnTp"] == lg["type"]) & (fo["XpryDt"] == lg["expiry"])
+               & np.isclose(fo["StrkPric"], lg["strike"])]
+        if o.empty:
+            return None
+        spot = float(o["UndrlygPric"].iloc[0])
+        t = (pd.Timestamp(lg["expiry"]) - pd.Timestamp(as_of)).days / 365
+        vol = implied_vol(float(o["SttlmPric"].iloc[0]), spot, lg["strike"], t, r, lg["type"])
+        if not np.isfinite(vol):
+            return None
+        total += lg["units"] * bs_delta(spot, lg["strike"], t, r, vol, lg["type"]) * spot
+    return total
 
 
 def run() -> Dict[str, pd.DataFrame]:

@@ -81,8 +81,11 @@ def nearest(c: pd.DataFrame, kind: str, target: float) -> Optional[pd.Series]:
     return pool.iloc[(pool["StrkPric"] - target).abs().argsort().iloc[0]]
 
 
-def build_strategies(c: pd.DataFrame, spot: float, held: Optional[Dict], held_leg: Optional[Dict]) -> List[Dict]:
-    """Candidate strategies as lists of legs (qty +1 bought / -1 sold per unit of notional)."""
+def build_strategies(c: pd.DataFrame, spot: float, held: Optional[Dict], held_leg: Optional[Dict],
+                     held_extra: Optional[List[Dict]] = None) -> List[Dict]:
+    """Candidate strategies as lists of legs (qty +1 bought / -1 sold per unit of notional). `held_extra`: option
+    legs held besides the core put (such as a spread already added); every 'keep' strategy keeps them too."""
+    extra = list(held_extra or [])
     def leg(row, qty):
         return {"kind": row["OptnTp"], "strike": float(row["StrkPric"]), "price": float(row["SttlmPric"]),
                 "iv": float(row["iv"]), "qty": qty, "expiry": row["XpryDt"]}
@@ -90,7 +93,9 @@ def build_strategies(c: pd.DataFrame, spot: float, held: Optional[Dict], held_le
     atm, m2, m3, m5 = (nearest(c, "PE", spot * f) for f in (1.0, 0.98, 0.97, 0.95))
     out = []
     if held_leg is not None:
-        out.append({"name": f"Keep the puts held ({held['instrument']})", "legs": [held_leg], "keep": True})
+        name = f"Keep the puts held ({held['instrument']})" if not extra else \
+            f"Keep the options held ({held['instrument']} and {len(extra)} more leg{'s' if len(extra) > 1 else ''})"
+        out.append({"name": name, "legs": [held_leg] + extra, "keep": True})
     out.append({"name": "No hedge: sell the puts held", "legs": []})
     for row in (atm, m2, m3):
         if row is not None:
@@ -108,16 +113,16 @@ def build_strategies(c: pd.DataFrame, spot: float, held: Optional[Dict], held_le
                         "legs": [leg(m2, 1), leg(call, -1)]})
     if held_leg is not None:
         best_spread = next((x for x in out if x.get("spread")), None)
-        if best_spread:
+        if best_spread and not extra:  # with a spread already held, 'keep' covers it
             out.append({"name": f"Keep the puts held and add a {best_spread['name'].split('a ', 1)[1]}",
-                        "legs": [held_leg] + best_spread["legs"], "keep": True})
+                        "legs": [held_leg] + extra + best_spread["legs"], "keep": True})
         # Horizontal (calendar) spread: keep the longer-dated put and sell the same strike on the near expiry,
         # so the near put's time decay pays for part of the far put's
         same = c[(c["OptnTp"] == "PE") & np.isclose(c["StrkPric"], held_leg["strike"])]
         if not same.empty and same["XpryDt"].iloc[0] != held_leg["expiry"]:
             near = same.iloc[0]
             out.append({"name": f"Calendar spread: keep the puts held, sell the {near['XpryDt']} {near['StrkPric']:.0f} put",
-                        "legs": [held_leg, leg(near, -1)], "keep": True, "calendar": True})
+                        "legs": [held_leg] + extra + [leg(near, -1)], "keep": True, "calendar": True})
     return out
 
 
@@ -261,13 +266,27 @@ def run(as_of: Optional[date] = None) -> Optional[Dict[str, pd.DataFrame]]:
             held_leg = {"kind": "PE", "strike": held["strike"], "price": price, "expiry": held["expiry"], "qty": 1,
                         "iv": implied_vol(price, spot, held["strike"], th, r)}
 
-    strategies = build_strategies(c, spot, held, held_leg)
+    from risk_model import option_legs
+    extra = []
+    if held_leg is not None:
+        for lg in option_legs():
+            if lg["instrument"] == held["instrument"]:
+                continue
+            o = fo[(fo["FinInstrmTp"] == "IDO") & (fo["OptnTp"] == lg["type"]) & (fo["XpryDt"] == lg["expiry"])
+                   & np.isclose(fo["StrkPric"], lg["strike"])]
+            if o.empty:
+                continue
+            p_ = float(o["SttlmPric"].iloc[0])
+            t_ = (pd.Timestamp(lg["expiry"]) - pd.Timestamp(fo_date)).days / 365
+            extra.append({"kind": lg["type"], "strike": lg["strike"], "price": p_, "expiry": lg["expiry"],
+                          "qty": lg["units"] / units, "iv": implied_vol(p_, spot, lg["strike"], t_, r, lg["type"])})
+    strategies = build_strategies(c, spot, held, held_leg, extra)
     tau = max((horizon - pd.Timestamp(fo_date)).days, 1) / 365
     sessions = sessions_to_horizon(fo_date)
     from config import MARKET_RISK_PREMIUM_PCT
     drift = r + MARKET_RISK_PREMIUM_PCT / 100
     spot_h, nifty_ret, stock_ret = simulate(spot, iv_atm, tau, sessions, beta_up, beta_down, resid, drift)
-    held_value = held_leg["price"] * units if held_leg else 0.0
+    held_value = sum(lg["price"] * lg["qty"] * units for lg in [held_leg] + extra) if held_leg else 0.0
     ev = evaluate(strategies, units, spot_h, nifty_ret, value * stock_ret, horizon, r, value, spot, held_value)
     table = recommend(ev["table"], value)
     curve = payoff_curve(strategies, units, spot, value, beta_up, beta_down, horizon, r)

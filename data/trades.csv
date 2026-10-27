@@ -12,3 +12,5 @@ date,instrument,action,quantity,price,note
 2026-10-22,NIFTY 2026-12-29 22000 PE,SELL,65,230.75,hedge-ratio rebalance
 2026-10-23,APARINDS,SELL,69,14379.0,stop-loss exit (stop 14678.04)
 2026-10-23,GOODLUCK,BUY,1820,544.95,replaces APARINDS (reserve rank #14)
+2026-10-27,NIFTY 2026-11-03 22750 PE,BUY,520,200.35,"bear put spread to 29-Oct (hedge_strategies.py call), long leg, 26-Oct NSE settlement"
+2026-10-27,NIFTY 2026-11-03 22100 PE,SELL,520,47.05,"bear put spread to 29-Oct (hedge_strategies.py call), short leg, 26-Oct NSE settlement"
