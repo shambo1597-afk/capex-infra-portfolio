@@ -2,6 +2,7 @@
 **Coursework:** Security Analysis & Portfolio Management (SAPM) / Derivatives  
 **Institution:** Indian Institute of Management (IIM) Bodh Gaya  
 **Author / Pair Programmer:** Antigravity  
+**Live dashboard:** [capexinfraportfolio.streamlit.app](https://capexinfraportfolio.streamlit.app/)  
 
 A production-grade, mathematically transparent data pipeline and quantitative screening toolkit built for Indian equity portfolio management. The toolkit ingests authentic daily closing Bhavcopy data directly from the National Stock Exchange of India (NSE), downloads benchmark price series via Yahoo Finance, ingests local Total Return Index (TRI) series, and computes custom technical indicators (Wilder's RSI, Wilder's ADX, 63-day Relative Strength spread, Support/Resistance swing pivots) directly in `pandas` and `numpy` without black-box TA libraries.
 
