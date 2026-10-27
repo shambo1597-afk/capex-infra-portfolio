@@ -1,5 +1,5 @@
 symbol,observations,alpha_annual_pct,alpha_t,beta,beta_se,r_squared,total_vol_pct,systematic_vol_pct,unsystematic_vol_pct,explained_risk_pct,unexplained_risk_pct
-WELCORP,247,127.12,3.01,1.237,0.182,0.159,45.43,18.09,41.67,15.9,84.1
+WELCORP,247,127.11,3.01,1.237,0.182,0.159,45.43,18.09,41.67,15.9,84.1
 RPEL,247,120.17,2.47,1.676,0.21,0.207,53.93,24.51,48.03,20.7,79.3
 SBCL,247,105.71,1.94,1.482,0.235,0.14,57.9,21.68,53.69,14.0,86.0
 AEROFLEX,247,143.66,2.48,1.931,0.249,0.197,63.66,28.24,57.05,19.7,80.3

@@ -10,8 +10,10 @@ This module handles:
 3. Benchmark Nifty 500 Total Return Index (TRI) ingestion from local official CSV.
 """
 
+import glob
 import io
 import logging
+import os
 import textwrap
 import time
 from dataclasses import dataclass
@@ -710,6 +712,27 @@ def fetch_benchmark_tri_automated(start_date: str, end_date: str) -> pd.DataFram
         return load_benchmark_tri(DEFAULT_TRI_CSV_PATH, as_of=end_date)
 
 
+def _launch_chromium(p):
+    """Launch the full Chromium build (new headless), not the headless shell Akamai blocks.
+
+    A pip upgrade of playwright expects a newer browser build than the one installed; then fall
+    back to a Chromium already on the machine ($PLAYWRIGHT_CHROMIUM_EXECUTABLE or /opt/pw-browsers).
+    """
+    args = ["--disable-blink-features=AutomationControlled"]
+    try:
+        return p.chromium.launch(headless=True, channel="chromium", args=args)
+    except Exception as exc:
+        if "Executable doesn't exist" not in str(exc):
+            raise
+        candidates = [os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE", ""), "/opt/pw-browsers/chromium",
+                      *sorted(glob.glob("/opt/pw-browsers/chromium-*/chrome-linux*/chrome"), reverse=True)]
+        for path in candidates:
+            if path and os.path.exists(path):
+                logger.warning("Playwright's own Chromium is missing; using %s", path)
+                return p.chromium.launch(headless=True, executable_path=path, args=args)
+        raise
+
+
 def _fetch_tri_via_browser(start_date, end_date) -> pd.DataFrame:
     """The browser retrieval behind fetch_benchmark_tri_automated(); raises on any failure
     instead of falling back, so callers that must know whether fresh data arrived can tell."""
@@ -731,12 +754,7 @@ def _fetch_tri_via_browser(start_date, end_date) -> pd.DataFrame:
         chunk_start = chunk_end + timedelta(days=1)
 
     with sync_playwright() as p, tempfile.TemporaryDirectory() as tmp_dir:
-        # Full Chromium build (new headless), not the headless shell Akamai blocks
-        browser = p.chromium.launch(
-            headless=True,
-            channel="chromium",
-            args=["--disable-blink-features=AutomationControlled"],
-        )
+        browser = _launch_chromium(p)
         chunk_frames = {}  # (start, end) window -> DataFrame, or None when the window has no data
         try:
             probe = browser.new_page()
