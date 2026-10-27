@@ -152,10 +152,7 @@ st.markdown(
         font-size: 1.65rem;
         font-weight: 700;
         margin: 0;
-        color: #0F172A;
-    }
-    @media (prefers-color-scheme: dark) {
-        .app-title { color: #F8FAFC; }
+        color: inherit;
     }
     .app-subtitle {
         font-size: 0.88rem;
@@ -220,13 +217,7 @@ st.markdown(
         margin: 0.8rem 0;
         border-radius: 0 4px 4px 0;
         font-size: 0.82rem;
-        color: #92400E;
-    }
-    @media (prefers-color-scheme: dark) {
-        .caveat-box {
-            background-color: rgba(245, 158, 11, 0.15);
-            color: #FCD34D;
-        }
+        color: inherit;
     }
     
     /* Compact Metric Card */
@@ -247,11 +238,8 @@ st.markdown(
     .metric-value {
         font-size: 1.25rem;
         font-weight: 700;
-        color: #0F172A;
+        color: inherit;
         margin-top: 0.15rem;
-    }
-    @media (prefers-color-scheme: dark) {
-        .metric-value { color: #F8FAFC; }
     }
     .metric-sub {
         font-size: 0.72rem;
@@ -282,13 +270,10 @@ st.markdown(
     }
     .placeholder-text {
         font-size: 1.05rem;
-        color: #475569;
+        color: #64748B;
         max-width: 650px;
         margin: 0 auto;
         line-height: 1.6;
-    }
-    @media (prefers-color-scheme: dark) {
-        .placeholder-text { color: #94A3B8; }
     }
     </style>
     """,
@@ -899,19 +884,21 @@ with tab_overview:
                 (as of {pd.Timestamp(t['as_of']):%d-%b-%Y})</div>
                 <div class="metric-value" style="font-size:2rem;">{_inr(float(t['value_inr']))}
                 <span style="color:{colour}; font-size:1.3rem;">&nbsp;We {verb} {_inr(abs(pnl))} ({float(t['pnl_pct']):+.2f}%)</span></div>
-                <div class="metric-sub">Stocks {_inr(float(t['stocks_inr']))} &bull; Nifty puts {_inr(float(t['options_inr']))} &bull;
+                <div class="metric-sub">Stocks {_inr(float(t['stocks_inr']))} &bull; Nifty options {_inr(float(t['options_inr']))} &bull;
                 cash {_inr(float(t['cash_inr']))} (overnight rate)</div>
             </div>
             """,
             unsafe_allow_html=True,
         )
+        def _gap(x: float) -> str:
+            # st.metric colours the delta red only when the text starts with "-"
+            return f"{_inr(x)} (we are behind)" if x < 0 else f"+{_inr(x)} (we are ahead)"
+
         l1, l2, l3, l4 = st.columns(4)
         l1.metric("Same ₹1 crore in the Nifty 500", _inr(float(t["nifty500_value_inr"])),
-                  f"we are {_inr(float(t['vs_nifty500_inr']))} ahead" if float(t["vs_nifty500_inr"]) >= 0
-                  else f"we are {_inr(-float(t['vs_nifty500_inr']))} behind")
+                  _gap(float(t["vs_nifty500_inr"])))
         l2.metric("Same ₹1 crore in a liquid fund", _inr(float(t["liquid_fund_value_inr"])),
-                  f"we are {_inr(float(t['vs_liquid_fund_inr']))} ahead" if float(t["vs_liquid_fund_inr"]) >= 0
-                  else f"we are {_inr(-float(t['vs_liquid_fund_inr']))} behind")
+                  _gap(float(t["vs_liquid_fund_inr"])))
         if str(t.get("benchmark_provisional")) == "True":
             l1.caption("Provisional: niftyindices.com has not given the latest Nifty 500 TRI yet, so the missing "
                        "day(s) use the Nifty 500 price index (dividends left out, ~0.005% a day). It corrects itself "
@@ -924,9 +911,9 @@ with tab_overview:
         n500_txt = (f"Nifty 500 {float(n500_x):,.1f}% · " if n500_x is not None and pd.notna(n500_x)
                     and str(n500_x) != "nan" else "")
         l4.metric("XIRR (annualised)", f"{float(xirr_val):,.1f}%" if pd.notna(xirr_val) and str(xirr_val) != "nan" else "—",
-                  f"{n500_txt}from {n_days} calendar day{'s' if n_days != 1 else ''}", delta_color="off",
                   help="XIRR compounds the return so far to a full year: over a few days it is very large and swings "
                        "with every move. The return actually earned is the P&L % above.")
+        l4.caption(f"{n500_txt}from {n_days} calendar day{'s' if n_days != 1 else ''}")
         roll_df = _out("hedge_roll.csv")
         if not roll_df.empty:
             rv = dict(zip(roll_df["field"], roll_df["value"]))
@@ -1780,7 +1767,9 @@ with tab_risk:
                 "selection uses. Weekly ρ₁ = lag-1 autocorrelation of non-overlapping 5-session returns (a short-horizon "
                 "momentum check; significant beyond its own bound)."
             )
-            st.dataframe(ac_df.fillna({"significant_lags": "none"}).rename(columns={
+            st.dataframe(ac_df.assign(significant_lags=ac_df["significant_lags"].map(
+                lambda v: "none" if pd.isna(v) else (str(int(v)) if isinstance(v, float) and v.is_integer() else str(v)))
+            ).rename(columns={
                 "symbol": "Stock", "observations": "Days", "ar1_phi": "AR(1) φ", "ar1_t": "t", "rho_1": "ρ1", "rho_2": "ρ2",
                 "rho_3": "ρ3", "rho_4": "ρ4", "rho_5": "ρ5", "significance_bound": "±bound",
                 "significant_lags": "Significant lags", "ljung_box_q": "Ljung-Box Q", "ljung_box_critical_5pct": "Q 5% crit.",
@@ -2070,14 +2059,14 @@ with tab_risk:
                 "terms (the index the puts are on): a stock's delta = value × its beta vs the Nifty 50; the puts' Greeks are "
                 "Black-Scholes at the settlement price's implied volatility and the T-bill rate.")
             g1, g2, g3, g4 = st.columns(4)
-            g1.metric("Stocks delta", f"{gf('Stocks delta (Nifty units)'):,.0f} units",
-                      f"{_inr(gf('Stocks delta (Rs per 1% Nifty move)'))} per 1% Nifty", delta_color="off")
-            g2.metric("Puts delta", f"{gf('Puts delta (Nifty units)'):,.0f} units",
-                      f"Δ {gf('Puts delta per unit'):.2f} per unit", delta_color="off")
-            g3.metric("Net portfolio delta", f"{gf('Net delta (Nifty units)'):,.0f} units",
-                      f"{_inr(gf('Net delta (Rs per 1% Nifty move)'))} per 1% Nifty", delta_color="off")
-            g4.metric("Stocks' delta hedged", f"{hedged_pct:.0f}%",
-                      "rises as the Nifty falls", delta_color="off")
+            g1.metric("Stocks delta", f"{gf('Stocks delta (Nifty units)'):,.0f} units")
+            g1.caption(f"{_inr(gf('Stocks delta (Rs per 1% Nifty move)'))} per 1% Nifty")
+            g2.metric("Options delta", f"{gf('Puts delta (Nifty units)'):,.0f} units")
+            g2.caption(f"Δ {gf('Puts delta per unit'):.2f} per unit")
+            g3.metric("Net portfolio delta", f"{gf('Net delta (Nifty units)'):,.0f} units")
+            g3.caption(f"{_inr(gf('Net delta (Rs per 1% Nifty move)'))} per 1% Nifty")
+            g4.metric("Stocks' delta hedged", f"{hedged_pct:.0f}%")
+            g4.caption("rises as the Nifty falls")
             h1, h2, h3, h4 = st.columns(4)
             h1.metric("Gamma (per 1% Nifty move)", f"{gf('Puts gamma (delta change per 1% Nifty move, units)'):,.1f} units",
                       help="A 1% fall makes the puts' delta this many Nifty units more negative: the cover grows into a fall")
