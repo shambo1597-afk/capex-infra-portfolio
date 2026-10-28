@@ -4,15 +4,15 @@ Horizon (professor exits),2026-10-29
 Sessions to the horizon,2
 Option expiry used,2026-11-03
 Nifty 50 spot,22749.75
-At-the-money implied volatility (%),15.83
-"Risk-free (91-day T-bill, %)",5.7281
-"Nifty drift in the simulation (CAPM market return, % a year)",12.81
+At-the-money implied volatility (%),15.86
+"Risk-free (91-day T-bill, %)",5.9337
+"Nifty drift in the simulation (CAPM market return, % a year)",13.01
 Units per strategy,520
-Stocks valued (Rs),9038636
+Stocks valued (Rs),9194141
 Beta on rises (h*),1.068
-Beta on falls (downside),1.44
-R^2 vs Nifty 50,0.265
-Stocks own daily volatility (%),1.571
+Beta on falls (downside),1.445
+R^2 vs Nifty 50,0.264
+Stocks own daily volatility (%),1.578
 Expected-cost budget (% of portfolio),0.3
 Minimum CVaR cut to count as cover (% of portfolio),1.0
 "P(Nifty below 22,750 on 29-Oct)",50.3
