@@ -1,15 +1,15 @@
 name,kind,sigma,expected_return
-WELCORP,stock,0.455776,1.138284
-RPEL,stock,0.539919,1.019817
-SBCL,stock,0.579303,0.927216
-AEROFLEX,stock,0.639980,1.290743
-TDPOWERSYS,stock,0.565419,0.939326
-RAMRAT,stock,0.440946,0.673881
-ACMESOLAR,stock,0.393615,0.459718
-GOODLUCK,stock,0.464778,0.306986
-Our portfolio,portfolio,0.288510,0.808125
-Nifty 500 TRI (market),market,0.146248,-0.080226
-Tangency (max Sharpe of the invested stocks),tangency,0.318852,0.993429
-GMVP (long-only),gmvp,0.265067,0.675029
-GMVP (5-15% limits),gmvp_bounded,0.283614,0.786177
+WELCORP,stock,0.460533,1.052387
+RPEL,stock,0.540628,1.006888
+SBCL,stock,0.579470,0.923109
+AEROFLEX,stock,0.638935,1.319705
+TDPOWERSYS,stock,0.565235,0.909119
+RAMRAT,stock,0.449975,0.594145
+ACMESOLAR,stock,0.394549,0.422011
+GOODLUCK,stock,0.465768,0.280301
+Our portfolio,portfolio,0.291590,0.773504
+Nifty 500 TRI (market),market,0.146547,-0.065324
+Tangency (max Sharpe of the invested stocks),tangency,0.336447,0.996733
+GMVP (long-only),gmvp,0.268782,0.628236
+GMVP (5-15% limits),gmvp_bounded,0.286612,0.747674
 Risk-free (1D rate),risk_free,0.000000,0.052218

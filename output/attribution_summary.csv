@@ -1,10 +1,10 @@
 as_of,item,inr,note,pct_of_capital
-2026-10-29,Portfolio P&L,-589875.0,"stocks + puts + cash, from the ledger",-5.9
-2026-10-29,Same Rs 1 crore in the Nifty 500 TRI,-126548.0,the benchmark,-1.27
-2026-10-29,Gap vs the Nifty 500,-463327.0,= the four effects below,-4.63
-2026-10-29,1. Market exposure,-25182.0,market part of the stocks minus the benchmark: beta above or below 1 and the money held outside stocks,-0.25
-2026-10-29,2. Stock selection,-368020.0,the stocks' own moves beyond what their beta explains (the picks and the capex theme),-3.68
-2026-10-29,2a. of which the capex theme,-528640.0,"the capex universe's own move (equal weight, net of its beta 1.22 x the Nifty 500)",-5.29
-2026-10-29,2b. of which our picks within the theme,160616.0,our stocks against the average capex stock,1.61
-2026-10-29,3. Hedge (Nifty puts),-71006.0,"premium paid and received, puts marked at settlement",-0.71
-2026-10-29,4. Cash,881.0,interest on the cash (liquid ETF / overnight rate),0.01
+2026-10-30,Portfolio P&L,-934314.0,"stocks + puts + cash, from the ledger",-9.34
+2026-10-30,Same Rs 1 crore in the Nifty 500 TRI,-146376.0,the benchmark,-1.46
+2026-10-30,Gap vs the Nifty 500,-787938.0,= the four effects below,-7.88
+2026-10-30,1. Market exposure,-29176.0,market part of the stocks minus the benchmark: beta above or below 1 and the money held outside stocks,-0.29
+2026-10-30,2. Stock selection,-674773.0,the stocks' own moves beyond what their beta explains (the picks and the capex theme),-6.75
+2026-10-30,2a. of which the capex theme,-707147.0,"the capex universe's own move (equal weight, net of its beta 1.23 x the Nifty 500)",-7.07
+2026-10-30,2b. of which our picks within the theme,32375.0,our stocks against the average capex stock,0.32
+2026-10-30,3. Hedge (Nifty puts),-84890.0,"premium paid and received, puts marked at settlement",-0.85
+2026-10-30,4. Cash,902.0,interest on the cash (liquid ETF / overnight rate),0.01

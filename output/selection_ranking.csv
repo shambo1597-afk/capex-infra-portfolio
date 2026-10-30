@@ -1,11 +1,9 @@
 selection_rank,symbol,company_name,sector,locked,rule_pick,why_not_picked,rs_6m_skip1m,rs_score_vs_nifty500,di_gap,latest_adx,rrg_quadrant_vs_nifty500,rrg_quadrant_vs_sector,conviction,soft_fundamental_fails,median_turnover_cr,qtr_net_profit,qtr_profit_yoy,qtr_sales_yoy,pe,business_focus_note
-1,CEMPRO,Cemindia Project,Capital Goods,False,True,,82.4,2.0,12.69,14.43,LEADING,IMPROVING,Moderate,,36.06,140.83,2.62,5.61,35.9,
-2,AEROFLEX,Aeroflex,Capital Goods,True,True,,77.55,25.52,14.64,16.6,WEAKENING,WEAKENING,Low,,64.45,18.79,162.06,72.39,103.6,"FIT: stainless-steel metallic flexible hoses, bellows and flow assemblies for industrial, oil & gas, HVAC and process plants (Sat Industries group)."
-3,ACMESOLAR,ACME Solar Hold.,Power,True,True,,45.82,19.45,7.16,17.71,LEADING,LEADING,High,,48.77,235.33,64.83,67.81,52.58,"FIT: renewable independent power producer (solar, wind, hybrid, firm power), 25-year PPAs."
-4,CEIGALL,Ceigall India,Capital Goods,False,True,,16.61,23.66,7.02,25.61,LEADING,LEADING,High,Cash from operations last year > 0 (Rs Cr),11.67,63.75,18.23,15.68,20.81,
-5,LMW,LMW,Capital Goods,False,True,,15.95,7.31,6.32,17.73,LEADING,LEADING,High,ROCE > 8%; OPM > 8%,6.56,55.52,369.17,24.0,100.19,
-6,APLAPOLLO,APL Apollo Tubes,Capital Goods,False,True,,13.53,23.43,4.08,21.98,WEAKENING,LEADING,Moderate,OPM > 8%,129.42,263.11,10.94,8.45,50.03,
-7,ULTRACEMCO,UltraTech Cem.,Cement,False,True,,-4.36,-0.82,5.09,22.45,IMPROVING,LEADING,Moderate,,272.88,2603.72,15.75,15.85,38.11,
-8,LT,Larsen & Toubro,Capital Goods,False,True,,-4.38,3.64,10.17,31.94,LEADING,LEADING,High,,566.87,4988.03,13.98,6.69,30.27,
-9,NHPC,NHPC Ltd,Power,False,True,,-10.4,5.14,8.47,29.12,LEADING,LEADING,High,ROCE > 6%,64.43,1178.09,2.9,18.5,20.11,
-10,TRANSRAILL,Transrail Light,Capital Goods,False,True,,-24.3,-6.41,3.14,19.93,LAGGING,IMPROVING,Moderate,,16.28,107.88,1.95,4.59,15.08,
+1,CEMPRO,Cemindia Project,Capital Goods,False,True,,83.42,-0.65,11.98,15.29,IMPROVING,IMPROVING,Moderate,,36.06,140.83,2.62,5.61,35.9,
+2,AEROFLEX,Aeroflex,Capital Goods,True,True,,80.18,31.98,13.64,17.24,WEAKENING,WEAKENING,Low,,64.45,18.79,162.06,72.39,103.6,"FIT: stainless-steel metallic flexible hoses, bellows and flow assemblies for industrial, oil & gas, HVAC and process plants (Sat Industries group)."
+3,ACMESOLAR,ACME Solar Hold.,Power,True,True,,47.86,18.47,2.86,16.89,LEADING,LEADING,High,,47.8,235.33,64.83,67.81,52.58,"FIT: renewable independent power producer (solar, wind, hybrid, firm power), 25-year PPAs."
+4,CEIGALL,Ceigall India,Capital Goods,False,True,,15.02,22.82,6.7,25.07,LEADING,LEADING,High,Cash from operations last year > 0 (Rs Cr),11.67,63.75,18.23,15.68,20.81,
+5,APLAPOLLO,APL Apollo Tubes,Capital Goods,False,True,,14.66,20.61,3.86,21.06,WEAKENING,LEADING,Moderate,OPM > 8%,130.35,263.11,10.94,8.45,50.03,
+6,LT,Larsen & Toubro,Capital Goods,False,True,,-5.1,4.57,12.06,32.0,LEADING,LEADING,High,,566.87,4988.03,13.98,6.69,30.27,
+7,ULTRACEMCO,UltraTech Cem.,Cement,False,True,,-5.12,-0.53,4.83,22.1,IMPROVING,LEADING,Moderate,,261.12,2603.72,15.75,15.85,38.11,
+8,NHPC,NHPC Ltd,Power,False,True,,-9.44,5.82,9.59,28.41,LEADING,LEADING,High,ROCE > 6%,65.15,1178.09,2.9,18.5,20.11,
