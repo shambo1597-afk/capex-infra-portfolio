@@ -1,61 +1,61 @@
 strategy,nifty_move,probability_pct,mean_portfolio_pnl_inr
 Keep the options held (NIFTY 2026-12-29 22000 PE and 2 more legs),below -6%,0.0,
-Keep the options held (NIFTY 2026-12-29 22000 PE and 2 more legs),-6% to -3%,0.0,
-Keep the options held (NIFTY 2026-12-29 22000 PE and 2 more legs),-3% to -1%,8.0,-92136.0
-Keep the options held (NIFTY 2026-12-29 22000 PE and 2 more legs),-1% to +1%,82.6,-736.0
-Keep the options held (NIFTY 2026-12-29 22000 PE and 2 more legs),+1% to +3%,9.3,91069.0
-Keep the options held (NIFTY 2026-12-29 22000 PE and 2 more legs),above +3%,0.0,269641.0
+Keep the options held (NIFTY 2026-12-29 22000 PE and 2 more legs),-6% to -3%,2.4,-312570.0
+Keep the options held (NIFTY 2026-12-29 22000 PE and 2 more legs),-3% to -1%,23.0,-164226.0
+Keep the options held (NIFTY 2026-12-29 22000 PE and 2 more legs),-1% to +1%,48.4,-7383.0
+Keep the options held (NIFTY 2026-12-29 22000 PE and 2 more legs),+1% to +3%,23.5,133948.0
+Keep the options held (NIFTY 2026-12-29 22000 PE and 2 more legs),above +3%,2.8,289101.0
 No hedge: sell the puts held,below -6%,0.0,
-No hedge: sell the puts held,-6% to -3%,0.0,
-No hedge: sell the puts held,-3% to -1%,8.0,-175581.0
-No hedge: sell the puts held,-1% to +1%,82.6,-7847.0
-No hedge: sell the puts held,+1% to +3%,9.3,127722.0
-No hedge: sell the puts held,above +3%,0.0,334134.0
-Switch to a protective put 23050,below -6%,0.0,
-Switch to a protective put 23050,-6% to -3%,0.0,
-Switch to a protective put 23050,-3% to -1%,8.0,-66916.0
-Switch to a protective put 23050,-1% to +1%,82.6,2585.0
-Switch to a protective put 23050,+1% to +3%,9.3,83696.0
-Switch to a protective put 23050,above +3%,0.0,270210.0
-Switch to a protective put 22600,below -6%,0.0,
-Switch to a protective put 22600,-6% to -3%,0.0,
-Switch to a protective put 22600,-3% to -1%,8.0,-135032.0
-Switch to a protective put 22600,-1% to +1%,82.6,-2122.0
-Switch to a protective put 22600,+1% to +3%,9.3,121091.0
-Switch to a protective put 22600,above +3%,0.0,325027.0
-Switch to a protective put 22350,below -6%,0.0,
-Switch to a protective put 22350,-6% to -3%,0.0,
-Switch to a protective put 22350,-3% to -1%,8.0,-154015.0
-Switch to a protective put 22350,-1% to +1%,82.6,-4360.0
-Switch to a protective put 22350,+1% to +3%,9.3,125174.0
-Switch to a protective put 22350,above +3%,0.0,330351.0
-Switch to a bear put spread 23050/22350,below -6%,0.0,
-Switch to a bear put spread 23050/22350,-6% to -3%,0.0,
-Switch to a bear put spread 23050/22350,-3% to -1%,8.0,-88482.0
-Switch to a bear put spread 23050/22350,-1% to +1%,82.6,-901.0
-Switch to a bear put spread 23050/22350,+1% to +3%,9.3,86244.0
-Switch to a bear put spread 23050/22350,above +3%,0.0,273993.0
-Switch to a bear put spread 23050/21900,below -6%,0.0,
-Switch to a bear put spread 23050/21900,-6% to -3%,0.0,
-Switch to a bear put spread 23050/21900,-3% to -1%,8.0,-76281.0
-Switch to a bear put spread 23050/21900,-1% to +1%,82.6,626.0
-Switch to a bear put spread 23050/21900,+1% to +3%,9.3,84445.0
-Switch to a bear put spread 23050/21900,above +3%,0.0,271695.0
-Switch to a bear put spread 22600/21900,below -6%,0.0,
-Switch to a bear put spread 22600/21900,-6% to -3%,0.0,
-Switch to a bear put spread 22600/21900,-3% to -1%,8.0,-144398.0
-Switch to a bear put spread 22600/21900,-1% to +1%,82.6,-4081.0
-Switch to a bear put spread 22600/21900,+1% to +3%,9.3,121839.0
-Switch to a bear put spread 22600/21900,above +3%,0.0,326512.0
-"Switch to a collar: long put 22600, short call 23350",below -6%,0.0,
-"Switch to a collar: long put 22600, short call 23350",-6% to -3%,0.0,
-"Switch to a collar: long put 22600, short call 23350",-3% to -1%,8.0,-127188.0
-"Switch to a collar: long put 22600, short call 23350",-1% to +1%,82.6,-9469.0
-"Switch to a collar: long put 22600, short call 23350",+1% to +3%,9.3,59981.0
-"Switch to a collar: long put 22600, short call 23350",above +3%,0.0,104318.0
+No hedge: sell the puts held,-6% to -3%,2.4,-467398.0
+No hedge: sell the puts held,-3% to -1%,23.0,-224293.0
+No hedge: sell the puts held,-1% to +1%,48.4,-10833.0
+No hedge: sell the puts held,+1% to +3%,23.5,162917.0
+No hedge: sell the puts held,above +3%,2.8,335282.0
+Switch to a protective put 23450,below -6%,0.0,
+Switch to a protective put 23450,-6% to -3%,2.4,-83320.0
+Switch to a protective put 23450,-3% to -1%,23.0,-9485.0
+Switch to a protective put 23450,-1% to +1%,48.4,80733.0
+Switch to a protective put 23450,+1% to +3%,23.5,170280.0
+Switch to a protective put 23450,above +3%,2.8,293047.0
+Switch to a protective put 22950,below -6%,0.0,
+Switch to a protective put 22950,-6% to -3%,2.4,-230381.0
+Switch to a protective put 22950,-3% to -1%,23.0,-110113.0
+Switch to a protective put 22950,-1% to +1%,48.4,34746.0
+Switch to a protective put 22950,+1% to +3%,23.5,175455.0
+Switch to a protective put 22950,above +3%,2.8,335566.0
+Switch to a protective put 22750,below -6%,0.0,
+Switch to a protective put 22750,-6% to -3%,2.4,-266998.0
+Switch to a protective put 22750,-3% to -1%,23.0,-123105.0
+Switch to a protective put 22750,-1% to +1%,48.4,34316.0
+Switch to a protective put 22750,+1% to +3%,23.5,178984.0
+Switch to a protective put 22750,above +3%,2.8,338731.0
+Switch to a bear put spread 23450/22750,below -6%,0.0,
+Switch to a bear put spread 23450/22750,-6% to -3%,2.4,-283720.0
+Switch to a bear put spread 23450/22750,-3% to -1%,23.0,-110673.0
+Switch to a bear put spread 23450/22750,-1% to +1%,48.4,35584.0
+Switch to a bear put spread 23450/22750,+1% to +3%,23.5,154213.0
+Switch to a bear put spread 23450/22750,above +3%,2.8,289598.0
+Switch to a bear put spread 23450/22250,below -6%,0.0,
+Switch to a bear put spread 23450/22250,-6% to -3%,2.4,-236059.0
+Switch to a bear put spread 23450/22250,-3% to -1%,23.0,-96551.0
+Switch to a bear put spread 23450/22250,-1% to +1%,48.4,33473.0
+Switch to a bear put spread 23450/22250,+1% to +3%,23.5,147043.0
+Switch to a bear put spread 23450/22250,above +3%,2.8,283235.0
+Switch to a bear put spread 22950/22250,below -6%,0.0,
+Switch to a bear put spread 22950/22250,-6% to -3%,2.4,-383119.0
+Switch to a bear put spread 22950/22250,-3% to -1%,23.0,-197179.0
+Switch to a bear put spread 22950/22250,-1% to +1%,48.4,-12514.0
+Switch to a bear put spread 22950/22250,+1% to +3%,23.5,152218.0
+Switch to a bear put spread 22950/22250,above +3%,2.8,325754.0
+"Switch to a collar: long put 22950, short call 23650",below -6%,0.0,
+"Switch to a collar: long put 22950, short call 23650",-6% to -3%,2.4,-227386.0
+"Switch to a collar: long put 22950, short call 23650",-3% to -1%,23.0,-110468.0
+"Switch to a collar: long put 22950, short call 23650",-1% to +1%,48.4,2507.0
+"Switch to a collar: long put 22950, short call 23650",+1% to +3%,23.5,33017.0
+"Switch to a collar: long put 22950, short call 23650",above +3%,2.8,-4755.0
 "Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",below -6%,0.0,
-"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",-6% to -3%,0.0,
-"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",-3% to -1%,8.0,-103226.0
-"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",-1% to +1%,82.6,-2942.0
-"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",+1% to +3%,9.3,92045.0
-"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",above +3%,0.0,271439.0
+"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",-6% to -3%,2.4,-452337.0
+"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",-3% to -1%,23.0,-247842.0
+"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",-1% to +1%,48.4,-55824.0
+"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",+1% to +3%,23.5,107873.0
+"Calendar spread: keep the puts held, sell the 2026-11-03 22000 put",above +3%,2.8,276523.0

@@ -1,9 +1,15 @@
 selection_rank,symbol,company_name,sector,locked,rule_pick,why_not_picked,rs_6m_skip1m,rs_score_vs_nifty500,di_gap,latest_adx,rrg_quadrant_vs_nifty500,rrg_quadrant_vs_sector,conviction,soft_fundamental_fails,median_turnover_cr,qtr_net_profit,qtr_profit_yoy,qtr_sales_yoy,pe,business_focus_note
-1,CEMPRO,Cemindia Project,Capital Goods,False,True,,83.42,-0.65,11.98,15.29,IMPROVING,IMPROVING,Moderate,,36.06,140.83,2.62,5.61,35.9,
-2,AEROFLEX,Aeroflex,Capital Goods,True,True,,80.18,31.98,13.64,17.24,WEAKENING,WEAKENING,Low,,64.45,18.79,162.06,72.39,103.6,"FIT: stainless-steel metallic flexible hoses, bellows and flow assemblies for industrial, oil & gas, HVAC and process plants (Sat Industries group)."
-3,ACMESOLAR,ACME Solar Hold.,Power,True,True,,47.86,18.47,2.86,16.89,LEADING,LEADING,High,,47.8,235.33,64.83,67.81,52.58,"FIT: renewable independent power producer (solar, wind, hybrid, firm power), 25-year PPAs."
-4,CEIGALL,Ceigall India,Capital Goods,False,True,,15.02,22.82,6.7,25.07,LEADING,LEADING,High,Cash from operations last year > 0 (Rs Cr),11.67,63.75,18.23,15.68,20.81,
-5,APLAPOLLO,APL Apollo Tubes,Capital Goods,False,True,,14.66,20.61,3.86,21.06,WEAKENING,LEADING,Moderate,OPM > 8%,130.35,263.11,10.94,8.45,50.03,
-6,LT,Larsen & Toubro,Capital Goods,False,True,,-5.1,4.57,12.06,32.0,LEADING,LEADING,High,,566.87,4988.03,13.98,6.69,30.27,
-7,ULTRACEMCO,UltraTech Cem.,Cement,False,True,,-5.12,-0.53,4.83,22.1,IMPROVING,LEADING,Moderate,,261.12,2603.72,15.75,15.85,38.11,
-8,NHPC,NHPC Ltd,Power,False,True,,-9.44,5.82,9.59,28.41,LEADING,LEADING,High,ROCE > 6%,65.15,1178.09,2.9,18.5,20.11,
+1,SBCL,Shivalik Bimetal,Capital Goods,True,True,,82.66,42.5,2.79,17.45,WEAKENING,WEAKENING,Low,,27.74,33.01,44.07,33.38,62.39,"FIT: precision electrical components. Thermostatic bimetals (~40% of revenue; ~65% of that goes into switchgear and circuit breakers), shunt resistors (~40%: smart meters, EV battery management, energy storage) and electrical contacts (~19%). Mostly power distribution / switchgear supply chain; the EV part is a minority. Screener's 'Iron & Steel Products' label understates this."
+2,AEROFLEX,Aeroflex,Capital Goods,True,True,,78.82,23.19,6.31,16.84,WEAKENING,WEAKENING,Low,,67.17,18.79,162.06,72.39,103.6,"FIT: stainless-steel metallic flexible hoses, bellows and flow assemblies for industrial, oil & gas, HVAC and process plants (Sat Industries group)."
+3,CEMPRO,Cemindia Project,Capital Goods,False,True,,48.93,-0.52,11.43,16.08,IMPROVING,IMPROVING,Moderate,,35.64,140.83,2.62,5.61,35.9,
+4,ACMESOLAR,ACME Solar Hold.,Power,True,True,,47.65,20.68,3.24,16.22,LEADING,LEADING,High,,47.66,235.33,64.83,67.81,52.58,"FIT: renewable independent power producer (solar, wind, hybrid, firm power), 25-year PPAs."
+5,ENGINERSIN,Engineers India,Capital Goods,True,True,,25.58,35.45,5.94,31.94,WEAKENING,WEAKENING,Low,,81.71,157.94,141.5,-5.8,22.62,"FIT: engineering consultancy and turnkey (LSTK) EPC for refineries, petrochemicals, fertilisers and infrastructure; Screener: Construction > Civil Construction (EPC)."
+6,CEIGALL,Ceigall India,Capital Goods,False,True,,15.73,19.7,5.69,24.42,LEADING,LEADING,High,Cash from operations last year > 0 (Rs Cr),11.62,63.75,18.23,15.68,20.81,
+7,ULTRACEMCO,UltraTech Cem.,Cement,False,True,,-2.74,0.86,11.03,23.02,LEADING,LEADING,High,,259.42,2603.72,15.75,15.85,38.11,
+8,INGERRAND,Ingersoll-Rand,Capital Goods,False,True,,-3.5,2.62,7.92,28.75,LEADING,LEADING,High,,5.91,70.46,19.46,20.34,48.67,
+9,LT,Larsen & Toubro,Capital Goods,False,True,,-3.63,5.22,18.17,32.88,LEADING,LEADING,High,,566.87,4988.03,13.98,6.69,30.27,
+10,JSWCEMENT,JSW Cement,Cement,False,True,,-4.73,-4.68,12.26,20.01,IMPROVING,LEADING,Moderate,,14.98,153.43,359.81,21.58,19.96,
+11,TIMKEN,Timken India,Capital Goods,False,True,,-5.84,1.11,5.89,28.13,LEADING,IMPROVING,Moderate,,11.61,115.13,10.47,14.87,58.93,
+12,NHPC,NHPC Ltd,Power,False,True,,-9.79,5.26,15.44,28.46,LEADING,LEADING,High,ROCE > 6%,65.15,1178.09,2.9,18.5,20.11,
+13,NTPC,NTPC,Power,False,True,,-16.45,-1.79,8.37,40.32,IMPROVING,LEADING,Moderate,,250.04,6896.44,11.82,7.81,11.41,
+14,TATAPOWER,Tata Power Co.,Power,False,True,,-16.55,-1.32,3.08,19.53,LAGGING,LEADING,Moderate,,132.22,1400.86,10.95,5.63,29.99,
