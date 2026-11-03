@@ -269,7 +269,7 @@ def run(as_of: Optional[date] = None) -> Optional[Dict[str, pd.DataFrame]]:
     from risk_model import option_legs
     extra = []
     if held_leg is not None:
-        for lg in option_legs():
+        for lg in option_legs(as_of=fo_date):
             if lg["instrument"] == held["instrument"]:
                 continue
             o = fo[(fo["FinInstrmTp"] == "IDO") & (fo["OptnTp"] == lg["type"]) & (fo["XpryDt"] == lg["expiry"])

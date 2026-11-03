@@ -169,6 +169,9 @@ def test_option_legs_and_core_put_with_a_spread_overlay(tmp_path):
     assert held_put(csv)["instrument"] == "NIFTY 2026-12-29 22000 PE"
     units = {lg["instrument"]: lg["units"] for lg in option_legs(csv)}
     assert units == {"NIFTY 2026-12-29 22000 PE": 520, "NIFTY 2026-11-03 22750 PE": 520, "NIFTY 2026-11-03 22100 PE": -520}
+    # On expiry day the spread still counts; the day after, only the December put carries risk
+    assert len(option_legs(csv, as_of=date(2026, 11, 3))) == 3
+    assert [lg["instrument"] for lg in option_legs(csv, as_of=date(2026, 11, 4))] == ["NIFTY 2026-12-29 22000 PE"]
 
 
 def test_spread_sensitivity_is_capped_between_its_strikes():

@@ -100,7 +100,7 @@ def put_delta_position(as_of: date) -> Optional[float]:
     from risk_free import risk_free_3m
     from risk_model import fetch_nifty_derivatives, option_legs
 
-    legs = option_legs()
+    legs = option_legs(as_of=as_of)
     fo = fetch_nifty_derivatives(as_of, use_cache=True, save=False) if legs else None
     if not legs or fo is None or fo.empty:
         return None

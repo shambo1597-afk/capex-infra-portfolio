@@ -516,9 +516,10 @@ def hedge_scenarios(portfolio_value: float, beta: float, spot: float, put: pd.Se
     return pd.DataFrame(rows)
 
 
-def option_legs(trades_csv: Path = TRADES_CSV) -> List[Dict[str, object]]:
+def option_legs(trades_csv: Path = TRADES_CSV, as_of: Optional[date] = None) -> List[Dict[str, object]]:
     """Every option position open in the trade ledger: instrument, strike, expiry, type ('PE'/'CE') and signed
-    units (negative = written). The core hedge plus any overlay such as a bear put spread."""
+    units (negative = written). The core hedge plus any overlay such as a bear put spread. With `as_of`, legs that
+    expired before that date are left out: an index option is cash-settled at expiry and carries no more risk."""
     if not Path(trades_csv).exists():
         return []
     from tracker import ledger_positions, parse_option
@@ -526,7 +527,7 @@ def option_legs(trades_csv: Path = TRADES_CSV) -> List[Dict[str, object]]:
     out = []
     for inst, q in ledger_positions(pd.read_csv(trades_csv)).items():
         o = parse_option(inst)
-        if o and q:
+        if o and q and (as_of is None or pd.Timestamp(o["expiry"]) >= pd.Timestamp(as_of)):
             out.append({"instrument": inst, "strike": o["strike"], "expiry": o["expiry"], "type": o["type"],
                         "units": int(q)})
     return out

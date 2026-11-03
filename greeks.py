@@ -105,7 +105,7 @@ def run() -> Optional[Dict[str, pd.DataFrame]]:
     stocks["delta_inr_per_1pct"] = (stocks["value_inr"] * stocks["beta_vs_nifty50"] / 100).round(0)
     stock_delta = float((stocks["value_inr"] * stocks["beta_vs_nifty50"]).sum())  # Rs per 100% Nifty move
 
-    held, legs_held = held_put(), option_legs()
+    held, legs_held = held_put(), option_legs(as_of=as_of.date())
     fo = fetch_nifty_derivatives(as_of.date(), use_cache=True, save=False) if held else None
     if not held or fo is None or fo.empty:
         logger.warning("No puts held or no F&O file for %s: Greeks skipped.", as_of.date())

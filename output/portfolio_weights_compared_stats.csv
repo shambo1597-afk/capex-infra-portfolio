@@ -1,5 +1,5 @@
 portfolio,volatility_pct,mean_return_pct,sharpe,effective_n_stocks,largest_weight_pct,stocks_above_1pct
-Our portfolio (equal risk contribution),29.08,73.98,2.36,7.8,15.0,8
-GMVP (long-only),26.98,64.65,2.2,5.2,33.0,7
-GMVP (5-15% limits),28.59,71.9,2.33,7.5,15.0,8
-Tangency (max Sharpe),31.63,89.61,2.67,4.9,33.5,7
+Our portfolio (equal risk contribution),29.03,74.36,2.38,7.8,15.0,8
+GMVP (long-only),26.93,64.51,2.2,5.2,33.0,7
+GMVP (5-15% limits),28.54,72.25,2.35,7.5,15.0,8
+Tangency (max Sharpe),31.68,90.12,2.68,5.0,33.0,7
