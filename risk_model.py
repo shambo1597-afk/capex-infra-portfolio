@@ -27,9 +27,9 @@ import logging
 import math
 import time
 import zipfile
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -165,6 +165,30 @@ def load_factor_series(path: Path = FACTORS_CSV) -> pd.DataFrame:
     return df
 
 
+def _expiry_day_settlement(df: pd.DataFrame) -> pd.DataFrame:
+    """On an option's expiry day NSE's bhavcopy puts the index's final settlement price in SttlmPric; the
+    option itself settles at its intrinsic value against that price."""
+    exp = (df["FinInstrmTp"] == "IDO") & (pd.to_datetime(df["XpryDt"]) == pd.to_datetime(df["TradDt"]))
+    if exp.any():
+        df = df.copy()
+        fsp, k = df.loc[exp, "SttlmPric"].astype(float), df.loc[exp, "StrkPric"].astype(float)
+        is_put = df.loc[exp, "OptnTp"] == "PE"
+        df.loc[exp, "SttlmPric"] = np.where(is_put, (k - fsp).clip(lower=0), (fsp - k).clip(lower=0)).round(2)
+    return df
+
+
+def latest_derivatives(as_of: date) -> Tuple[Optional[pd.DataFrame], date]:
+    """The F&O file for `as_of`, or else the latest cached session on or before it (NSE often publishes after the
+    evening run), with the date the prices are from."""
+    fo = fetch_nifty_derivatives(as_of, use_cache=True, save=False)
+    if fo is not None and not fo.empty:
+        return fo, as_of
+    cached = sorted(p for p in DERIVATIVES_DIR.glob("nifty_fo_*.csv") if p.stem[9:] <= f"{as_of:%Y-%m-%d}")
+    if not cached:
+        return None, as_of
+    return _expiry_day_settlement(pd.read_csv(cached[-1])), date.fromisoformat(cached[-1].stem[9:])
+
+
 def fetch_nifty_derivatives(as_of: date, use_cache: bool = True, save: bool = True) -> Optional[pd.DataFrame]:
     """
     Nifty futures and options rows of NSE's F&O bhavcopy for one session (cached as a small CSV in
@@ -172,7 +196,7 @@ def fetch_nifty_derivatives(as_of: date, use_cache: bool = True, save: bool = Tr
     """
     cache = DERIVATIVES_DIR / f"nifty_fo_{as_of:%Y-%m-%d}.csv"
     if use_cache and cache.exists():
-        return pd.read_csv(cache)
+        return _expiry_day_settlement(pd.read_csv(cache))
     from fundamentals import _get_nse_pledge_session  # NSE session with the Akamai cookies
 
     url = NSE_FO_BHAVCOPY_URL_TEMPLATE.format(yyyymmdd=f"{as_of:%Y%m%d}")
@@ -203,7 +227,7 @@ def fetch_nifty_derivatives(as_of: date, use_cache: bool = True, save: bool = Tr
         DERIVATIVES_DIR.mkdir(parents=True, exist_ok=True)
         df.to_csv(cache, index=False)
         logger.info("Saved %d Nifty F&O rows for %s to %s", len(df), as_of, cache)
-    return df
+    return _expiry_day_settlement(df)
 
 
 def stock_return_matrix(stock_data: pd.DataFrame, symbols: List[str]) -> pd.DataFrame:
@@ -518,8 +542,9 @@ def hedge_scenarios(portfolio_value: float, beta: float, spot: float, put: pd.Se
 
 def option_legs(trades_csv: Path = TRADES_CSV, as_of: Optional[date] = None) -> List[Dict[str, object]]:
     """Every option position open in the trade ledger: instrument, strike, expiry, type ('PE'/'CE') and signed
-    units (negative = written). The core hedge plus any overlay such as a bear put spread. With `as_of`, legs that
-    expired before that date are left out: an index option is cash-settled at expiry and carries no more risk."""
+    units (negative = written). The core hedge plus any overlay such as a bear put spread. With `as_of` (a close),
+    legs expiring on or before that date are left out: an index option is cash-settled at expiry and carries no
+    more risk."""
     if not Path(trades_csv).exists():
         return []
     from tracker import ledger_positions, parse_option
@@ -527,7 +552,7 @@ def option_legs(trades_csv: Path = TRADES_CSV, as_of: Optional[date] = None) -> 
     out = []
     for inst, q in ledger_positions(pd.read_csv(trades_csv)).items():
         o = parse_option(inst)
-        if o and q and (as_of is None or pd.Timestamp(o["expiry"]) >= pd.Timestamp(as_of)):
+        if o and q and (as_of is None or pd.Timestamp(o["expiry"]) > pd.Timestamp(as_of)):
             out.append({"instrument": inst, "strike": o["strike"], "expiry": o["expiry"], "type": o["type"],
                         "units": int(q)})
     return out
@@ -681,13 +706,21 @@ def run(as_of: Optional[date] = None, refresh_factors: bool = True) -> Dict[str,
     out = {"single": single, "multi": multi, "capm": capm, "autocorr": autocorr, "risk_reward": rr}
 
     fo = fetch_nifty_derivatives(as_of)
+    # Today's file is often not out by the evening run: take the latest published session first (and cache it),
+    # so the Greeks and VaR do not fall back several days to an older cached file
+    for back in range(1, 6):
+        if fo is not None and not fo.empty:
+            break
+        prev = as_of - timedelta(days=back)
+        if prev.weekday() < 5 and not (DERIVATIVES_DIR / f"nifty_fo_{prev:%Y-%m-%d}.csv").exists():
+            fo = fetch_nifty_derivatives(prev)
     if fo is None or fo.empty:
         cached = sorted(DERIVATIVES_DIR.glob("nifty_fo_*.csv"))
         if not cached:
             logger.warning("No Nifty F&O prices for %s and none cached; hedge plan not rebuilt.", as_of)
             return out
         logger.warning("No Nifty F&O prices for %s; using the latest cached file %s.", as_of, cached[-1].name)
-        fo = pd.read_csv(cached[-1])
+        fo = _expiry_day_settlement(pd.read_csv(cached[-1]))
     plan, cands, scen = build_hedge_plan(port, fx, fo, float(risk["invested_inr"].sum()), held=held_put())
     plan.to_csv(HEDGE_PLAN_CSV, index=False)
     cands.to_csv(PUT_CANDIDATES_CSV, index=False)

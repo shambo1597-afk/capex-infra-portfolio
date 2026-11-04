@@ -98,10 +98,10 @@ def put_delta_position(as_of: date) -> Optional[float]:
     each leg at the implied volatility of its own settlement price in the day's F&O file."""
     from option_pricing import bs_delta, implied_vol
     from risk_free import risk_free_3m
-    from risk_model import fetch_nifty_derivatives, option_legs
+    from risk_model import latest_derivatives, option_legs
 
+    fo, as_of = latest_derivatives(as_of)
     legs = option_legs(as_of=as_of)
-    fo = fetch_nifty_derivatives(as_of, use_cache=True, save=False) if legs else None
     if not legs or fo is None or fo.empty:
         return None
     r = risk_free_3m()[0]

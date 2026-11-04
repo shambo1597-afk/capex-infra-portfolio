@@ -92,7 +92,7 @@ def sensitivity(stock_delta_inr: float, units: int, strike: float, t_now: float,
 def run() -> Optional[Dict[str, pd.DataFrame]]:
     from option_pricing import bs_greeks, implied_vol
     from risk_free import risk_free_3m
-    from risk_model import fetch_nifty_derivatives, held_put, load_factor_series, option_legs, stock_return_matrix
+    from risk_model import held_put, latest_derivatives, load_factor_series, option_legs, stock_return_matrix
     from tracker import TRACKER_POSITIONS_CSV
 
     pos = pd.read_csv(TRACKER_POSITIONS_CSV).set_index("symbol")["value_inr"]
@@ -105,13 +105,15 @@ def run() -> Optional[Dict[str, pd.DataFrame]]:
     stocks["delta_inr_per_1pct"] = (stocks["value_inr"] * stocks["beta_vs_nifty50"] / 100).round(0)
     stock_delta = float((stocks["value_inr"] * stocks["beta_vs_nifty50"]).sum())  # Rs per 100% Nifty move
 
-    held, legs_held = held_put(), option_legs(as_of=as_of.date())
-    fo = fetch_nifty_derivatives(as_of.date(), use_cache=True, save=False) if held else None
+    held = held_put()
+    fo, fo_day = latest_derivatives(as_of.date()) if held else (None, as_of.date())
+    as_of = pd.Timestamp(fo_day)  # the Greeks are at the option prices' date
+    legs_held = option_legs(as_of=fo_day)
     if not held or fo is None or fo.empty:
         logger.warning("No puts held or no F&O file for %s: Greeks skipped.", as_of.date())
         return None
     r = risk_free_3m()[0]
-    exit_day = pd.Timestamp(EVALUATION_END_DATE)
+    exit_day = max(pd.Timestamp(EVALUATION_END_DATE), as_of)  # after the exit the view is from today
     legs, desc = [], []
     for lg in legs_held:
         o = fo[(fo["FinInstrmTp"] == "IDO") & (fo["OptnTp"] == lg["type"]) & (fo["XpryDt"] == lg["expiry"])
@@ -162,7 +164,7 @@ def run() -> Optional[Dict[str, pd.DataFrame]]:
         ("Puts vega (Rs per 1 IV point)", round(book["vega_inr"]), "a jump in fear raises the puts' value"),
         ("Puts theta (Rs per calendar day)", round(book["theta_inr"]), "the daily cost of the insurance"),
         ("Puts rho (Rs per 1 pp rate)", round(book["rho_inr"]), "small: rates barely matter"),
-        ("Exit date for the sensitivity", EVALUATION_END_DATE, f"{(exit_day - as_of).days} days of time decay"),
+        ("Exit date for the sensitivity", str(exit_day.date()), f"{(exit_day - as_of).days} days of time decay"),
     ]
     summary = pd.DataFrame(rows, columns=["metric", "value", "note"])
     sens = sensitivity_legs(stock_delta, legs, r, spot)

@@ -826,8 +826,10 @@ def run(as_of: Optional[date] = None, fetch=None) -> Optional[Dict[str, pd.DataF
 
     # Hedge-ratio drift: the spot and lot size come from tonight's hedge plan (same F&O file), the put's price
     # from its settlement mark
-    held_puts = sorted((i for i, q in ledger_positions(ledger).items() if parse_option(i) and q > 0),
-                       key=lambda i: parse_option(i)["strike"])
+    # The core put plan_hedge_drift sizes: the longest-dated long put (an expired or short-dated overlay is not it)
+    held_puts = sorted((i for i, q in ledger_positions(ledger).items()
+                        if parse_option(i) and parse_option(i)["type"] == "PE" and q > 0),
+                       key=lambda i: (parse_option(i)["expiry"], parse_option(i)["strike"]))
     if held_puts and "Nifty 50 spot" in plan and str(plan.get("Prices as of")) == end.strftime("%Y-%m-%d"):
         drift = plan_hedge_drift(s, ledger, end, ratio, float(plan["Nifty 50 spot"]), int(float(plan["Nifty lot size"])),
                                  marks.get((end.strftime("%Y-%m-%d"), held_puts[-1])),

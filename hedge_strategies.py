@@ -238,6 +238,12 @@ def run(as_of: Optional[date] = None) -> Optional[Dict[str, pd.DataFrame]]:
     spot = float(fo["UndrlygPric"].iloc[0])
     horizon = pd.Timestamp(EVALUATION_END_DATE)
     expiry = choose_expiry(fo, "IDO", EVALUATION_END_DATE)
+    if expiry is None or pd.Timestamp(expiry) <= pd.Timestamp(fo_date):
+        # Past the horizon the comparison has no option left to price; the last table (the decision taken
+        # before the professor's exit) stays as it is
+        logger.warning("Horizon %s has passed (prices of %s): hedge strategies not rebuilt.",
+                       EVALUATION_END_DATE, fo_date)
+        return None
     t = (pd.Timestamp(expiry) - pd.Timestamp(fo_date)).days / 365
     c = chain(fo, expiry, spot, t, r)
     atm = nearest(c, "PE", spot)

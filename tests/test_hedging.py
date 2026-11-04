@@ -169,9 +169,9 @@ def test_option_legs_and_core_put_with_a_spread_overlay(tmp_path):
     assert held_put(csv)["instrument"] == "NIFTY 2026-12-29 22000 PE"
     units = {lg["instrument"]: lg["units"] for lg in option_legs(csv)}
     assert units == {"NIFTY 2026-12-29 22000 PE": 520, "NIFTY 2026-11-03 22750 PE": 520, "NIFTY 2026-11-03 22100 PE": -520}
-    # On expiry day the spread still counts; the day after, only the December put carries risk
-    assert len(option_legs(csv, as_of=date(2026, 11, 3))) == 3
-    assert [lg["instrument"] for lg in option_legs(csv, as_of=date(2026, 11, 4))] == ["NIFTY 2026-12-29 22000 PE"]
+    # The day before expiry the spread still counts; at the expiry close it has settled and only the put remains
+    assert len(option_legs(csv, as_of=date(2026, 11, 2))) == 3
+    assert [lg["instrument"] for lg in option_legs(csv, as_of=date(2026, 11, 3))] == ["NIFTY 2026-12-29 22000 PE"]
 
 
 def test_spread_sensitivity_is_capped_between_its_strikes():
@@ -182,3 +182,13 @@ def test_spread_sensitivity_is_capped_between_its_strikes():
     # Deep in the money both legs pay; the spread's value can never exceed the strike gap
     assert sens.loc[-10, "puts_pnl_now_inr"] > sens.loc[-3, "puts_pnl_now_inr"] > 0
     assert sens.loc[-10, "puts_pnl_now_inr"] < 650 * 520
+
+
+def test_expiry_day_settlement_is_intrinsic_value():
+    from risk_model import _expiry_day_settlement
+    fo = pd.DataFrame({"TradDt": ["2026-11-03"] * 3, "FinInstrmTp": ["IDO"] * 3,
+                       "XpryDt": ["2026-11-03", "2026-11-03", "2026-12-29"], "StrkPric": [22750.0, 24000.0, 22000.0],
+                       "OptnTp": ["PE", "PE", "PE"], "SttlmPric": [23810.85, 23810.85, 98.3]})
+    out = _expiry_day_settlement(fo)
+    # NSE reports the index's final settlement price; the expiring put is worth max(K - FSP, 0)
+    assert out["SttlmPric"].tolist() == [0.0, 189.15, 98.3]
