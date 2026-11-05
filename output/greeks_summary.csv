@@ -1,21 +1,21 @@
 metric,value,note
-As of,2026-11-03,
-Nifty 50 spot,23810.85,"NSE F&O file, underlying price"
-Put held,NIFTY 2026-12-29 22000 PE,"520 units (8 lots), settlement Rs 98.30"
-Options held,long 520 NIFTY 2026-12-29 22000 PE @ 98.30,every leg is in the Greeks and the sensitivity
-Implied volatility (%),19.01,"of the core put, from its settlement price"
-Days to expiry,56,core put
+As of,2026-11-05,
+Nifty 50 spot,24536.6,"NSE F&O file, underlying price"
+Put held,NIFTY 2026-12-29 22000 PE,"520 units (8 lots), settlement Rs 50.65"
+Options held,long 520 NIFTY 2026-12-29 22000 PE @ 50.65,every leg is in the Greeks and the sensitivity
+Implied volatility (%),20.2,"of the core put, from its settlement price"
+Days to expiry,54,core put
 Risk-free (%),5.897,91-day T-bill
-Stocks delta (Nifty units),409,sum of value x beta / spot
-Stocks delta (Rs per 1% Nifty move),97332,
-Puts delta per unit,-0.111,"all option legs, per unit of the core put"
-Puts delta (Nifty units),-58,negative: gains when the Nifty falls
-Puts delta (Rs per 1% Nifty move),-13745,
-Net delta (Nifty units),351,stocks + options
-Net delta (Rs per 1% Nifty move),83587,
-Share of the stocks' delta hedged (%),14.1,rises as the Nifty falls (gamma)
-"Puts gamma (delta change per 1% Nifty move, units)",13.2,a 1% fall makes the options' delta this much more negative
-Puts vega (Rs per 1 IV point),9179,a jump in fear raises the puts' value
-Puts theta (Rs per calendar day),-1328,the daily cost of the insurance
-Puts rho (Rs per 1 pp rate),-2187,small: rates barely matter
-Exit date for the sensitivity,2026-11-03,0 days of time decay
+Stocks delta (Nifty units),354,sum of value x beta / spot
+Stocks delta (Rs per 1% Nifty move),86958,
+Puts delta per unit,-0.0599,"all option legs, per unit of the core put"
+Puts delta (Nifty units),-31,negative: gains when the Nifty falls
+Puts delta (Rs per 1% Nifty move),-7641,
+Net delta (Nifty units),323,stocks + options
+Net delta (Rs per 1% Nifty move),79317,
+Share of the stocks' delta hedged (%),8.8,rises as the Nifty falls (gamma)
+"Puts gamma (delta change per 1% Nifty move, units)",8.0,a 1% fall makes the options' delta this much more negative
+Puts vega (Rs per 1 IV point),5838,a jump in fear raises the puts' value
+Puts theta (Rs per calendar day),-964,the daily cost of the insurance
+Puts rho (Rs per 1 pp rate),-1169,small: rates barely matter
+Exit date for the sensitivity,2026-11-05,0 days of time decay
