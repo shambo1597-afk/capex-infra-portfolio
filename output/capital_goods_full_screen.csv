@@ -1,121 +1,121 @@
 symbol,company_name,index,price_sessions,current_price,passed_technical_screen,technical_fail_reason,rs_score,adx,plus_di,minus_di,trend_direction,rsi,fundamentals_as_of,fundamentals_status,pledged_as_of,market_cap,pass_market_cap,roce,pass_roce,opm,pass_opm,operating_cash_flow,pass_operating_cash_flow,debt_to_equity,pass_debt_to_equity,pledged_pct,pass_pledged_pct,passed_fundamental_screen,failed_criteria,passes_both_screens
-ABB,A B B,Screener: Heavy Electrical Equipment,248,6628.0,False,RS <= +2 pp; trend Bearish,-11.66,29.52,20.6,24.87,Bearish (Downtrend),46.84,,,,,,,,,,,,,,,,,,False
-ACE,Action Const.Eq.,Screener: Construction Vehicles,248,1127.65,False,RS <= +2 pp,1.26,27.88,24.34,22.72,Bullish (Uptrend),53.99,,,,,,,,,,,,,,,,,,False
-AEROFLEX,Aeroflex,Screener: Iron & Steel Products,248,540.3,True,,20.64,18.02,32.6,18.32,Bullish (Uptrend),53.96,2026-09-26,OK,Screener 2026-09-26,6956.63,True,18.92,True,23.41,True,65.84,True,0.02,True,0.0,True,True,,True
-AIAENG,AIA Engineering,Screener: Castings & Forgings,248,3202.2,False,RS <= +2 pp; trend Bearish,-28.93,42.43,6.21,33.52,Bearish (Downtrend),18.95,,,,,,,,,,,,,,,,,,False
-AJAXENGG,Ajax Engineering,Screener: Construction Vehicles,248,563.65,False,RS <= +2 pp; trend Bearish,-5.09,22.45,14.44,19.03,Bearish (Downtrend),51.48,,,,,,,,,,,,,,,,,,False
-APARINDS,Apar Inds.,Screener: Other Electrical Equipment,248,15613.0,False,RS <= +2 pp; trend Bearish,1.81,28.21,17.16,25.08,Bearish (Downtrend),43.14,,,,,,,,,,,,,,,,,,False
-APLAPOLLO,APL Apollo Tubes,Screener: Iron & Steel Products,248,2194.2,True,,14.76,17.23,22.91,17.92,Bullish (Uptrend),55.06,2026-09-26,OK,Screener 2026-09-26,61493.01,True,31.75,True,7.98,False,2103.19,True,0.09,True,0.0,True,False,OPM > 8%,False
-ASTRAL,Astral,Screener: Plastic Products - Industrial,248,1388.0,False,RS <= +2 pp,-1.1,18.1,21.33,16.21,Bullish (Uptrend),48.57,,,,,,,,,,,,,,,,,,False
-ATLANTAELE,Atlanta Electric,Screener: Heavy Electrical Equipment,248,1473.7,False,RS <= +2 pp; trend Bearish,-7.69,20.07,17.63,30.66,Bearish (Downtrend),36.49,,,,,,,,,,,,,,,,,,False
-AZAD,Azad Engineering,Screener: Heavy Electrical Equipment,248,2582.9,False,trend Bearish,7.71,21.63,21.7,26.49,Bearish (Downtrend),44.79,,,,,,,,,,,,,,,,,,False
-BHEL,B H E L,Screener: Heavy Electrical Equipment,248,418.1,True,,3.53,16.96,27.53,24.41,Bullish (Uptrend),51.38,2026-09-26,OK,Screener 2026-09-26,145881.04,True,9.14,True,9.4,True,5837.38,True,0.31,True,0.0,True,True,,True
-BALUFORGE,Balu Forge,Screener: Castings & Forgings,248,514.9,True,,17.63,22.2,29.38,19.27,Bullish (Uptrend),60.94,2026-09-26,OK,Screener 2026-09-26,6152.14,True,22.72,True,26.56,True,31.7,True,0.1,True,1.37,True,True,,True
-BANSALWIRE,Bansal Wire Inds,Screener: Iron & Steel Products,248,63.26,False,RS <= +2 pp,0.89,11.54,23.79,12.64,Bullish (Uptrend),56.61,,,,,,,,,,,,,,,,,,False
-BEML,BEML Ltd,Screener: Construction Vehicles,248,1990.9,True,,21.25,18.03,26.34,19.57,Bullish (Uptrend),50.74,2026-09-26,OK,Screener 2026-09-26,16961.8,True,7.66,False,7.72,False,118.23,True,0.11,True,0.0,True,False,ROCE > 8%; OPM > 8%,False
-CARBORUNIV,Carborundum Uni.,Screener: Abrasives & Bearings,248,1084.6,True,,2.42,17.46,25.93,21.47,Bullish (Uptrend),45.36,2026-09-26,OK,Screener 2026-09-26,24356.11,True,10.52,True,10.95,True,367.36,True,0.11,True,0.0,True,True,,True
-CGPOWER,CG Power & Ind,Screener: Heavy Electrical Equipment,248,808.8,False,RS <= +2 pp; trend Bearish,-6.92,24.42,13.6,28.71,Bearish (Downtrend),42.37,,,,,,,,,,,,,,,,,,False
-CUMMINSIND,Cummins India,"Screener: Compressors, Pumps & Diesel Engines",248,4058.9,False,RS <= +2 pp; trend Bearish,-23.24,32.39,20.56,39.66,Bearish (Downtrend),31.16,,,,,,,,,,,,,,,,,,False
-DEEDEV,DEE Development,Screener: Industrial Products,248,603.05,False,RS <= +2 pp,-7.29,29.05,23.28,21.42,Bullish (Uptrend),55.91,,,,,,,,,,,,,,,,,,False
-DIACABS,Diamond Power,Screener: Other Electrical Equipment,248,388.45,True,,19.08,20.79,29.18,18.51,Bullish (Uptrend),63.87,2026-09-26,OK,Screener 2026-09-26,21201.62,True,24.2,True,9.96,True,-12.15,False,,False,0.0,True,False,Cash from operations last year > 0 (Rs Cr); Debt to equity < 1.5 (missing),False
-ELECON,Elecon Engg.Co,Screener: Heavy Electrical Equipment,248,437.9,True,,2.75,11.84,24.01,21.61,Bullish (Uptrend),50.06,2026-09-26,OK,Screener 2026-09-26,10283.13,True,20.86,True,20.95,True,314.22,True,0.12,True,0.0,True,True,,True
-ELGIEQUIP,Elgi Equipments,"Screener: Compressors, Pumps & Diesel Engines",248,547.1,False,RS <= +2 pp,-4.18,32.86,22.49,20.93,Bullish (Uptrend),47.59,,,,,,,,,,,,,,,,,,False
-EMMVEE,Emmvee Photovol.,Screener: Other Electrical Equipment,240,252.02,False,RS <= +2 pp; trend Bearish,-20.21,37.27,18.3,29.19,Bearish (Downtrend),40.86,,,,,,,,,,,,,,,,,,False
-ESABINDIA,Esab India,Screener: Other Industrial Products,248,5115.5,False,RS <= +2 pp; trend Bearish,-7.37,23.81,18.45,25.4,Bearish (Downtrend),34.62,,,,,,,,,,,,,,,,,,False
-FINCABLES,Finolex Cables,Screener: Cables - Electricals,248,1174.3,False,trend Bearish,19.19,38.23,15.68,27.13,Bearish (Downtrend),40.66,,,,,,,,,,,,,,,,,,False
-FINPIPE,Finolex Inds.,Screener: Plastic Products - Industrial,248,144.78,False,RS <= +2 pp; trend Bearish,-11.23,21.42,18.09,19.44,Bearish (Downtrend),46.3,,,,,,,,,,,,,,,,,,False
-UTLSOLAR,Fujiyama Power,Screener: Other Electrical Equipment,238,387.5,False,RS <= +2 pp,1.3,16.55,24.65,19.73,Bullish (Uptrend),49.57,,,,,,,,,,,,,,,,,,False
-GVT&D,GE Vernova T&D,Screener: Heavy Electrical Equipment,248,4145.0,False,RS <= +2 pp; trend Bearish,-3.86,16.63,21.49,26.31,Bearish (Downtrend),51.74,,,,,,,,,,,,,,,,,,False
-GENUSPOWER,Genus Power,Screener: Other Electrical Equipment,248,289.35,False,RS <= +2 pp,-4.37,20.01,24.64,21.02,Bullish (Uptrend),53.0,,,,,,,,,,,,,,,,,,False
-GMMPFAUDLR,GMM Pfaudler,Screener: Industrial Products,248,1194.2,False,trend Bearish,41.48,24.41,18.22,21.71,Bearish (Downtrend),41.89,,,,,,,,,,,,,,,,,,False
-GOODLUCK,Goodluck India,Screener: Iron & Steel Products,248,533.6,True,,9.04,20.21,23.28,20.88,Bullish (Uptrend),50.47,2026-09-26,OK,Screener 2026-09-26,5241.55,True,14.4,True,10.01,True,200.24,True,0.75,True,0.0,True,True,,True
-GRAPHITE,Graphite India,Screener: Electrodes & Refractories,248,739.95,False,trend Bearish,6.5,23.25,17.16,27.07,Bearish (Downtrend),46.1,,,,,,,,,,,,,,,,,,False
-GREAVESCOT,Greaves Cotton,"Screener: Compressors, Pumps & Diesel Engines",248,205.91,True,,7.25,14.46,20.27,18.4,Bullish (Uptrend),54.42,2026-09-26,OK,Screener 2026-09-26,5469.23,True,10.11,True,6.51,False,32.58,True,0.28,True,0.0,True,False,OPM > 8%,False
-GRINDWELL,Grindwell Norton,Screener: Abrasives & Bearings,248,1929.8,False,RS <= +2 pp,-5.98,23.18,19.88,12.63,Bullish (Uptrend),50.53,,,,,,,,,,,,,,,,,,False
-HBLENGINE,HBL Engineering,Screener: Other Industrial Products,248,855.2,True,,18.27,21.73,31.66,16.12,Bullish (Uptrend),65.05,2026-09-26,OK,Screener 2026-09-26,22341.91,True,59.3,True,31.98,True,738.44,True,0.03,True,0.0,True,True,,True
-POWERINDIA,Hitachi Energy,Screener: Heavy Electrical Equipment,248,28200.0,False,RS <= +2 pp; trend Bearish,-10.81,27.63,21.5,26.53,Bearish (Downtrend),45.41,,,,,,,,,,,,,,,,,,False
-HONAUT,Honeywell Auto,Screener: Industrial Products,248,30320.0,False,RS <= +2 pp; trend Bearish,-18.84,32.75,15.26,28.35,Bearish (Downtrend),37.74,,,,,,,,,,,,,,,,,,False
-INGERRAND,Ingersoll-Rand,"Screener: Compressors, Pumps & Diesel Engines",248,3993.4,False,RS <= +2 pp; trend Bearish,-5.08,24.32,22.39,23.63,Bearish (Downtrend),45.9,,,,,,,,,,,,,,,,,,False
-INOXINDIA,Inox India,Screener: Other Industrial Products,248,1996.4,True,,5.19,17.81,21.6,17.28,Bullish (Uptrend),52.57,2026-09-26,OK,Screener 2026-09-26,19575.87,True,33.48,True,21.13,True,116.65,True,0.07,True,0.0,True,True,,True
-INOXWIND,Inox Wind,Screener: Heavy Electrical Equipment,248,65.7,False,RS <= +2 pp; trend Bearish,-14.54,35.42,24.46,26.21,Bearish (Downtrend),52.56,,,,,,,,,,,,,,,,,,False
-JINDALSAW,Jindal Saw,Screener: Iron & Steel Products,248,259.07,False,RS <= +2 pp; trend Bearish,-0.31,22.32,27.59,29.56,Bearish (Downtrend),48.34,,,,,,,,,,,,,,,,,,False
-JWL,Jupiter Wagons,Screener: Railway Wagons,248,199.7,False,RS <= +2 pp,-20.7,25.92,25.22,24.73,Bullish (Uptrend),48.65,,,,,,,,,,,,,,,,,,False
-JYOTICNC,Jyoti CNC Auto.,Screener: Industrial Products,248,1022.2,True,,21.05,23.8,25.24,16.54,Bullish (Uptrend),56.51,2026-09-26,OK,Screener 2026-09-26,24222.83,True,21.32,True,24.43,True,54.39,True,0.43,True,20.92,False,False,Pledged percentage < 15%,False
-KANOHAR,Kanohar Elect.,Screener: Heavy Electrical Equipment,35,1022.5,True,,32.99,24.44,25.84,11.64,Bullish (Uptrend),56.02,2026-09-26,OK,Screener 2026-09-26,6830.26,True,54.32,True,27.64,True,25.84,True,0.1,True,0.0,True,True,,True
-KARAMTARA,Karamtara Engg.,Screener: Heavy Electrical Equipment,34,379.35,True,,5.25,15.53,23.8,12.4,Bullish (Uptrend),55.58,2026-09-26,OK,Screener 2026-09-26,11543.78,True,23.41,True,11.6,True,675.15,True,0.91,True,0.0,True,True,,True
-KEI,KEI Industries,Screener: Cables - Electricals,248,4061.1,False,RS <= +2 pp; trend Bearish,-25.03,37.51,19.41,30.41,Bearish (Downtrend),42.76,,,,,,,,,,,,,,,,,,False
-KENNAMET,Kennametal India,Screener: Industrial Products,138,3800.5,False,trend Bearish,26.41,23.09,19.39,23.05,Bearish (Downtrend),43.91,,,,,,,,,,,,,,,,,,False
-KIRLOSBROS,Kirl. Brothers,"Screener: Compressors, Pumps & Diesel Engines",248,1680.6,False,RS <= +2 pp,-13.18,22.38,26.82,21.88,Bullish (Uptrend),48.32,,,,,,,,,,,,,,,,,,False
-KIRLPNU,Kirl.Pneumatic,"Screener: Compressors, Pumps & Diesel Engines",248,571.65,False,RS <= +2 pp; trend Bearish,-19.43,42.66,12.71,23.64,Bearish (Downtrend),38.89,,,,,,,,,,,,,,,,,,False
-KIRLOSENG,Kirloskar Oil,"Screener: Compressors, Pumps & Diesel Engines",248,1592.4,False,RS <= +2 pp; trend Bearish,-26.8,26.47,14.99,33.58,Bearish (Downtrend),28.73,,,,,,,,,,,,,,,,,,False
-KRN,KRN Heat Exchan,Screener: Other Industrial Products,248,989.2,False,RS <= +2 pp; trend Bearish,-16.34,32.39,18.29,39.94,Bearish (Downtrend),31.02,,,,,,,,,,,,,,,,,,False
-KSB,KSB,"Screener: Compressors, Pumps & Diesel Engines",248,648.85,False,RS <= +2 pp; trend Bearish,-15.91,30.99,9.62,26.6,Bearish (Downtrend),28.99,,,,,,,,,,,,,,,,,,False
-KSHINTL,KSH Internationa,Screener: Cables - Electricals,215,1079.15,True,,21.57,20.94,33.26,18.38,Bullish (Uptrend),65.44,2026-09-26,OK,Screener 2026-09-26,7016.1,True,21.46,True,6.09,False,-64.97,False,0.4,True,0.0,True,False,OPM > 8%; Cash from operations last year > 0 (Rs Cr),False
-LLOYDSENGG,Lloyds Engineeri,Screener: Industrial Products,248,85.29,False,RS <= +2 pp; trend Bearish,-6.41,18.86,19.52,24.17,Bearish (Downtrend),46.05,,,,,,,,,,,,,,,,,,False
-LMW,LMW,Screener: Industrial Products,248,17495.0,True,,9.01,16.53,24.26,14.68,Bullish (Uptrend),60.74,2026-09-26,OK,Screener 2026-09-26,18303.18,True,5.58,False,6.49,False,177.41,True,0.0,True,0.0,True,False,ROCE > 8%; OPM > 8%,False
-LCL,Lohia Corp,Screener: Industrial Products,68,520.45,True,,3.43,25.42,27.89,15.44,Bullish (Uptrend),39.78,2026-09-26,OK,Screener 2026-09-26,6283.01,True,43.77,True,18.67,True,325.16,True,0.34,True,0.0,True,True,,True
-MAHSEAMLES,Mah. Seamless,Screener: Iron & Steel Products,248,574.15,False,RS <= +2 pp; trend Bearish,0.7,30.27,23.67,25.91,Bearish (Downtrend),45.09,,,,,,,,,,,,,,,,,,False
-MANINDS,Man Industries,Screener: Iron & Steel Products,248,796.0,True,,51.45,22.35,22.85,21.13,Bullish (Uptrend),48.18,2026-09-26,OK,Screener 2026-09-26,7653.6,True,16.21,True,13.73,True,514.91,True,0.3,True,20.05,False,False,Pledged percentage < 15%,False
-MTARTECH,MTAR Technologie,Screener: Other Electrical Equipment,248,5735.0,False,RS <= +2 pp; trend Bearish,-11.32,24.13,14.84,36.6,Bearish (Downtrend),28.98,,,,,,,,,,,,,,,,,,False
-OMNI,Omnitech Engg.,Screener: Industrial Products,166,635.95,False,RS <= +2 pp,-11.04,24.05,22.54,20.78,Bullish (Uptrend),49.39,,,,,,,,,,,,,,,,,,False
-POLYCAB,Polycab India,Screener: Cables - Electricals,248,7849.0,False,RS <= +2 pp; trend Bearish,-12.53,32.22,13.35,24.11,Bearish (Downtrend),44.52,,,,,,,,,,,,,,,,,,False
-POWERICA,Powerica Ltd,Screener: Heavy Electrical Equipment,148,494.55,False,RS <= +2 pp; trend Bearish,-7.49,24.24,17.53,24.91,Bearish (Downtrend),39.46,,,,,,,,,,,,,,,,,,False
-PRAJIND,Praj Industries,Screener: Industrial Products,248,255.57,False,RS <= +2 pp; trend Bearish,-17.42,42.18,14.22,24.53,Bearish (Downtrend),38.38,,,,,,,,,,,,,,,,,,False
-PREMIERENE,Premier Energies,Screener: Other Electrical Equipment,248,882.5,False,RS <= +2 pp,-13.32,23.71,21.37,15.45,Bullish (Uptrend),47.18,,,,,,,,,,,,,,,,,,False
-QPOWER,Quality Power El,Screener: Heavy Electrical Equipment,248,1450.3,True,,30.93,21.14,19.36,18.86,Bullish (Uptrend),51.26,2026-09-26,OK,Screener 2026-09-26,11754.47,True,31.53,True,18.59,True,80.28,True,0.07,True,0.0,True,True,,True
-RRKABEL,R R Kabel,Screener: Cables - Electricals,248,2014.2,False,RS <= +2 pp; trend Bearish,-25.73,42.38,10.02,32.27,Bearish (Downtrend),29.76,,,,,,,,,,,,,,,,,,False
-RPEL,Raghav Product.,Screener: Electrodes & Refractories,248,1764.1,True,,43.44,17.5,28.12,18.37,Bullish (Uptrend),52.82,2026-09-26,OK,Screener 2026-09-26,7804.44,True,30.3,True,29.76,True,37.0,True,0.02,True,0.0,True,True,,True
-RAMRAT,Ram Ratna Wires,Screener: Other Electrical Equipment,248,526.15,False,trend Bearish,22.59,21.9,20.28,28.24,Bearish (Downtrend),42.73,,,,,,,,,,,,,,,,,,False
-RATNAMANI,Ratnamani Metals,Screener: Iron & Steel Products,248,2454.1,True,,5.2,18.71,24.39,20.65,Bullish (Uptrend),48.36,2026-09-26,OK,Screener 2026-09-26,19473.66,True,17.91,True,16.96,True,936.01,True,0.08,True,0.0,True,True,,True
-RHIM,RHI Magnesita,Screener: Electrodes & Refractories,248,360.55,False,RS <= +2 pp,-9.69,14.34,23.78,16.22,Bullish (Uptrend),47.79,,,,,,,,,,,,,,,,,,False
-SAATVIKGL,Saatvik Green,Screener: Other Electrical Equipment,248,358.55,False,RS <= +2 pp; trend Bearish,-13.01,21.25,15.39,25.45,Bearish (Downtrend),39.38,,,,,,,,,,,,,,,,,,False
-SCHNEIDER,Schneider Elect.,Screener: Heavy Electrical Equipment,248,1135.8,False,RS <= +2 pp; trend Bearish,-13.87,24.42,14.62,22.4,Bearish (Downtrend),44.59,,,,,,,,,,,,,,,,,,False
-SHAKTIPUMP,Shakti Pumps,"Screener: Compressors, Pumps & Diesel Engines",248,357.85,False,RS <= +2 pp; trend Bearish,-28.86,50.88,9.08,34.08,Bearish (Downtrend),24.27,,,,,,,,,,,,,,,,,,False
-SHANTIGEAR,Shanthi Gears,Screener: Industrial Products,248,493.85,False,trend Bearish,20.14,33.29,18.45,24.45,Bearish (Downtrend),40.59,,,,,,,,,,,,,,,,,,False
-SBCL,Shivalik Bimetal,Screener: Iron & Steel Products,248,998.1,True,,31.36,17.54,24.23,15.11,Bullish (Uptrend),45.82,2026-09-26,OK,Screener 2026-09-26,6650.4,True,26.57,True,23.03,True,54.89,True,0.15,True,0.0,True,True,,True
-SIEMENS,Siemens,Screener: Heavy Electrical Equipment,248,3432.0,False,RS <= +2 pp; trend Bearish,-11.62,33.25,18.65,25.25,Bearish (Downtrend),43.91,,,,,,,,,,,,,,,,,,False
-ENRIN,Siemens Ener.Ind,Screener: Heavy Electrical Equipment,248,2859.0,False,RS <= +2 pp; trend Bearish,-10.94,23.98,17.16,25.92,Bearish (Downtrend),44.08,,,,,,,,,,,,,,,,,,False
-SKFINDIA,SKF India,Screener: Abrasives & Bearings,248,1420.4,False,RS <= +2 pp; trend Bearish,-3.78,21.42,15.49,24.35,Bearish (Downtrend),46.12,,,,,,,,,,,,,,,,,,False
-SKFINDUS,SKF India Indus.,Screener: Abrasives & Bearings,227,2403.0,False,RS <= +2 pp; trend Bearish,-9.79,21.67,17.32,17.77,Bearish (Downtrend),38.84,,,,,,,,,,,,,,,,,,False
-SKIPPER,Skipper,Screener: Heavy Electrical Equipment,248,526.55,False,RS <= +2 pp,-1.85,16.8,23.97,21.39,Bullish (Uptrend),52.22,,,,,,,,,,,,,,,,,,False
-SETL,Standard Engineering Technology,Screener: Industrial Products,198,396.75,True,,44.87,24.62,29.05,16.89,Bullish (Uptrend),53.95,2026-09-26,OK,Screener 2026-09-26,8030.54,True,14.68,True,15.2,True,45.33,True,0.1,True,21.38,False,False,Pledged percentage < 15%,False
-SUPREMEIND,Supreme Inds.,Screener: Plastic Products - Industrial,248,3291.0,False,RS <= +2 pp; trend Bearish,-2.75,21.34,21.06,25.23,Bearish (Downtrend),43.85,,,,,,,,,,,,,,,,,,False
-SUZLON,Suzlon Energy,Screener: Heavy Electrical Equipment,248,38.59,False,RS <= +2 pp; trend Bearish,-17.7,36.65,22.78,30.19,Bearish (Downtrend),49.48,,,,,,,,,,,,,,,,,,False
-TARIL,T R I L,Screener: Heavy Electrical Equipment,248,315.6,True,,9.24,22.18,27.0,17.28,Bullish (Uptrend),54.6,2026-09-26,OK,Screener 2026-09-26,8334.1,True,23.31,True,15.22,True,-105.38,False,0.3,True,21.84,False,False,Cash from operations last year > 0 (Rs Cr); Pledged percentage < 15%,False
-TDPOWERSYS,TD Power Systems,Screener: Heavy Electrical Equipment,248,669.2,False,trend Bearish,13.51,17.09,18.52,22.31,Bearish (Downtrend),39.57,,,,,,,,,,,,,,,,,,False
-TIIL,Technocraf.Inds.,Screener: Iron & Steel Products,248,2770.1,True,,7.55,32.5,21.1,17.15,Bullish (Uptrend),55.61,2026-09-26,OK,Screener 2026-09-26,6809.55,True,16.34,True,18.21,True,243.48,True,0.41,True,0.0,True,True,,True
-TEGA,Tega Inds.,Screener: Industrial Products,248,1729.2,False,trend Bearish,11.55,19.24,18.2,22.78,Bearish (Downtrend),43.75,,,,,,,,,,,,,,,,,,False
-TEXRAIL,Texmaco Rail,Screener: Railway Wagons,248,103.55,False,RS <= +2 pp,-1.48,20.76,21.58,21.49,Bullish (Uptrend),44.9,,,,,,,,,,,,,,,,,,False
-THERMAX,Thermax,Screener: Heavy Electrical Equipment,248,3319.7,False,RS <= +2 pp,-16.18,34.74,22.41,18.51,Bullish (Uptrend),52.67,,,,,,,,,,,,,,,,,,False
-TIMKEN,Timken India,Screener: Abrasives & Bearings,248,3124.6,False,RS <= +2 pp,-3.43,27.15,27.12,14.62,Bullish (Uptrend),63.35,,,,,,,,,,,,,,,,,,False
-TITAGARH,Titagarh Rail,Screener: Railway Wagons,248,685.8,False,RS <= +2 pp; trend Bearish,-17.44,29.24,23.21,24.9,Bearish (Downtrend),39.03,,,,,,,,,,,,,,,,,,False
-TRANSRAILL,Transrail Light,Screener: Heavy Electrical Equipment,248,442.2,False,RS <= +2 pp,-9.31,17.64,28.88,17.6,Bullish (Uptrend),47.93,,,,,,,,,,,,,,,,,,False
-TRITURBINE,Triveni Turbine,Screener: Heavy Electrical Equipment,248,515.1,False,RS <= +2 pp; trend Bearish,-15.23,39.61,22.22,23.95,Bearish (Downtrend),56.06,,,,,,,,,,,,,,,,,,False
-UNIVCABLES,Universal Cables,Screener: Cables - Electricals,248,1175.1,False,RS <= +2 pp; trend Bearish,-15.53,26.88,15.15,29.43,Bearish (Downtrend),33.57,,,,,,,,,,,,,,,,,,False
-USHAMART,Usha Martin,Screener: Iron & Steel Products,248,487.65,False,RS <= +2 pp,-4.11,15.9,25.16,22.07,Bullish (Uptrend),52.8,,,,,,,,,,,,,,,,,,False
-VESUVIUS,Vesuvius India,Screener: Electrodes & Refractories,248,368.05,False,RS <= +2 pp; trend Bearish,-16.1,25.46,15.11,21.94,Bearish (Downtrend),38.06,,,,,,,,,,,,,,,,,,False
-VIKRAMSOLR,Vikram Solar,Screener: Other Electrical Equipment,248,139.67,False,RS <= +2 pp,-20.52,32.08,25.37,22.48,Bullish (Uptrend),49.02,,,,,,,,,,,,,,,,,,False
-VOLTAMP,Volt.Transform.,Screener: Heavy Electrical Equipment,248,9939.0,False,RS <= +2 pp; trend Bearish,1.05,21.27,13.08,25.41,Bearish (Downtrend),43.01,,,,,,,,,,,,,,,,,,False
-WAAREEENER,Waaree Energies,Screener: Other Electrical Equipment,248,2449.3,False,RS <= +2 pp,-7.03,25.55,25.14,23.65,Bullish (Uptrend),54.39,,,,,,,,,,,,,,,,,,False
-WAAREERTL,Waaree Renewab.,Screener: Other Electrical Equipment,248,748.0,False,RS <= +2 pp,-15.29,26.18,26.65,23.28,Bullish (Uptrend),48.6,,,,,,,,,,,,,,,,,,False
-WELCORP,Welspun Corp,Screener: Iron & Steel Products,248,2385.6,False,trend Bearish,35.57,21.2,17.24,23.54,Bearish (Downtrend),44.85,,,,,,,,,,,,,,,,,,False
-AFCONS,Afcons Infrastr.,Screener: Civil Construction,248,219.44,False,RS <= +2 pp,-19.73,25.97,22.39,22.27,Bullish (Uptrend),39.63,,,,,,,,,,,,,,,,,,False
-CEIGALL,Ceigall India,Screener: Civil Construction,248,386.85,False,trend Bearish,15.37,23.31,19.12,22.92,Bearish (Downtrend),52.72,,,,,,,,,,,,,,,,,,False
-CEMPRO,Cemindia Project,Screener: Civil Construction,248,1287.4,False,RS <= +2 pp,1.32,19.89,33.17,11.94,Bullish (Uptrend),58.44,,,,,,,,,,,,,,,,,,False
-DBL,Dilip Buildcon,Screener: Civil Construction,248,396.9,False,RS <= +2 pp,-11.27,14.97,23.41,18.64,Bullish (Uptrend),52.84,,,,,,,,,,,,,,,,,,False
-ENGINERSIN,Engineers India,Screener: Civil Construction,248,298.5,True,,26.39,29.4,29.54,17.97,Bullish (Uptrend),60.39,2026-09-26,OK,Screener 2026-09-26,17740.87,True,30.4,True,19.35,True,319.02,True,0.01,True,0.0,True,True,,True
-GRINFRA,G R Infraproject,Screener: Civil Construction,248,785.6,False,RS <= +2 pp; trend Bearish,-10.32,20.66,16.85,18.56,Bearish (Downtrend),49.48,,,,,,,,,,,,,,,,,,False
-HCC,Hind.Construct.,Screener: Civil Construction,248,18.86,False,RS <= +2 pp; trend Bearish,-11.77,29.38,22.14,23.35,Bearish (Downtrend),49.39,,,,,,,,,,,,,,,,,,False
-IRB,IRB Infra.Devl.,Screener: Civil Construction,248,17.18,False,RS <= +2 pp,-12.33,22.14,23.89,20.54,Bullish (Uptrend),51.76,,,,,,,,,,,,,,,,,,False
-IRCON,Ircon Intl.,Screener: Civil Construction,248,106.75,False,RS <= +2 pp,-16.58,15.55,27.58,19.16,Bullish (Uptrend),54.39,,,,,,,,,,,,,,,,,,False
-ISGEC,ISGEC Heavy,Screener: Civil Construction,248,974.05,True,,19.37,28.5,23.87,11.35,Bullish (Uptrend),68.44,2026-09-26,OK,Screener 2026-09-26,6548.17,True,11.22,True,8.32,True,764.97,True,0.35,True,0.0,True,True,,True
-KPIL,Kalpataru Proj.,Screener: Civil Construction,248,1371.3,True,,9.03,15.63,25.77,20.33,Bullish (Uptrend),52.92,2026-09-26,OK,Screener 2026-09-26,23757.88,True,18.28,True,8.32,True,1534.38,True,0.46,True,24.55,False,False,Pledged percentage < 15%,False
-KEC,KEC International,Screener: Civil Construction,248,329.7,False,RS <= +2 pp; trend Bearish,-28.52,38.33,18.98,29.71,Bearish (Downtrend),40.96,,,,,,,,,,,,,,,,,,False
-LT,Larsen & Toubro,Screener: Civil Construction,248,4050.0,False,RS <= +2 pp,1.98,36.42,33.63,9.17,Bullish (Uptrend),72.03,,,,,,,,,,,,,,,,,,False
-NBCC,NBCC,Screener: Civil Construction,248,80.33,False,RS <= +2 pp,-14.17,39.31,29.67,18.5,Bullish (Uptrend),59.92,,,,,,,,,,,,,,,,,,False
-NCC,NCC,Screener: Civil Construction,248,122.44,False,RS <= +2 pp; trend Bearish,-12.57,23.31,20.72,23.78,Bearish (Downtrend),48.19,,,,,,,,,,,,,,,,,,False
-POWERMECH,Power Mech Proj.,Screener: Civil Construction,248,2272.2,False,RS <= +2 pp; trend Bearish,-9.54,21.14,23.4,25.9,Bearish (Downtrend),47.37,,,,,,,,,,,,,,,,,,False
-RVNL,Rail Vikas,Screener: Civil Construction,248,193.69,False,RS <= +2 pp; trend Bearish,-13.27,18.22,20.43,20.61,Bearish (Downtrend),51.57,,,,,,,,,,,,,,,,,,False
-RITES,Rites,Screener: Civil Construction,248,196.55,False,RS <= +2 pp; trend Bearish,-11.4,12.02,21.59,22.19,Bearish (Downtrend),47.5,,,,,,,,,,,,,,,,,,False
-TECHNOE,Techno Elec.Engg,Screener: Civil Construction,248,942.75,False,RS <= +2 pp,-4.0,31.34,29.17,21.69,Bullish (Uptrend),57.19,,,,,,,,,,,,,,,,,,False
-WELENT,Welspun Enterp,Screener: Civil Construction,248,722.05,True,,25.77,25.18,30.79,21.81,Bullish (Uptrend),57.73,2026-09-26,OK,Screener 2026-09-26,10443.32,True,16.74,True,20.19,True,112.19,True,0.65,True,0.0,True,True,,True
+ABB,A B B,Screener: Heavy Electrical Equipment,248,6915.0,False,RS <= +2 pp; trend Bearish,-8.4,26.81,23.12,24.04,Bearish (Downtrend),54.95,,,,,,,,,,,,,,,,,,False
+ACE,Action Const.Eq.,Screener: Construction Vehicles,248,1166.65,True,,7.22,26.24,26.66,19.25,Bullish (Uptrend),58.95,2026-09-26,OK,Screener 2026-09-26,14606.74,True,31.63,True,15.5,True,417.25,True,0.0,True,0.0,True,True,,True
+AEROFLEX,Aeroflex,Screener: Iron & Steel Products,248,484.4,True,,14.29,15.73,27.27,26.49,Bullish (Uptrend),44.86,2026-09-26,OK,Screener 2026-09-26,6956.63,True,18.92,True,23.41,True,65.84,True,0.02,True,0.0,True,True,,True
+AIAENG,AIA Engineering,Screener: Castings & Forgings,248,3136.4,False,RS <= +2 pp; trend Bearish,-33.72,46.71,5.37,35.29,Bearish (Downtrend),19.32,,,,,,,,,,,,,,,,,,False
+AJAXENGG,Ajax Engineering,Screener: Construction Vehicles,248,555.4,False,RS <= +2 pp; trend Bearish,-1.16,19.56,15.52,15.99,Bearish (Downtrend),47.84,,,,,,,,,,,,,,,,,,False
+APARINDS,Apar Inds.,Screener: Other Electrical Equipment,248,14205.0,False,RS <= +2 pp; trend Bearish,-13.98,30.22,13.71,34.23,Bearish (Downtrend),33.54,,,,,,,,,,,,,,,,,,False
+APLAPOLLO,APL Apollo Tubes,Screener: Iron & Steel Products,248,2181.3,True,,11.34,15.47,21.99,19.56,Bullish (Uptrend),53.46,2026-09-26,OK,Screener 2026-09-26,61493.01,True,31.75,True,7.98,False,2103.19,True,0.09,True,0.0,True,False,OPM > 8%,False
+ASTRAL,Astral,Screener: Plastic Products - Industrial,248,1272.8,False,RS <= +2 pp; trend Bearish,-11.24,21.18,14.83,34.96,Bearish (Downtrend),35.19,,,,,,,,,,,,,,,,,,False
+ATLANTAELE,Atlanta Electric,Screener: Heavy Electrical Equipment,248,1461.1,False,RS <= +2 pp; trend Bearish,-8.49,21.49,17.59,31.68,Bearish (Downtrend),35.75,,,,,,,,,,,,,,,,,,False
+AZAD,Azad Engineering,Screener: Heavy Electrical Equipment,248,2434.2,False,RS <= +2 pp; trend Bearish,-1.59,22.4,18.15,32.19,Bearish (Downtrend),37.44,,,,,,,,,,,,,,,,,,False
+BHEL,B H E L,Screener: Heavy Electrical Equipment,248,422.95,False,trend Bearish,4.99,15.31,27.19,28.12,Bearish (Downtrend),53.34,,,,,,,,,,,,,,,,,,False
+BALUFORGE,Balu Forge,Screener: Castings & Forgings,248,529.6,True,,13.52,22.04,32.22,18.63,Bullish (Uptrend),62.74,2026-09-26,OK,Screener 2026-09-26,6152.14,True,22.72,True,26.56,True,31.7,True,0.1,True,1.37,True,True,,True
+BANSALWIRE,Bansal Wire Inds,Screener: Iron & Steel Products,248,62.04,False,RS <= +2 pp,-6.01,14.17,21.4,11.37,Bullish (Uptrend),52.62,,,,,,,,,,,,,,,,,,False
+BEML,BEML Ltd,Screener: Construction Vehicles,248,1991.6,True,,12.01,16.44,24.42,21.05,Bullish (Uptrend),50.92,2026-09-26,OK,Screener 2026-09-26,16961.8,True,7.66,False,7.72,False,118.23,True,0.11,True,0.0,True,False,ROCE > 8%; OPM > 8%,False
+CARBORUNIV,Carborundum Uni.,Screener: Abrasives & Bearings,248,1051.2,False,RS <= +2 pp; trend Bearish,-3.56,15.76,23.25,25.76,Bearish (Downtrend),41.98,,,,,,,,,,,,,,,,,,False
+CGPOWER,CG Power & Ind,Screener: Heavy Electrical Equipment,248,800.0,False,RS <= +2 pp; trend Bearish,-8.38,27.58,14.46,35.27,Bearish (Downtrend),42.93,,,,,,,,,,,,,,,,,,False
+CUMMINSIND,Cummins India,"Screener: Compressors, Pumps & Diesel Engines",248,4135.2,False,RS <= +2 pp; trend Bearish,-23.18,32.59,21.78,40.81,Bearish (Downtrend),34.86,,,,,,,,,,,,,,,,,,False
+DEEDEV,DEE Development,Screener: Industrial Products,248,524.8,False,RS <= +2 pp; trend Bearish,-16.05,26.83,18.84,26.99,Bearish (Downtrend),41.14,,,,,,,,,,,,,,,,,,False
+DIACABS,Diamond Power,Screener: Other Electrical Equipment,248,371.65,True,,2.7,19.43,25.83,20.94,Bullish (Uptrend),56.01,2026-09-26,OK,Screener 2026-09-26,21201.62,True,24.2,True,9.96,True,-12.15,False,,False,0.0,True,False,Cash from operations last year > 0 (Rs Cr); Debt to equity < 1.5 (missing),False
+ELECON,Elecon Engg.Co,Screener: Heavy Electrical Equipment,248,429.5,False,RS <= +2 pp; trend Bearish,-1.3,11.55,21.01,25.52,Bearish (Downtrend),47.92,,,,,,,,,,,,,,,,,,False
+ELGIEQUIP,Elgi Equipments,"Screener: Compressors, Pumps & Diesel Engines",248,553.9,False,RS <= +2 pp; trend Bearish,-5.26,30.02,17.85,22.81,Bearish (Downtrend),49.9,,,,,,,,,,,,,,,,,,False
+EMMVEE,Emmvee Photovol.,Screener: Other Electrical Equipment,242,264.48,False,RS <= +2 pp; trend Bearish,-16.45,34.39,25.28,28.0,Bearish (Downtrend),48.77,,,,,,,,,,,,,,,,,,False
+ESABINDIA,Esab India,Screener: Other Industrial Products,248,5042.5,False,RS <= +2 pp; trend Bearish,-9.85,23.67,16.38,26.26,Bearish (Downtrend),33.63,,,,,,,,,,,,,,,,,,False
+FINCABLES,Finolex Cables,Screener: Cables - Electricals,248,1232.4,True,,20.89,35.77,26.71,26.66,Bullish (Uptrend),49.38,2026-09-26,OK,Screener 2026-09-26,22342.91,True,16.01,True,10.48,True,49.08,True,0.0,True,0.0,True,True,,True
+FINPIPE,Finolex Inds.,Screener: Plastic Products - Industrial,248,144.66,False,RS <= +2 pp; trend Bearish,-11.41,20.78,18.34,23.76,Bearish (Downtrend),47.06,,,,,,,,,,,,,,,,,,False
+UTLSOLAR,Fujiyama Power,Screener: Other Electrical Equipment,240,356.65,False,RS <= +2 pp; trend Bearish,-7.93,16.75,19.99,30.5,Bearish (Downtrend),40.93,,,,,,,,,,,,,,,,,,False
+GVT&D,GE Vernova T&D,Screener: Heavy Electrical Equipment,248,4106.0,False,RS <= +2 pp; trend Bearish,-3.88,17.05,22.03,30.16,Bearish (Downtrend),50.37,,,,,,,,,,,,,,,,,,False
+GENUSPOWER,Genus Power,Screener: Other Electrical Equipment,248,286.5,False,RS <= +2 pp,-5.96,17.46,23.63,23.32,Bullish (Uptrend),50.95,,,,,,,,,,,,,,,,,,False
+GMMPFAUDLR,GMM Pfaudler,Screener: Industrial Products,248,1144.7,False,trend Bearish,16.55,23.62,15.76,22.98,Bearish (Downtrend),39.63,,,,,,,,,,,,,,,,,,False
+GOODLUCK,Goodluck India,Screener: Iron & Steel Products,248,555.35,True,,11.03,18.07,24.28,20.61,Bullish (Uptrend),55.62,2026-09-26,OK,Screener 2026-09-26,5241.55,True,14.4,True,10.01,True,200.24,True,0.75,True,0.0,True,True,,True
+GRAPHITE,Graphite India,Screener: Electrodes & Refractories,248,763.1,False,trend Bearish,8.1,22.86,21.55,27.23,Bearish (Downtrend),51.63,,,,,,,,,,,,,,,,,,False
+GREAVESCOT,Greaves Cotton,"Screener: Compressors, Pumps & Diesel Engines",248,203.97,True,,3.19,12.95,20.2,18.04,Bullish (Uptrend),52.68,2026-09-26,OK,Screener 2026-09-26,5469.23,True,10.11,True,6.51,False,32.58,True,0.28,True,0.0,True,False,OPM > 8%,False
+GRINDWELL,Grindwell Norton,Screener: Abrasives & Bearings,248,1961.7,False,RS <= +2 pp,-7.45,21.73,22.22,15.4,Bullish (Uptrend),53.95,,,,,,,,,,,,,,,,,,False
+HBLENGINE,HBL Engineering,Screener: Other Industrial Products,248,797.45,True,,10.29,21.14,27.01,23.74,Bullish (Uptrend),51.6,2026-09-26,OK,Screener 2026-09-26,22341.91,True,59.3,True,31.98,True,738.44,True,0.03,True,0.0,True,True,,True
+POWERINDIA,Hitachi Energy,Screener: Heavy Electrical Equipment,248,28150.0,False,RS <= +2 pp; trend Bearish,-13.04,26.08,22.76,28.67,Bearish (Downtrend),45.65,,,,,,,,,,,,,,,,,,False
+HONAUT,Honeywell Auto,Screener: Industrial Products,248,30100.0,False,RS <= +2 pp; trend Bearish,-19.97,32.21,16.43,26.93,Bearish (Downtrend),36.36,,,,,,,,,,,,,,,,,,False
+INGERRAND,Ingersoll-Rand,"Screener: Compressors, Pumps & Diesel Engines",248,3962.6,False,RS <= +2 pp; trend Bearish,-7.71,22.28,20.04,24.19,Bearish (Downtrend),44.51,,,,,,,,,,,,,,,,,,False
+INOXINDIA,Inox India,Screener: Other Industrial Products,248,1899.6,False,RS <= +2 pp; trend Bearish,-2.21,17.23,17.79,23.38,Bearish (Downtrend),44.61,,,,,,,,,,,,,,,,,,False
+INOXWIND,Inox Wind,Screener: Heavy Electrical Equipment,248,66.69,False,RS <= +2 pp,-13.89,31.3,26.76,25.52,Bullish (Uptrend),54.38,,,,,,,,,,,,,,,,,,False
+JINDALSAW,Jindal Saw,Screener: Iron & Steel Products,248,251.99,False,RS <= +2 pp; trend Bearish,-6.54,20.61,25.25,30.81,Bearish (Downtrend),45.31,,,,,,,,,,,,,,,,,,False
+JWL,Jupiter Wagons,Screener: Railway Wagons,248,204.5,False,RS <= +2 pp,-20.73,23.11,28.2,25.8,Bullish (Uptrend),52.29,,,,,,,,,,,,,,,,,,False
+JYOTICNC,Jyoti CNC Auto.,Screener: Industrial Products,248,1036.4,True,,32.76,22.5,25.33,18.07,Bullish (Uptrend),58.25,2026-09-26,OK,Screener 2026-09-26,24222.83,True,21.32,True,24.43,True,54.39,True,0.43,True,20.92,False,False,Pledged percentage < 15%,False
+KANOHAR,Kanohar Elect.,Screener: Heavy Electrical Equipment,37,1006.75,True,,29.37,25.15,26.88,13.55,Bullish (Uptrend),54.36,2026-09-26,OK,Screener 2026-09-26,6830.26,True,54.32,True,27.64,True,25.84,True,0.1,True,0.0,True,True,,True
+KARAMTARA,Karamtara Engg.,Screener: Heavy Electrical Equipment,36,384.65,True,,5.25,16.67,23.78,13.91,Bullish (Uptrend),57.22,2026-09-26,OK,Screener 2026-09-26,11543.78,True,23.41,True,11.6,True,675.15,True,0.91,True,0.0,True,True,,True
+KEI,KEI Industries,Screener: Cables - Electricals,248,4002.7,False,RS <= +2 pp; trend Bearish,-27.91,36.29,19.03,32.42,Bearish (Downtrend),40.91,,,,,,,,,,,,,,,,,,False
+KENNAMET,Kennametal India,Screener: Industrial Products,140,3490.1,False,trend Bearish,6.06,23.6,16.63,30.89,Bearish (Downtrend),34.54,,,,,,,,,,,,,,,,,,False
+KIRLOSBROS,Kirl. Brothers,"Screener: Compressors, Pumps & Diesel Engines",248,1635.7,False,RS <= +2 pp; trend Bearish,-13.38,19.34,24.0,24.2,Bearish (Downtrend),44.57,,,,,,,,,,,,,,,,,,False
+KIRLPNU,Kirl.Pneumatic,"Screener: Compressors, Pumps & Diesel Engines",248,630.3,False,RS <= +2 pp,-11.84,37.65,22.04,18.79,Bullish (Uptrend),53.77,,,,,,,,,,,,,,,,,,False
+KIRLOSENG,Kirloskar Oil,"Screener: Compressors, Pumps & Diesel Engines",248,1622.7,False,RS <= +2 pp; trend Bearish,-24.32,28.99,15.01,36.46,Bearish (Downtrend),31.94,,,,,,,,,,,,,,,,,,False
+KRN,KRN Heat Exchan,Screener: Other Industrial Products,248,967.4,False,RS <= +2 pp; trend Bearish,-19.33,33.09,19.5,39.27,Bearish (Downtrend),31.83,,,,,,,,,,,,,,,,,,False
+KSB,KSB,"Screener: Compressors, Pumps & Diesel Engines",248,636.15,False,RS <= +2 pp; trend Bearish,-18.27,33.65,10.01,27.88,Bearish (Downtrend),28.85,,,,,,,,,,,,,,,,,,False
+KSHINTL,KSH Internationa,Screener: Cables - Electricals,217,992.5,True,,10.9,19.52,25.74,21.69,Bullish (Uptrend),51.94,2026-09-26,OK,Screener 2026-09-26,7016.1,True,21.46,True,6.09,False,-64.97,False,0.4,True,0.0,True,False,OPM > 8%; Cash from operations last year > 0 (Rs Cr),False
+LLOYDSENGG,Lloyds Engineeri,Screener: Industrial Products,248,83.55,False,RS <= +2 pp; trend Bearish,-13.15,17.96,19.67,23.91,Bearish (Downtrend),43.92,,,,,,,,,,,,,,,,,,False
+LMW,LMW,Screener: Industrial Products,248,17472.0,True,,5.68,16.71,22.66,15.36,Bullish (Uptrend),58.74,2026-09-26,OK,Screener 2026-09-26,18303.18,True,5.58,False,6.49,False,177.41,True,0.0,True,0.0,True,False,ROCE > 8%; OPM > 8%,False
+LCL,Lohia Corp,Screener: Industrial Products,70,497.45,False,RS <= +2 pp,-5.58,23.14,24.28,20.34,Bullish (Uptrend),35.68,,,,,,,,,,,,,,,,,,False
+MAHSEAMLES,Mah. Seamless,Screener: Iron & Steel Products,248,580.0,False,RS <= +2 pp; trend Bearish,-1.03,26.81,23.46,24.77,Bearish (Downtrend),47.38,,,,,,,,,,,,,,,,,,False
+MANINDS,Man Industries,Screener: Iron & Steel Products,248,795.65,False,trend Bearish,43.96,19.83,22.07,23.12,Bearish (Downtrend),48.13,,,,,,,,,,,,,,,,,,False
+MTARTECH,MTAR Technologie,Screener: Other Electrical Equipment,248,5516.5,False,RS <= +2 pp; trend Bearish,-21.53,26.22,19.72,37.37,Bearish (Downtrend),27.97,,,,,,,,,,,,,,,,,,False
+OMNI,Omnitech Engg.,Screener: Industrial Products,168,567.95,False,RS <= +2 pp; trend Bearish,-1.19,22.72,19.93,29.92,Bearish (Downtrend),40.32,,,,,,,,,,,,,,,,,,False
+POLYCAB,Polycab India,Screener: Cables - Electricals,248,7832.5,False,RS <= +2 pp; trend Bearish,-14.42,33.35,12.68,28.61,Bearish (Downtrend),44.09,,,,,,,,,,,,,,,,,,False
+POWERICA,Powerica Ltd,Screener: Heavy Electrical Equipment,150,470.3,False,RS <= +2 pp; trend Bearish,-11.18,25.99,14.72,31.97,Bearish (Downtrend),34.55,,,,,,,,,,,,,,,,,,False
+PRAJIND,Praj Industries,Screener: Industrial Products,248,250.8,False,RS <= +2 pp; trend Bearish,-22.23,41.34,12.9,27.26,Bearish (Downtrend),36.56,,,,,,,,,,,,,,,,,,False
+PREMIERENE,Premier Energies,Screener: Other Electrical Equipment,248,886.0,False,RS <= +2 pp,-14.78,21.93,18.65,15.03,Bullish (Uptrend),48.19,,,,,,,,,,,,,,,,,,False
+QPOWER,Quality Power El,Screener: Heavy Electrical Equipment,248,1434.2,False,trend Bearish,28.2,20.88,16.76,24.24,Bearish (Downtrend),49.98,,,,,,,,,,,,,,,,,,False
+RRKABEL,R R Kabel,Screener: Cables - Electricals,248,1969.4,False,RS <= +2 pp; trend Bearish,-28.02,43.39,14.85,33.9,Bearish (Downtrend),30.83,,,,,,,,,,,,,,,,,,False
+RPEL,Raghav Product.,Screener: Electrodes & Refractories,248,1919.6,True,,53.39,18.86,33.9,16.29,Bullish (Uptrend),62.73,2026-09-26,OK,Screener 2026-09-26,7804.44,True,30.3,True,29.76,True,37.0,True,0.02,True,0.0,True,True,,True
+RAMRAT,Ram Ratna Wires,Screener: Other Electrical Equipment,248,517.8,False,trend Bearish,12.79,22.25,18.34,30.18,Bearish (Downtrend),41.03,,,,,,,,,,,,,,,,,,False
+RATNAMANI,Ratnamani Metals,Screener: Iron & Steel Products,248,2427.4,False,trend Bearish,11.07,18.63,19.45,28.04,Bearish (Downtrend),46.04,,,,,,,,,,,,,,,,,,False
+RHIM,RHI Magnesita,Screener: Electrodes & Refractories,248,359.25,False,RS <= +2 pp,-12.36,14.34,22.13,16.35,Bullish (Uptrend),46.7,,,,,,,,,,,,,,,,,,False
+SAATVIKGL,Saatvik Green,Screener: Other Electrical Equipment,248,363.4,False,RS <= +2 pp; trend Bearish,-13.61,21.23,15.38,22.07,Bearish (Downtrend),42.67,,,,,,,,,,,,,,,,,,False
+SCHNEIDER,Schneider Elect.,Screener: Heavy Electrical Equipment,248,1064.5,False,RS <= +2 pp; trend Bearish,-20.82,26.76,12.77,29.4,Bearish (Downtrend),35.02,,,,,,,,,,,,,,,,,,False
+SHAKTIPUMP,Shakti Pumps,"Screener: Compressors, Pumps & Diesel Engines",248,355.8,False,RS <= +2 pp; trend Bearish,-30.47,51.83,10.75,35.27,Bearish (Downtrend),27.88,,,,,,,,,,,,,,,,,,False
+SHANTIGEAR,Shanthi Gears,Screener: Industrial Products,248,496.1,False,trend Bearish,24.04,31.22,19.23,25.71,Bearish (Downtrend),41.93,,,,,,,,,,,,,,,,,,False
+SBCL,Shivalik Bimetal,Screener: Iron & Steel Products,248,998.6,True,,9.05,16.15,23.43,19.29,Bullish (Uptrend),45.91,2026-09-26,OK,Screener 2026-09-26,6650.4,True,26.57,True,23.03,True,54.89,True,0.15,True,0.0,True,True,,True
+SIEMENS,Siemens,Screener: Heavy Electrical Equipment,248,3655.0,False,RS <= +2 pp; trend Bearish,-6.62,30.85,22.51,25.25,Bearish (Downtrend),55.66,,,,,,,,,,,,,,,,,,False
+ENRIN,Siemens Ener.Ind,Screener: Heavy Electrical Equipment,248,2837.2,False,RS <= +2 pp; trend Bearish,-21.63,24.34,19.06,29.4,Bearish (Downtrend),43.57,,,,,,,,,,,,,,,,,,False
+SKFINDIA,SKF India,Screener: Abrasives & Bearings,248,1447.5,False,RS <= +2 pp; trend Bearish,-5.05,21.3,17.82,24.1,Bearish (Downtrend),50.95,,,,,,,,,,,,,,,,,,False
+SKFINDUS,SKF India Indus.,Screener: Abrasives & Bearings,229,2377.0,False,RS <= +2 pp; trend Bearish,-12.57,19.85,16.4,18.82,Bearish (Downtrend),38.69,,,,,,,,,,,,,,,,,,False
+SKIPPER,Skipper,Screener: Heavy Electrical Equipment,248,516.6,False,RS <= +2 pp; trend Bearish,0.37,14.61,22.52,22.58,Bearish (Downtrend),49.16,,,,,,,,,,,,,,,,,,False
+SETL,Standard Engineering Technology,Screener: Industrial Products,200,344.55,False,trend Bearish,23.23,22.69,24.21,30.73,Bearish (Downtrend),39.34,,,,,,,,,,,,,,,,,,False
+SUPREMEIND,Supreme Inds.,Screener: Plastic Products - Industrial,248,3296.6,False,RS <= +2 pp; trend Bearish,-3.61,22.29,19.27,31.65,Bearish (Downtrend),46.28,,,,,,,,,,,,,,,,,,False
+SUZLON,Suzlon Energy,Screener: Heavy Electrical Equipment,248,38.91,False,RS <= +2 pp; trend Bearish,-18.58,33.69,22.18,28.98,Bearish (Downtrend),50.81,,,,,,,,,,,,,,,,,,False
+TARIL,T R I L,Screener: Heavy Electrical Equipment,248,310.1,True,,4.74,20.42,25.4,20.6,Bullish (Uptrend),51.86,2026-09-26,OK,Screener 2026-09-26,8334.1,True,23.31,True,15.22,True,-105.38,False,0.3,True,21.84,False,False,Cash from operations last year > 0 (Rs Cr); Pledged percentage < 15%,False
+TDPOWERSYS,TD Power Systems,Screener: Heavy Electrical Equipment,248,571.65,False,RS <= +2 pp; trend Bearish,-8.71,20.19,14.25,32.92,Bearish (Downtrend),29.07,,,,,,,,,,,,,,,,,,False
+TIIL,Technocraf.Inds.,Screener: Iron & Steel Products,248,2823.1,True,,5.42,29.23,25.16,19.17,Bullish (Uptrend),58.38,2026-09-26,OK,Screener 2026-09-26,6809.55,True,16.34,True,18.21,True,243.48,True,0.41,True,0.0,True,True,,True
+TEGA,Tega Inds.,Screener: Industrial Products,248,1683.0,False,trend Bearish,4.14,18.76,17.42,22.82,Bearish (Downtrend),40.93,,,,,,,,,,,,,,,,,,False
+TEXRAIL,Texmaco Rail,Screener: Railway Wagons,248,107.13,False,RS <= +2 pp,-0.9,18.35,22.3,19.72,Bullish (Uptrend),49.38,,,,,,,,,,,,,,,,,,False
+THERMAX,Thermax,Screener: Heavy Electrical Equipment,248,2785.9,False,RS <= +2 pp; trend Bearish,-30.77,36.42,14.56,40.34,Bearish (Downtrend),31.04,,,,,,,,,,,,,,,,,,False
+TIMKEN,Timken India,Screener: Abrasives & Bearings,248,3014.2,False,RS <= +2 pp,-9.44,26.12,23.48,16.53,Bullish (Uptrend),52.96,,,,,,,,,,,,,,,,,,False
+TITAGARH,Titagarh Rail,Screener: Railway Wagons,248,702.45,False,RS <= +2 pp,-16.5,26.05,26.34,24.78,Bullish (Uptrend),44.91,,,,,,,,,,,,,,,,,,False
+TRANSRAILL,Transrail Light,Screener: Heavy Electrical Equipment,248,439.5,False,RS <= +2 pp,-6.55,16.51,25.59,21.05,Bullish (Uptrend),46.93,,,,,,,,,,,,,,,,,,False
+TRITURBINE,Triveni Turbine,Screener: Heavy Electrical Equipment,248,503.0,False,RS <= +2 pp; trend Bearish,-20.36,36.25,18.5,25.14,Bearish (Downtrend),51.25,,,,,,,,,,,,,,,,,,False
+UNIVCABLES,Universal Cables,Screener: Cables - Electricals,248,1129.9,False,RS <= +2 pp; trend Bearish,-19.32,28.52,13.45,30.28,Bearish (Downtrend),33.11,,,,,,,,,,,,,,,,,,False
+USHAMART,Usha Martin,Screener: Iron & Steel Products,248,490.1,False,RS <= +2 pp,-4.23,14.18,25.51,23.45,Bullish (Uptrend),53.54,,,,,,,,,,,,,,,,,,False
+VESUVIUS,Vesuvius India,Screener: Electrodes & Refractories,248,364.8,False,RS <= +2 pp; trend Bearish,-18.16,24.79,16.06,22.82,Bearish (Downtrend),36.88,,,,,,,,,,,,,,,,,,False
+VIKRAMSOLR,Vikram Solar,Screener: Other Electrical Equipment,248,139.96,False,RS <= +2 pp,-14.22,29.55,24.13,18.31,Bullish (Uptrend),49.25,,,,,,,,,,,,,,,,,,False
+VOLTAMP,Volt.Transform.,Screener: Heavy Electrical Equipment,248,9858.0,False,RS <= +2 pp; trend Bearish,-0.46,23.44,13.07,27.33,Bearish (Downtrend),42.59,,,,,,,,,,,,,,,,,,False
+WAAREEENER,Waaree Energies,Screener: Other Electrical Equipment,248,2444.0,False,RS <= +2 pp; trend Bearish,-9.44,22.68,22.74,24.48,Bearish (Downtrend),53.83,,,,,,,,,,,,,,,,,,False
+WAAREERTL,Waaree Renewab.,Screener: Other Electrical Equipment,248,736.0,False,RS <= +2 pp; trend Bearish,-18.39,22.86,24.11,25.15,Bearish (Downtrend),46.12,,,,,,,,,,,,,,,,,,False
+WELCORP,Welspun Corp,Screener: Iron & Steel Products,248,2202.1,False,trend Bearish,20.3,22.83,14.61,29.11,Bearish (Downtrend),37.64,,,,,,,,,,,,,,,,,,False
+AFCONS,Afcons Infrastr.,Screener: Civil Construction,248,214.1,False,RS <= +2 pp,-21.32,23.0,23.46,19.92,Bullish (Uptrend),35.88,,,,,,,,,,,,,,,,,,False
+CEIGALL,Ceigall India,Screener: Civil Construction,248,387.75,False,trend Bearish,16.93,20.8,19.73,20.33,Bearish (Downtrend),53.22,,,,,,,,,,,,,,,,,,False
+CEMPRO,Cemindia Project,Screener: Civil Construction,248,1307.5,True,,8.84,22.14,27.93,13.07,Bullish (Uptrend),59.65,2026-09-26,OK,Screener 2026-09-26,21597.14,True,32.76,True,10.35,True,499.78,True,0.42,True,0.0,True,True,,True
+DBL,Dilip Buildcon,Screener: Civil Construction,248,401.1,False,RS <= +2 pp,-10.05,14.01,22.15,18.56,Bullish (Uptrend),54.94,,,,,,,,,,,,,,,,,,False
+ENGINERSIN,Engineers India,Screener: Civil Construction,248,299.35,True,,25.03,27.35,28.19,20.41,Bullish (Uptrend),59.81,2026-09-26,OK,Screener 2026-09-26,17740.87,True,30.4,True,19.35,True,319.02,True,0.01,True,0.0,True,True,,True
+GRINFRA,G R Infraproject,Screener: Civil Construction,248,783.1,False,RS <= +2 pp; trend Bearish,-9.45,19.35,15.28,19.13,Bearish (Downtrend),48.61,,,,,,,,,,,,,,,,,,False
+HCC,Hind.Construct.,Screener: Civil Construction,248,18.54,False,RS <= +2 pp; trend Bearish,-9.04,27.74,18.96,26.99,Bearish (Downtrend),47.45,,,,,,,,,,,,,,,,,,False
+IRB,IRB Infra.Devl.,Screener: Civil Construction,248,18.27,False,RS <= +2 pp,-6.55,21.44,33.28,17.8,Bullish (Uptrend),62.27,,,,,,,,,,,,,,,,,,False
+IRCON,Ircon Intl.,Screener: Civil Construction,248,111.36,False,RS <= +2 pp,-14.54,16.18,29.1,17.56,Bullish (Uptrend),60.96,,,,,,,,,,,,,,,,,,False
+ISGEC,ISGEC Heavy,Screener: Civil Construction,248,977.9,True,,20.64,30.02,25.23,9.99,Bullish (Uptrend),66.9,2026-09-26,OK,Screener 2026-09-26,6548.17,True,11.22,True,8.32,True,764.97,True,0.35,True,0.0,True,True,,True
+KPIL,Kalpataru Proj.,Screener: Civil Construction,248,1370.5,False,trend Bearish,4.66,13.57,23.03,23.33,Bearish (Downtrend),52.74,,,,,,,,,,,,,,,,,,False
+KEC,KEC International,Screener: Civil Construction,248,333.7,False,RS <= +2 pp; trend Bearish,-29.7,35.71,19.09,26.76,Bearish (Downtrend),42.88,,,,,,,,,,,,,,,,,,False
+LT,Larsen & Toubro,Screener: Civil Construction,248,4185.0,True,,3.79,40.21,37.66,7.58,Bullish (Uptrend),77.73,2026-09-26,OK,Screener 2026-09-26,533324.42,True,14.57,True,12.5,True,16740.97,True,1.15,True,0.0,True,True,,True
+NBCC,NBCC,Screener: Civil Construction,248,80.4,False,RS <= +2 pp,-15.05,36.4,26.46,17.62,Bullish (Uptrend),58.65,,,,,,,,,,,,,,,,,,False
+NCC,NCC,Screener: Civil Construction,248,130.93,False,RS <= +2 pp,-9.46,21.41,26.82,18.76,Bullish (Uptrend),60.15,,,,,,,,,,,,,,,,,,False
+POWERMECH,Power Mech Proj.,Screener: Civil Construction,248,2406.5,False,RS <= +2 pp,-7.42,19.81,29.8,24.96,Bullish (Uptrend),60.02,,,,,,,,,,,,,,,,,,False
+RVNL,Rail Vikas,Screener: Civil Construction,248,201.7,False,RS <= +2 pp,-12.96,17.31,27.14,21.07,Bullish (Uptrend),59.07,,,,,,,,,,,,,,,,,,False
+RITES,Rites,Screener: Civil Construction,248,196.8,False,RS <= +2 pp; trend Bearish,-15.37,11.09,20.17,22.09,Bearish (Downtrend),48.13,,,,,,,,,,,,,,,,,,False
+TECHNOE,Techno Elec.Engg,Screener: Civil Construction,248,946.7,False,RS <= +2 pp,-10.6,29.42,29.45,19.68,Bullish (Uptrend),57.28,,,,,,,,,,,,,,,,,,False
+WELENT,Welspun Enterp,Screener: Civil Construction,248,681.15,True,,16.28,24.88,28.36,17.77,Bullish (Uptrend),49.31,2026-09-26,OK,Screener 2026-09-26,10443.32,True,16.74,True,20.19,True,112.19,True,0.65,True,0.0,True,True,,True
