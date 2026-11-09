@@ -4,7 +4,7 @@ contract,NIFTY 2026-12-29 22000 PE
 lots_held,8.0
 lots_needed,7.82
 hedge_ratio,1.454
-stocks_inr,8756730
+stocks_inr,8755763
 nifty_spot,25044.65
 band_lots,1.0
 status,in band

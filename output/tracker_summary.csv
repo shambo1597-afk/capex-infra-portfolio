@@ -13,11 +13,11 @@ vs_nifty500_inr,-1700221.79
 vs_liquid_fund_inr,-1150454.6
 xirr_pct,-63.39
 nifty500_xirr_pct,67.07
-stocks_inr,8756729.9
+stocks_inr,8755762.8
 options_inr,24284.0
-cash_inr,127144.5
+cash_inr,128111.6
 at_risk_to_stops_inr,1121863.63
-stops_breached,TDPOWERSYS
+stops_breached,
 near_stop,WELCORP
 evaluation_end,2026-10-29
-ledger_sha1,68ad1b142213a9a3df03c0e9ab7867397fe2087f
+ledger_sha1,33dc1d001733eb9535708f0861706015bf84eedf

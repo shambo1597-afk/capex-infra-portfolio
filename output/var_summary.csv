@@ -1,13 +1,13 @@
 measure,stocks_inr,stocks_pct,with_puts_inr,with_puts_pct
 As of,2026-11-09,,,
 Horizon,2026-10-29 (1 sessions),,,
-"Parametric VaR 95%, 1 day",272184.0,3.11,267997.0,3.06
-"Parametric VaR 95%, to the horizon (1 sessions)",272184.0,3.11,267997.0,3.06
-"Historical VaR 95%, 1 day",260215.0,2.97,252348.0,2.88
-"Historical CVaR (expected shortfall) 95%, 1 day",335598.0,3.83,332808.0,3.8
-"Parametric VaR 99%, 1 day",384936.0,4.4,379014.0,4.33
-"Parametric VaR 99%, to the horizon (1 sessions)",384936.0,4.4,379014.0,4.33
-"Historical VaR 99%, 1 day",391525.0,4.47,387783.0,4.43
-"Historical CVaR (expected shortfall) 99%, 1 day",465036.0,5.31,460370.0,5.26
-"Diversification benefit (sum of standalone 95% VaRs minus portfolio VaR), 1 day",186127.0,2.13,200115.0,2.29
-Stocks valued (Rs),8756730.0,100.0,8756730.0,100.0
+"Parametric VaR 95%, 1 day",264077.0,3.02,259556.0,2.96
+"Parametric VaR 95%, to the horizon (1 sessions)",264077.0,3.02,259556.0,2.96
+"Historical VaR 95%, 1 day",228324.0,2.61,225075.0,2.57
+"Historical CVaR (expected shortfall) 95%, 1 day",317364.0,3.62,311777.0,3.56
+"Parametric VaR 99%, 1 day",373471.0,4.27,367077.0,4.19
+"Parametric VaR 99%, to the horizon (1 sessions)",373471.0,4.27,367077.0,4.19
+"Historical VaR 99%, 1 day",367084.0,4.19,357992.0,4.09
+"Historical CVaR (expected shortfall) 99%, 1 day",426815.0,4.87,422150.0,4.82
+"Diversification benefit (sum of standalone 95% VaRs minus portfolio VaR), 1 day",174784.0,2.0,189106.0,2.16
+Stocks valued (Rs),8755763.0,100.0,8755763.0,100.0
