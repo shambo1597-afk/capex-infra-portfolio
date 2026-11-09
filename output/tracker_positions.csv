@@ -1,5 +1,5 @@
 symbol,shares,avg_cost,close,value_inr,pnl_inr,pnl_pct,stop_loss_price,at_risk_to_stop_inr,stop_breached,near_stop,pct_above_stop
-ACE,742,1166.65,1166.65,865654.3,0.0,0.0,,,False,False,
+ACE,742,1166.65,1166.65,865654.3,0.0,0.0,932.88,173457.34,False,False,25.06
 ACMESOLAR,3322,437.9,407.25,1352884.5,-101819.3,-7.0,353.97,176996.16,False,False,15.05
 AEROFLEX,1743,513.4,484.4,844309.2,-50547.0,-5.65,431.44,92309.28,False,False,12.28
 GOODLUCK,1820,544.95,555.35,1010737.0,18928.0,1.91,413.48,258203.4,False,False,34.31
