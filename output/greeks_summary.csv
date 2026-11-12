@@ -6,13 +6,13 @@ Options held,long 520 NIFTY 2026-12-29 22000 PE @ 33.85,every leg is in the Gree
 Implied volatility (%),23.26,"of the core put, from its settlement price"
 Days to expiry,47,core put
 Risk-free (%),5.8681,91-day T-bill
-Stocks delta (Nifty units),337,sum of value x beta / spot
-Stocks delta (Rs per 1% Nifty move),85049,
+Stocks delta (Nifty units),336,sum of value x beta / spot
+Stocks delta (Rs per 1% Nifty move),84976,
 Puts delta per unit,-0.0384,"all option legs, per unit of the core put"
 Puts delta (Nifty units),-20,negative: gains when the Nifty falls
 Puts delta (Rs per 1% Nifty move),-5043,
 Net delta (Nifty units),317,stocks + options
-Net delta (Rs per 1% Nifty move),80006,
+Net delta (Rs per 1% Nifty move),79933,
 Share of the stocks' delta hedged (%),5.9,rises as the Nifty falls (gamma)
 "Puts gamma (delta change per 1% Nifty move, units)",5.1,a 1% fall makes the options' delta this much more negative
 Puts vega (Rs per 1 IV point),3970,a jump in fear raises the puts' value

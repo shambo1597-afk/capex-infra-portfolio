@@ -1,13 +1,13 @@
 benchmark,days,beta,r_squared,benchmark_return_pct
-Our capex universe (equal weight),245,1.12,0.721,11.4
-Nifty Smallcap 500,194,1.24,0.672,16.5
-Nifty Capital Goods,102,1.11,0.541,-5.9
-Nifty500 Momentum 50,245,1.03,0.522,0.4
-Nifty500 Multicap Infrastructure 50:30:20,245,1.19,0.479,0.4
-Nifty India Manufacturing,245,1.17,0.467,5.3
-Nifty Energy,245,1.11,0.445,3.8
-Nifty 500,245,1.21,0.411,-0.2
-Nifty Infrastructure,245,1.0,0.328,-0.5
-Nifty Metal,245,0.62,0.268,20.8
-Nifty Cement,179,0.63,0.231,-11.7
-Nifty Power,102,0.67,0.154,-7.9
+Our capex universe (equal weight),245,1.12,0.72,11.5
+Nifty Smallcap 500,195,1.24,0.668,17.8
+Nifty Capital Goods,103,1.11,0.538,-5.4
+Nifty500 Momentum 50,245,1.03,0.522,0.6
+Nifty500 Multicap Infrastructure 50:30:20,245,1.19,0.479,0.2
+Nifty India Manufacturing,245,1.17,0.467,5.2
+Nifty Energy,245,1.11,0.445,3.1
+Nifty 500,245,1.21,0.41,0.1
+Nifty Infrastructure,245,1.0,0.328,-1.1
+Nifty Metal,245,0.62,0.268,21.7
+Nifty Cement,180,0.63,0.232,-11.9
+Nifty Power,103,0.67,0.154,-8.4
