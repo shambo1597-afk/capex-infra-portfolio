@@ -1,9 +1,9 @@
 symbol,sector,current_price,annualized_volatility_pct,historical_expected_return_pct,weight_pct,risk_contribution_pct,shares,invested_inr,atr_14,atr_pct,stop_loss_price,stop_loss_pct_below_current,stop_loss_method
-WELCORP,Capital Goods,2260.2,46.59,100.48,12.72,12.93,488,1102977.6,134.75,5.96,2148.31,4.95,trailed
-RPEL,Capital Goods,1971.5,51.55,80.03,10.66,12.93,642,1265703.0,97.3,4.94,1499.65,23.93,trailed
-SBCL,Capital Goods,988.8,58.18,90.12,11.52,12.93,1105,1092624.0,61.97,6.27,830.99,15.96,trailed
-AEROFLEX,Capital Goods,487.3,65.86,113.49,8.35,12.93,1743,849363.9,34.76,7.13,431.44,11.46,trailed
-RAMRAT,Capital Goods,515.1,44.95,56.67,13.97,12.93,2456,1265085.6,21.1,4.1,496.6,3.59,trailed
-ACMESOLAR,Power,403.6,39.54,53.96,15.0,10.52,3322,1340759.2,16.66,4.13,353.97,12.3,trailed
-ACE,Capital Goods,1173.75,35.27,24.75,15.0,11.91,742,870922.5,45.71,3.89,955.24,18.62,trailed
-GOODLUCK,Capital Goods,557.3,46.4,49.28,12.77,12.93,1820,1014286.0,24.41,4.38,437.56,21.49,trailed
+WELCORP,Capital Goods,2224.9,46.61,100.2,12.73,12.95,488,1085751.2,128.94,5.8,2148.31,3.44,trailed
+RPEL,Capital Goods,1912.9,51.65,77.27,10.65,12.95,642,1228081.8,97.45,5.09,1499.65,21.6,trailed
+SBCL,Capital Goods,960.2,58.27,87.19,11.52,12.95,1105,1061021.0,60.56,6.31,830.99,13.46,trailed
+AEROFLEX,Capital Goods,494.6,65.82,116.95,8.37,12.95,1743,862087.8,33.63,6.8,431.44,12.77,trailed
+RAMRAT,Capital Goods,511.3,44.94,57.12,13.98,12.95,2456,1255752.8,20.21,3.95,496.6,2.88,trailed
+ACMESOLAR,Power,409.7,39.56,54.85,15.0,10.45,3322,1361023.4,16.43,4.01,353.97,13.6,trailed
+ACE,Capital Goods,1189.2,35.29,25.7,15.0,11.86,742,882386.4,45.06,3.79,963.88,18.95,atr
+GOODLUCK,Capital Goods,549.0,46.4,45.78,12.75,12.95,1820,999180.0,23.8,4.34,437.56,20.3,trailed
