@@ -1,23 +1,23 @@
 symbol,company_name,index,price_sessions,current_price,passed_technical_screen,technical_fail_reason,rs_score,adx,plus_di,minus_di,trend_direction,rsi,fundamentals_as_of,fundamentals_status,pledged_as_of,market_cap,pass_market_cap,roce,pass_roce,interest_coverage,pass_interest_coverage,operating_cash_flow,pass_operating_cash_flow,pledged_pct,pass_pledged_pct,passed_fundamental_screen,failed_criteria,passes_both_screens
-ACMESOLAR,ACME Solar Hold.,Screener: Power Generation,248,409.7,False,trend Bearish,12.0,11.16,19.51,22.01,Bearish (Downtrend),49.5,,,,,,,,,,,,,,,,False
-ADANIENSOL,Adani Energy Sol,Screener: Power Distribution,248,1490.0,False,RS <= +2 pp,-6.52,25.4,31.32,11.49,Bullish (Uptrend),64.21,,,,,,,,,,,,,,,,False
-ADANIGREEN,Adani Green,Screener: Power Generation,248,1404.1,True,,5.48,24.52,29.52,15.58,Bullish (Uptrend),57.52,2026-09-26,OK,Screener 2026-09-26,213572.86,True,7.39,True,1.29,False,10135.0,True,0.0,True,False,Interest coverage > 1.5,False
-ADANIPOWER,Adani Power,Screener: Integrated Power Utilities,248,205.3,False,RS <= +2 pp,0.58,17.96,25.15,20.15,Bullish (Uptrend),57.43,,,,,,,,,,,,,,,,False
-CESC,CESC,Screener: Integrated Power Utilities,248,124.28,False,RS <= +2 pp; trend Bearish,-27.27,21.07,15.93,27.61,Bearish (Downtrend),38.48,,,,,,,,,,,,,,,,False
-CLEANMAX,Clean Max Enviro,Screener: Power Generation,176,1272.1,False,trend Bearish,2.32,23.03,15.88,29.95,Bearish (Downtrend),49.93,,,,,,,,,,,,,,,,False
-GMRP&UI,GMR Urban,Screener: Power Generation,248,91.32,False,RS <= +2 pp; trend Bearish,-5.84,16.63,14.78,21.43,Bearish (Downtrend),40.76,,,,,,,,,,,,,,,,False
-JPPOWER,JP Power Ven.,Screener: Power Generation,248,13.31,False,RS <= +2 pp; trend Bearish,-23.74,20.17,20.39,31.51,Bearish (Downtrend),38.96,,,,,,,,,,,,,,,,False
-JSWENERGY,JSW Energy,Screener: Power Generation,248,511.85,False,RS <= +2 pp,-8.14,22.36,25.25,17.0,Bullish (Uptrend),54.57,,,,,,,,,,,,,,,,False
-JNPR,Juniper Green,Screener: Power Generation,71,241.86,False,RS <= +2 pp; trend Bearish,-0.2,20.87,15.66,32.11,Bearish (Downtrend),39.37,,,,,,,,,,,,,,,,False
-KPIGREEN,KPI Green Energy,Screener: Power Generation,248,325.9,True,,7.24,22.67,29.4,23.32,Bullish (Uptrend),55.49,2026-09-26,OK,Screener 2026-09-26,6715.91,True,13.85,True,3.99,True,424.07,True,44.74,False,False,Pledged percentage < 15%,False
-NAVA,Nava,Screener: Power Generation,248,538.35,False,RS <= +2 pp,-4.09,20.07,30.52,22.98,Bullish (Uptrend),50.34,,,,,,,,,,,,,,,,False
-NHPC,NHPC Ltd,Screener: Power Generation,248,74.46,False,RS <= +2 pp; trend Bearish,-3.07,22.11,22.46,29.26,Bearish (Downtrend),44.83,,,,,,,,,,,,,,,,False
-NLCINDIA,NLC India,Screener: Power Generation,248,226.89,False,RS <= +2 pp; trend Bearish,-18.56,18.95,19.04,26.65,Bearish (Downtrend),39.97,,,,,,,,,,,,,,,,False
-NTPC,NTPC,Screener: Power Generation,248,320.4,False,RS <= +2 pp; trend Bearish,-5.21,21.65,23.72,24.54,Bearish (Downtrend),52.12,,,,,,,,,,,,,,,,False
-NTPCGREEN,NTPC Green Ene.,Screener: Power Generation,248,82.38,False,RS <= +2 pp; trend Bearish,-10.87,27.66,13.39,25.81,Bearish (Downtrend),40.19,,,,,,,,,,,,,,,,False
-POWERGRID,Power Grid Corpn,Screener: Power - Transmission,248,259.1,False,RS <= +2 pp; trend Bearish,-2.93,15.46,21.62,22.25,Bearish (Downtrend),50.81,,,,,,,,,,,,,,,,False
-RPOWER,Reliance Power,Screener: Power Generation,248,17.76,False,RS <= +2 pp; trend Bearish,-22.11,16.26,22.55,28.3,Bearish (Downtrend),41.2,,,,,,,,,,,,,,,,False
-SJVN,SJVN,Screener: Power Generation,248,54.64,False,RS <= +2 pp,-18.19,28.34,25.68,25.21,Bullish (Uptrend),44.73,,,,,,,,,,,,,,,,False
-TATAPOWER,Tata Power Co.,Screener: Integrated Power Utilities,248,338.0,False,RS <= +2 pp; trend Bearish,-11.68,14.96,19.18,28.01,Bearish (Downtrend),38.66,,,,,,,,,,,,,,,,False
-TORNTPOWER,Torrent Power,Screener: Integrated Power Utilities,248,1211.8,False,RS <= +2 pp; trend Bearish,-7.97,15.58,15.97,16.3,Bearish (Downtrend),47.54,,,,,,,,,,,,,,,,False
-VEDPOWER,Vedanta Power,Screener: Power Generation,108,35.38,False,RS <= +2 pp,-3.59,32.07,31.5,13.1,Bullish (Uptrend),60.06,,,,,,,,,,,,,,,,False
+ACMESOLAR,ACME Solar Hold.,Screener: Power Generation,248,409.15,False,trend Bearish,8.25,10.79,19.07,21.52,Bearish (Downtrend),49.26,,,,,,,,,,,,,,,,False
+ADANIENSOL,Adani Energy Sol,Screener: Power Distribution,248,1473.4,False,RS <= +2 pp,-9.89,26.89,29.96,11.0,Bullish (Uptrend),61.03,,,,,,,,,,,,,,,,False
+ADANIGREEN,Adani Green,Screener: Power Generation,248,1425.0,True,,7.14,24.98,28.08,14.82,Bullish (Uptrend),60.07,2026-09-26,OK,Screener 2026-09-26,213572.86,True,7.39,True,1.29,False,10135.0,True,0.0,True,False,Interest coverage > 1.5,False
+ADANIPOWER,Adani Power,Screener: Integrated Power Utilities,248,210.5,False,RS <= +2 pp,0.58,17.78,25.21,18.46,Bullish (Uptrend),62.85,,,,,,,,,,,,,,,,False
+CESC,CESC,Screener: Integrated Power Utilities,248,126.93,False,RS <= +2 pp; trend Bearish,-26.25,21.13,16.37,25.55,Bearish (Downtrend),44.35,,,,,,,,,,,,,,,,False
+CLEANMAX,Clean Max Enviro,Screener: Power Generation,177,1264.0,False,RS <= +2 pp; trend Bearish,-0.26,23.58,15.57,29.36,Bearish (Downtrend),48.64,,,,,,,,,,,,,,,,False
+GMRP&UI,GMR Urban,Screener: Power Generation,248,90.21,False,RS <= +2 pp; trend Bearish,-8.13,17.04,14.32,22.59,Bearish (Downtrend),38.06,,,,,,,,,,,,,,,,False
+JPPOWER,JP Power Ven.,Screener: Power Generation,248,13.47,False,RS <= +2 pp; trend Bearish,-24.04,20.34,19.36,30.67,Bearish (Downtrend),41.76,,,,,,,,,,,,,,,,False
+JSWENERGY,JSW Energy,Screener: Power Generation,248,515.0,False,RS <= +2 pp,-7.85,22.16,23.96,16.13,Bullish (Uptrend),56.22,,,,,,,,,,,,,,,,False
+JNPR,Juniper Green,Screener: Power Generation,72,242.62,False,RS <= +2 pp; trend Bearish,-0.97,21.84,15.29,31.36,Bearish (Downtrend),40.18,,,,,,,,,,,,,,,,False
+KPIGREEN,KPI Green Energy,Screener: Power Generation,248,329.9,True,,4.99,22.22,30.77,22.11,Bullish (Uptrend),56.8,2026-09-26,OK,Screener 2026-09-26,6715.91,True,13.85,True,3.99,True,424.07,True,44.74,False,False,Pledged percentage < 15%,False
+NAVA,Nava,Screener: Power Generation,248,530.55,False,RS <= +2 pp,-6.88,19.1,29.12,25.51,Bullish (Uptrend),47.54,,,,,,,,,,,,,,,,False
+NHPC,NHPC Ltd,Screener: Power Generation,248,76.3,False,RS <= +2 pp,-2.37,20.58,26.98,26.58,Bullish (Uptrend),51.17,,,,,,,,,,,,,,,,False
+NLCINDIA,NLC India,Screener: Power Generation,248,234.92,False,RS <= +2 pp; trend Bearish,-16.89,18.39,19.75,24.71,Bearish (Downtrend),46.04,,,,,,,,,,,,,,,,False
+NTPC,NTPC,Screener: Power Generation,248,325.0,False,RS <= +2 pp,-5.4,20.7,26.69,22.61,Bullish (Uptrend),56.97,,,,,,,,,,,,,,,,False
+NTPCGREEN,NTPC Green Ene.,Screener: Power Generation,248,82.48,False,RS <= +2 pp; trend Bearish,-12.32,27.95,12.97,25.01,Bearish (Downtrend),40.69,,,,,,,,,,,,,,,,False
+POWERGRID,Power Grid Corpn,Screener: Power - Transmission,248,264.5,False,RS <= +2 pp,-3.12,15.22,25.94,20.34,Bullish (Uptrend),56.64,,,,,,,,,,,,,,,,False
+RPOWER,Reliance Power,Screener: Power Generation,248,17.82,False,RS <= +2 pp; trend Bearish,-22.43,16.13,21.59,28.87,Bearish (Downtrend),41.88,,,,,,,,,,,,,,,,False
+SJVN,SJVN,Screener: Power Generation,248,56.2,False,RS <= +2 pp,-17.03,26.76,26.34,23.24,Bullish (Uptrend),50.23,,,,,,,,,,,,,,,,False
+TATAPOWER,Tata Power Co.,Screener: Integrated Power Utilities,248,340.0,False,RS <= +2 pp; trend Bearish,-12.57,15.4,17.98,27.64,Bearish (Downtrend),40.68,,,,,,,,,,,,,,,,False
+TORNTPOWER,Torrent Power,Screener: Integrated Power Utilities,248,1234.1,False,RS <= +2 pp,-4.18,15.09,18.12,15.21,Bullish (Uptrend),52.89,,,,,,,,,,,,,,,,False
+VEDPOWER,Vedanta Power,Screener: Power Generation,109,35.02,False,RS <= +2 pp,-5.02,32.1,30.25,15.42,Bullish (Uptrend),57.73,,,,,,,,,,,,,,,,False
