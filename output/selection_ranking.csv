@@ -1,27 +1,24 @@
 selection_rank,symbol,company_name,sector,locked,rule_pick,why_not_picked,rs_6m_skip1m,rs_score_vs_nifty500,di_gap,latest_adx,rrg_quadrant_vs_nifty500,rrg_quadrant_vs_sector,conviction,soft_fundamental_fails,median_turnover_cr,qtr_net_profit,qtr_profit_yoy,qtr_sales_yoy,pe,business_focus_note
-1,RPEL,Raghav Product.,Capital Goods,True,True,,96.0,25.36,10.6,25.84,WEAKENING,LEADING,Moderate,,16.42,19.57,67.55,48.72,124.49,"KEPT (borderline): ramming mass, the refractory lining of induction furnaces, sold to secondary steel makers (mostly TMT for construction). An industrial consumable, not equipment; NSE classes it Capital Goods > Industrial Products > Electrodes & Refractories."
-2,QPOWER,Quality Power El,Capital Goods,True,True,,40.41,20.38,7.39,15.69,WEAKENING,WEAKENING,Low,,44.97,46.72,49.59,31.66,88.18,"FIT: high-voltage grid equipment (reactors, HVDC/FACTS components) for power transmission and energy transition."
-3,CEMPRO,Cemindia Project,Capital Goods,False,True,,36.75,2.31,16.66,26.84,LEADING,LEADING,High,,29.64,140.83,2.62,5.61,35.9,
-4,GOODLUCK,Goodluck India,Capital Goods,True,True,,32.06,21.06,4.01,15.52,LEADING,LEADING,High,,24.92,67.22,59.54,30.93,25.67,"KEPT (borderline): steel engineering products. CR coils, pipes and tubes (~37%: roads, bridges, railways) and engineering structures (~23%: transmission towers, solar structures) fit; precision and auto tubes (~25%) are automotive; forgings (~15%) include a new defence (shell) unit."
-5,ACE,Action Const.Eq.,Capital Goods,True,True,,27.77,-1.72,16.02,29.02,IMPROVING,LEADING,Moderate,,29.95,119.49,22.28,20.49,33.44,"FIT: cranes, construction and material-handling equipment ~92% of FY25 revenue; agri equipment (incl. tractors) ~8%."
-6,APLAPOLLO,APL Apollo Tubes,Capital Goods,False,True,,17.15,-0.25,3.41,15.77,LAGGING,WEAKENING,Low,OPM > 8%,130.35,263.11,10.94,8.45,50.03,
-7,LMW,LMW,Capital Goods,False,True,,13.34,-12.26,11.04,19.42,LAGGING,LAGGING,Low,ROCE > 8%; OPM > 8%,6.79,55.52,369.17,24.0,100.19,
-8,ENGINERSIN,Engineers India,Capital Goods,True,True,,12.27,23.81,11.14,28.73,WEAKENING,LEADING,Moderate,,91.65,157.94,141.5,-5.8,22.62,"FIT: engineering consultancy and turnkey (LSTK) EPC for refineries, petrochemicals, fertilisers and infrastructure; Screener: Construction > Civil Construction (EPC)."
-9,NUVOCO,Nuvoco Vistas,Cement,False,True,,9.54,4.85,5.75,10.97,LEADING,LEADING,High,ROCE > 8%,7.44,159.63,19.98,8.91,28.87,"FIT: Nuvoco Vistas (Nirma group), cement and ready-mix concrete; the only Cement stock in the 15."
-10,ADANIENSOL,Adani Energy Sol,Power,False,True,,4.79,-9.89,18.96,26.89,IMPROVING,IMPROVING,Moderate,,212.04,1236.56,124.22,42.41,56.08,
-11,TITAGARH,Titagarh Rail,Capital Goods,False,True,,2.3,-14.18,6.5,21.85,IMPROVING,IMPROVING,Moderate,,37.25,52.58,67.47,12.63,57.05,
-12,TEXRAIL,Texmaco Rail,Capital Goods,False,True,,2.22,4.15,6.18,18.03,LEADING,LEADING,High,,23.25,50.08,66.86,-16.9,23.55,"FIT: railway wagons and rolling stock, rail EPC, hydro-mechanical equipment, bridges and steel structures."
-13,BALUFORGE,Balu Forge,Capital Goods,False,True,,2.13,-4.77,4.68,20.95,LAGGING,LEADING,Moderate,,41.49,66.09,15.89,28.95,22.96,
-14,TIIL,Technocraf.Inds.,Capital Goods,False,True,,0.09,-17.01,9.07,27.89,LAGGING,LAGGING,Low,,9.39,137.75,68.38,27.2,20.05,
-15,JSWCEMENT,JSW Cement,Cement,False,True,,-2.52,-4.37,7.9,27.09,IMPROVING,WEAKENING,Moderate,,14.98,153.43,359.81,21.58,19.96,
-16,ULTRACEMCO,UltraTech Cem.,Cement,False,False,ranked below the top 15,-4.18,7.42,23.94,44.23,LEADING,LEADING,High,,281.04,2603.72,15.75,15.85,38.11,
-17,LT,Larsen & Toubro,Capital Goods,False,False,ranked below the top 15,-4.48,1.8,23.01,46.09,WEAKENING,LEADING,Moderate,,623.43,4988.03,13.98,6.69,30.27,
-18,TRANSRAILL,Transrail Light,Capital Goods,False,False,ranked below the top 15,-7.14,-7.76,2.18,15.11,LAGGING,LEADING,Moderate,,18.2,107.88,1.95,4.59,15.08,
-19,GVT&D,GE Vernova T&D,Capital Goods,False,False,ranked below the top 15,-8.36,1.87,2.2,12.73,WEAKENING,LEADING,Moderate,,284.19,362.99,24.65,38.04,81.16,
-20,ADANIPOWER,Adani Power,Power,False,False,ranked below the top 15,-9.28,0.58,6.75,17.78,LEADING,LEADING,High,,347.98,4866.6,41.98,33.97,27.43,
-21,POWERINDIA,Hitachi Energy,Capital Goods,False,False,ranked below the top 15,-11.75,-14.64,7.52,21.28,LAGGING,IMPROVING,Moderate,,295.22,294.15,123.52,68.62,116.13,
-22,IRB,IRB Infra.Devl.,Capital Goods,False,False,ranked below the top 15,-11.92,-9.69,2.2,21.95,IMPROVING,IMPROVING,Moderate,ROCE > 8%,17.43,306.27,51.26,1.82,21.71,
-23,NCC,NCC,Capital Goods,False,False,ranked below the top 15,-12.14,-5.87,9.18,22.99,IMPROVING,LEADING,Moderate,Cash from operations last year > 0 (Rs Cr),24.3,228.9,12.63,12.22,11.55,
-24,TIMKEN,Timken India,Capital Goods,False,False,ranked below the top 15,-17.01,-7.95,7.29,25.35,LAGGING,LEADING,Moderate,,11.51,115.13,10.47,14.87,58.93,
-25,NTPC,NTPC,Power,False,False,ranked below the top 15,-18.52,-5.4,4.08,20.7,LAGGING,WEAKENING,Low,,245.48,6896.44,11.82,7.81,11.41,
-26,NBCC,NBCC,Capital Goods,False,False,ranked below the top 15,-18.69,-11.47,2.94,26.83,IMPROVING,IMPROVING,Moderate,OPM > 8%,43.34,158.01,17.18,-5.51,32.69,
+1,RPEL,Raghav Product.,Capital Goods,True,True,,88.04,10.24,10.03,25.6,WEAKENING,WEAKENING,Low,,16.15,19.57,67.55,48.72,124.49,"KEPT (borderline): ramming mass, the refractory lining of induction furnaces, sold to secondary steel makers (mostly TMT for construction). An industrial consumable, not equipment; NSE classes it Capital Goods > Industrial Products > Electrodes & Refractories."
+2,CEMPRO,Cemindia Project,Capital Goods,False,True,,40.52,8.86,18.61,28.19,LEADING,LEADING,High,,29.64,140.83,2.62,5.61,35.9,
+3,QPOWER,Quality Power El,Capital Goods,True,True,,34.86,15.86,5.0,15.48,WEAKENING,WEAKENING,Low,,45.38,46.72,49.59,31.66,88.18,"FIT: high-voltage grid equipment (reactors, HVDC/FACTS components) for power transmission and energy transition."
+4,ACE,Action Const.Eq.,Capital Goods,True,True,,23.1,-3.92,13.59,29.3,IMPROVING,LEADING,Moderate,,29.51,119.49,22.28,20.49,33.44,"FIT: cranes, construction and material-handling equipment ~92% of FY25 revenue; agri equipment (incl. tractors) ~8%."
+5,LMW,LMW,Capital Goods,False,True,,14.37,-14.02,6.85,19.3,LAGGING,LAGGING,Low,ROCE > 8%; OPM > 8%,6.79,55.52,369.17,24.0,100.19,
+6,ENGINERSIN,Engineers India,Capital Goods,True,True,,10.96,22.18,6.99,27.76,WEAKENING,LEADING,Moderate,,91.65,157.94,141.5,-5.8,22.62,"FIT: engineering consultancy and turnkey (LSTK) EPC for refineries, petrochemicals, fertilisers and infrastructure; Screener: Construction > Civil Construction (EPC)."
+7,NUVOCO,Nuvoco Vistas,Cement,False,True,,8.71,9.55,18.82,13.24,LEADING,LEADING,High,ROCE > 8%,7.44,159.63,19.98,8.91,28.87,"FIT: Nuvoco Vistas (Nirma group), cement and ready-mix concrete; the only Cement stock in the 15."
+8,ADANIENSOL,Adani Energy Sol,Power,False,True,,1.64,-6.18,16.88,28.01,IMPROVING,LEADING,Moderate,,212.04,1236.56,124.22,42.41,56.08,
+9,TEXRAIL,Texmaco Rail,Capital Goods,False,True,,1.05,5.49,7.51,18.03,LEADING,LEADING,High,,23.25,50.08,66.86,-16.9,23.55,"FIT: railway wagons and rolling stock, rail EPC, hydro-mechanical equipment, bridges and steel structures."
+10,ULTRACEMCO,UltraTech Cem.,Cement,False,True,,-1.63,10.0,30.75,45.83,LEADING,LEADING,High,,281.04,2603.72,15.75,15.85,38.11,
+11,TITAGARH,Titagarh Rail,Capital Goods,False,True,,-1.73,-15.51,4.52,20.97,IMPROVING,IMPROVING,Moderate,,37.25,52.58,67.47,12.63,57.05,
+12,JSWCEMENT,JSW Cement,Cement,False,True,,-1.82,-0.73,12.31,27.47,IMPROVING,WEAKENING,Moderate,,14.98,153.43,359.81,21.58,19.96,
+13,TIIL,Technocraf.Inds.,Capital Goods,False,True,,-3.4,-12.38,7.23,27.33,LAGGING,LAGGING,Low,,9.1,137.75,68.38,27.2,20.05,
+14,LT,Larsen & Toubro,Capital Goods,False,True,,-3.75,1.15,21.33,46.52,WEAKENING,LEADING,Moderate,,638.51,4988.03,13.98,6.69,30.27,
+15,POWERMECH,Power Mech Proj.,Capital Goods,False,True,,-4.33,-3.28,6.65,16.31,IMPROVING,LEADING,Moderate,,9.2,89.33,51.9,25.53,19.45,
+16,ADANIPOWER,Adani Power,Power,False,False,ranked below the top 15,-11.77,0.88,10.26,18.15,LEADING,LEADING,High,,355.32,4866.6,41.98,33.97,27.43,
+17,NCC,NCC,Capital Goods,False,False,ranked below the top 15,-12.72,-8.65,5.46,22.21,IMPROVING,LEADING,Moderate,Cash from operations last year > 0 (Rs Cr),24.42,228.9,12.63,12.22,11.55,
+18,INDIACEM,India Cements,Cement,False,False,ranked below the top 15,-14.32,-14.58,2.76,29.49,LAGGING,LAGGING,Low,ROCE > 8%; Cash from operations last year > 0 (Rs Cr),5.93,26.85,526.14,-0.52,74.17,
+19,IRB,IRB Infra.Devl.,Capital Goods,False,False,ranked below the top 15,-16.74,-7.9,8.06,21.49,IMPROVING,LEADING,Moderate,ROCE > 8%,17.55,306.27,51.26,1.82,21.71,
+20,POWERINDIA,Hitachi Energy,Capital Goods,False,False,ranked below the top 15,-17.76,-13.8,2.06,20.05,LAGGING,IMPROVING,Moderate,,295.22,294.15,123.52,68.62,116.13,
+21,NTPC,NTPC,Power,False,False,ranked below the top 15,-19.51,-7.48,3.81,19.81,LAGGING,WEAKENING,Low,,245.48,6896.44,11.82,7.81,11.41,
+22,NBCC,NBCC,Capital Goods,False,False,ranked below the top 15,-19.9,-11.71,5.31,25.79,IMPROVING,IMPROVING,Moderate,OPM > 8%,43.4,158.01,17.18,-5.51,32.69,
+23,TIMKEN,Timken India,Capital Goods,False,False,ranked below the top 15,-20.26,-7.06,7.13,24.94,LAGGING,LEADING,Moderate,,11.51,115.13,10.47,14.87,58.93,
