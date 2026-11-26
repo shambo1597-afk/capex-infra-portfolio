@@ -1,8 +1,8 @@
 {
-  "as_of": "2026-11-24",
-  "started": "2026-11-24T19:22:55+05:30",
+  "as_of": "2026-11-26",
+  "started": "2026-11-26T19:23:28+05:30",
   "status": "ok",
-  "pid": 179,
+  "pid": 207,
   "total_steps": 15,
   "step_names": [
     "Nifty 500 TRI (niftyindices.com)",
@@ -22,16 +22,16 @@
     "P&L attribution vs the Nifty 500"
   ],
   "expected_seconds": {
-    "Nifty 500 TRI (niftyindices.com)": 1,
-    "Prices, technicals and risk summary": 8,
-    "Technical-first sector screens": 7,
-    "Review tables and selection ranking": 25,
-    "Locked-portfolio run-up check": 4,
-    "Candidate sweep": 5,
-    "Regression and hedge plan": 8,
-    "Capex-cycle exposure": 16,
-    "Live P&L of the Rs 1 crore": 6,
-    "Performance and CML": 169,
+    "Nifty 500 TRI (niftyindices.com)": 19,
+    "Prices, technicals and risk summary": 102,
+    "Technical-first sector screens": 11,
+    "Review tables and selection ranking": 32,
+    "Locked-portfolio run-up check": 20,
+    "Candidate sweep": 101,
+    "Regression and hedge plan": 9,
+    "Capex-cycle exposure": 17,
+    "Live P&L of the Rs 1 crore": 7,
+    "Performance and CML": 136,
     "VaR and marginal VaR": 1,
     "Portfolio delta and the puts' Greeks": 1,
     "Hedging strategies to the horizon": 1,
@@ -42,62 +42,62 @@
     {
       "name": "Nifty 500 TRI (niftyindices.com)",
       "returncode": 0,
-      "seconds": 19
+      "seconds": 27
     },
     {
       "name": "Prices, technicals and risk summary",
       "returncode": 0,
-      "seconds": 102
+      "seconds": 97
     },
     {
       "name": "Technical-first sector screens",
       "returncode": 0,
-      "seconds": 11
+      "seconds": 5
     },
     {
       "name": "Review tables and selection ranking",
       "returncode": 0,
-      "seconds": 32
+      "seconds": 20
     },
     {
       "name": "Locked-portfolio run-up check",
       "returncode": 0,
-      "seconds": 20
+      "seconds": 15
     },
     {
       "name": "Candidate sweep",
       "returncode": 0,
-      "seconds": 101
+      "seconds": 82
     },
     {
       "name": "Regression and hedge plan",
       "returncode": 0,
-      "seconds": 9
+      "seconds": 40
     },
     {
       "name": "Capex-cycle exposure",
       "returncode": 0,
-      "seconds": 17
+      "seconds": 11
     },
     {
       "name": "Live P&L of the Rs 1 crore",
       "returncode": 0,
-      "seconds": 7
+      "seconds": 83
     },
     {
       "name": "Performance and CML",
       "returncode": 0,
-      "seconds": 136
+      "seconds": 116
     },
     {
       "name": "VaR and marginal VaR",
       "returncode": 0,
-      "seconds": 1
+      "seconds": 27
     },
     {
       "name": "Portfolio delta and the puts' Greeks",
       "returncode": 0,
-      "seconds": 1
+      "seconds": 28
     },
     {
       "name": "Hedging strategies to the horizon",
@@ -115,9 +115,9 @@
       "seconds": 1
     }
   ],
-  "heartbeat": "2026-11-24T19:30:33+05:30",
+  "heartbeat": "2026-11-26T19:32:43+05:30",
   "current_step": 15,
   "current_step_name": "P&L attribution vs the Nifty 500",
-  "current_step_started": "2026-11-24T19:30:32+05:30",
-  "finished": "2026-11-24T19:30:33+05:30"
+  "current_step_started": "2026-11-26T19:32:43+05:30",
+  "finished": "2026-11-26T19:32:43+05:30"
 }
